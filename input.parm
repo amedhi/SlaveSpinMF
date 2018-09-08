@@ -1,0 +1,55 @@
+#----------------------------------------------------------------------
+#                       ~~~My program~~~                           
+#                       Input Parameters                             
+#-----------------------------------------------------------------------
+#---------------------------------------------
+# Job Specification 
+#---------------------------------------------
+job = "SRMF"  #"Diagonalization" 
+mode = "NEW" # ("NEW"/"APPEND")
+print_level = -2 #-2
+
+#---------------------------------------------
+# Slave-rotor parameters
+#---------------------------------------------
+tol = 1.0E-8
+#maxiter = 500
+#maxiter_rotor = 500
+#use_previous_iter = "NO"
+#sr_constraint = "GLOBAL"  # ("GLOBAL"/"LOCAL")
+rotor_cluster = "SITE"    # ("SITE"/"BOND"/"CELL")
+max_rotor_charge = +2
+min_rotor_charge = -2
+
+#---------------------------------------------
+# Lattice:
+#---------------------------------------------
+lattice = "SQUARE_2BAND" 
+lsize1 = 4
+lsize2 = 4
+bc1 = "periodic"
+bc2 = "periodic"
+
+#---------------------------------------------
+# Model:
+#---------------------------------------------
+#model = "tJ"
+model = "TBI_HUBBARD"
+t = 1.0
+tsp = 0.5
+e0 = 0.1
+U = 0.0
+
+#---------------------------------------------
+# Variational wavefunction
+#---------------------------------------------
+hole_doping = 0.0
+
+#---------------------------------------------
+# List of observable to calculate:
+#---------------------------------------------
+chern_number = "NO"
+ebands_full = "YES"
+#ebands_symm = "YES"
+#band_gap = "YES"
+
