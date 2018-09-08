@@ -34,9 +34,9 @@ public:
   const unsigned& type(void) const { return type_; }
   const unsigned& src(void) const { return src_; }
   const unsigned& tgt(void) const { return tgt_; }
-  const Vector3d& vector(void) const { return vector_; }
   const idx_list& src_state_indices(void) const { return src_state_indices_; }
   const idx_list& tgt_state_indices(void) const { return tgt_state_indices_; }
+  const Vector3d& vector(void) const { return vector_; }
 private:
   unsigned type_;
   unsigned src_;
@@ -70,7 +70,9 @@ public:
   const unsigned& num_bonds(void) const { return num_bonds_; }
   const std::vector<bond>& bonds(void) const { return bonds_; }
   const std::vector<links>& site_links(void) const { return site_links_; }
-  std::vector<std::complex<double>> sbond_avg(void) { return sbond_avg_; }
+  ComplexArray& sp_bond_ke(const int& i) { return sp_bond_ke_[i]; }
+  ComplexArray1D& sp_site_density(const int& i) { return sp_site_density_[i]; }
+  //std::vector<std::complex<double>> sbond_avg(void) { return sbond_avg_; }
   std::vector<std::complex<double>> rbond_avg(void) { return rbond_avg_; }
   const double& spinon_density(const int& i) const { return spinon_site_density_[i]; }
   const ArrayXcd& bond_tchi(void) const { return bond_tchi_; }
@@ -82,7 +84,8 @@ private:
   std::vector<bond> bonds_; // list of all bonds
   std::vector<links> site_links_; // bonds connecting every site
   ArrayXcd bond_tchi_;
-  std::vector<std::complex<double>> sbond_avg_;
+  std::vector<ComplexArray> sp_bond_ke_;
+  std::vector<ComplexArray1D> sp_site_density_;
   std::vector<std::complex<double>> rbond_avg_;
   std::vector<double> spinon_site_density_;
   std::vector<double> ssite_avg_;

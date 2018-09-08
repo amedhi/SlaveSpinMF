@@ -67,6 +67,12 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
   std::vector<double> nup_avg(kblock_dim_,0.0);
   Eigen::VectorXcd amplitude_vec1, amplitude_vec2;
   ComplexMatrix chi_mat = ComplexMatrix::Zero(2,2);
+  for (int i=0; i<srparams.num_sites(); ++i) {
+    srparams.sp_site_density(i).setZero();
+  }
+  for (int i=0; i<srparams.bonds().size(); ++i) {
+    srparams.sp_bond_ke(i).setZero();
+  }
   if (have_TP_symmetry_) {
     for (int i=0; i<kshells_up_.size(); ++i) {
       unsigned k = kshells_up_[i].k;
@@ -87,25 +93,29 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
       // bond averages
       amplitude_vec1.resize(nmax-nmin+1);
       amplitude_vec2.resize(nmax-nmin+1);
-      //for (int j=0; j<srparams.bonds().size(); ++j) {
-      for (int j=0; j<1; ++j) {
+      for (int j=0; j<srparams.bonds().size(); ++j) {
         sr_bond bond(srparams.bonds()[j]);
         Vector3d delta = bond.vector();
         std::complex<double> exp_kdotr = std::exp(ii()*kvec.dot(delta));
-        for (unsigned m=0; m<bond.src_state_indices().size(); ++m) {
+        unsigned rows = bond.src_state_indices().size();
+        unsigned cols = bond.tgt_state_indices().size();
+        ComplexArray ke_matrix(rows, cols);
+        for (unsigned m=0; m<rows; ++m) {
           auto ii = bond.src_state_indices()[m];
-          for (unsigned n=0; n<bond.tgt_state_indices().size(); ++n) {
+          for (unsigned n=0; n<cols; ++n) {
             auto jj = bond.tgt_state_indices()[n];
             std::complex<double> chi_sum(0.0);
             for (unsigned band=nmin; band<=nmax; ++band) {
               chi_sum += exp_kdotr * std::conj(es_k_up_.eigenvectors().row(ii)[band]) * 
                      es_k_up_.eigenvectors().row(jj)[band];
             }
-            chi_mat(m,n) += chi_sum;
+            ke_matrix(m,n) = chi_sum;
+            //chi_mat(m,n) += chi_sum;
             //std::cout << "(m,n) = " << m << ", " << n << "\n";
             //std::cout << "chi = " << chi << "\n";
           }
         }
+        srparams.sp_bond_ke(j) += ke_matrix;
         //getchar();
       }
     }
@@ -125,12 +135,23 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
   }
 
   // final KE average 
-  chi_mat /= num_kpoints_;
+  for (int i=0; i<srparams.bonds().size(); ++i) {
+    srparams.sp_bond_ke(i) /= num_kpoints_;
+    // print
+    std::cout<<"bond-"<<i<<":"<<"\n";
+    for (int m=0; m<srparams.sp_bond_ke(i).rows(); ++m) {
+      for (int n=0; n<srparams.sp_bond_ke(i).cols(); ++n) {
+        std::cout << "chi["<<m<<","<<n<<"] = " << srparams.sp_bond_ke(i)(m,n) << "\n";
+      }
+    }
+    std::cout << "\n";
+  }
+  /*chi_mat /= num_kpoints_;
   for (int m=0; m<chi_mat.rows(); ++m) {
     for (int n=0; n<chi_mat.cols(); ++n) {
       std::cout << "chi["<<m<<","<<n<<"] = " << chi_mat(m,n) << "\n";
     }
-  }
+  }*/
 
 
   std::cout << "Exiting at Spinon::compute_averages\n"; exit(0);

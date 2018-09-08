@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-07 22:58:13
+* @Last Modified time: 2018-09-08 16:54:43
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "srparams.h"
@@ -54,16 +54,27 @@ SR_Params::SR_Params(const input::Parameters& inputs, const lattice::LatticeGrap
   num_bonds_ = bonds_.size();
 
   // storages
-  bond_tchi_.resize(num_bonds_);
-  sbond_avg_.resize(num_bonds_);
+  sp_bond_ke_.resize(num_bonds_);
+  for (int i=0; i<num_bonds_; ++i) {
+    int rows = bonds_[i].src_state_indices().size();
+    int cols = bonds_[i].tgt_state_indices().size();
+    sp_bond_ke_[i].resize(rows,cols);
+  }
+
+  sp_site_density_.resize(num_sites_);
+  for (int i=0; i<num_sites_; ++i) {
+    sp_site_density_[i].resize(graph.site_dim(i));
+  }
+
+
+  //bond_tchi_.resize(num_bonds_);
   rbond_avg_.resize(num_bonds_);
   ssite_avg_.resize(num_sites_);
   rsite_avg_.resize(num_sites_);
   spinon_site_density_.resize(num_sites_);
 
   for (int i=0; i<num_bonds_; ++i) {
-    bond_tchi_[i] = 1.0;
-    sbond_avg_[i] = 1.0;
+    //bond_tchi_[i] = 1.0;
     rbond_avg_[i] = 1.0;
   }
   for (int i=0; i<num_sites_; ++i) {

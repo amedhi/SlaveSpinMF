@@ -21,7 +21,9 @@ using RealMatrix = Eigen::MatrixXd;
 using ComplexVector = Eigen::VectorXcd;
 using ComplexMatrix = Eigen::MatrixXcd;
 using ArrayXd = Eigen::ArrayXd;
-using ArrayXcd = Eigen::ArrayXcd;
+using ArrayXcd = Eigen::ArrayXcd; // means a 1D array
+using ComplexArray1D = Eigen::ArrayXcd; 
+using ComplexArray = Eigen::Array<std::complex<double>,Eigen::Dynamic,Eigen::Dynamic>;
 
 
 #ifdef REAL_WAVEFUNCTION
