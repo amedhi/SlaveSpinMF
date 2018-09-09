@@ -85,7 +85,7 @@ public:
 private:
   using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
-  using bond = SR_Params::bond;
+  using bond = sr_bond;
   using links = SR_Params::links;
   LatticeGraph rotor_graph_;
   Model rotor_model_;
