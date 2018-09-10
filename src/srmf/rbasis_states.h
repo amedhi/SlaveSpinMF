@@ -98,11 +98,13 @@ public:
   void construct(const int& num_sites, const int& site_dim);
   ~SlaveSpinBasis() {}
   // quantum operators
-  op_result op_Sz(const size_t& i, const size_t& alpha, const idx_t& idx) const; 
-  op_result op_Splus(const size_t& i, const size_t& alpha, const idx_t& idx) const; 
-  op_result op_Sminus(const size_t& i, const size_t& alpha, const idx_t& idx) const; 
-  op_result op_Zplus(const size_t& i, const size_t& alpha, const idx_t& idx) const; 
-  op_result op_Zminus(const size_t& i, const size_t& alpha, const idx_t& idx) const; 
+  const idx_t& dim(void) const { return ndim_; }
+  const idx_t& null_idx(void) const { return null_idx_; }
+  op_result apply_Sz(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Splus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Sminus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Zplus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Zminus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   //op_result op_b_dag(const size_t& i, const size_t& alpha, const idx_t& idx) const; 
 private:
   int num_sites_{0};

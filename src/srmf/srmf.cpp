@@ -25,7 +25,7 @@ SRMF::SRMF(const input::Parameters& inputs)
 int SRMF::run(const input::Parameters& inputs) 
 {
   spinon_.solve(graph_, sr_parms_);
-  //rotor_.solve(sr_parms_);
+  rotor_.solve(sr_parms_);
   return 0;
 }
 

@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-04-21 11:41:01
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-07 08:42:45
+* @Last Modified time: 2018-09-10 10:31:15
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <cassert>
@@ -222,22 +222,22 @@ void SlaveSpinBasis::construct(const int& num_sites, const int& site_dim)
   null_idx_ = ndim_;
 }
 
-SlaveSpinBasis::op_result SlaveSpinBasis::op_Sz(const size_t& i, 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Sz(const size_t& site, 
   const size_t& alpha, const idx_t& idx) const
 {
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
-  idx_t pos = (i-1) * site_dim_ + alpha;
+  idx_t pos = site * site_dim_ + alpha;
   // Sz == 1/2(a^\dag a - b^\dag b)
   state_t state = basis_states_[idx];
   if (state.test(pos)) return std::make_pair(-0.5,idx);
   else return std::make_pair(+0.5,idx);
 }
 
-SlaveSpinBasis::op_result SlaveSpinBasis::op_Splus(const size_t& i, 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Splus(const size_t& site, 
   const size_t& alpha, const idx_t& idx) const 
 {
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
-  idx_t pos = (i-1) * site_dim_ + alpha;
+  idx_t pos = site * site_dim_ + alpha;
   // S+ == a^\dag . b
   state_t state = basis_states_[idx];
   if (state.test(pos)) {
@@ -248,11 +248,11 @@ SlaveSpinBasis::op_result SlaveSpinBasis::op_Splus(const size_t& i,
 }
 
 
-SlaveSpinBasis::op_result SlaveSpinBasis::op_Sminus(const size_t& i, 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Sminus(const size_t& site, 
   const size_t& alpha, const idx_t& idx) const 
 {
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
-  idx_t pos = (i-1) * site_dim_ + alpha;
+  idx_t pos = site * site_dim_ + alpha;
   // S- == b^dag . a
   state_t state = basis_states_[idx];
   if (state.test(pos)) {
@@ -264,11 +264,11 @@ SlaveSpinBasis::op_result SlaveSpinBasis::op_Sminus(const size_t& i,
   }
 }
 
-SlaveSpinBasis::op_result SlaveSpinBasis::op_Zplus(const size_t& i, 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zplus(const size_t& site, 
   const size_t& alpha, const idx_t& idx) const 
 {
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
-  idx_t pos = (i-1) * site_dim_ + alpha;
+  idx_t pos = site * site_dim_ + alpha;
   // z+ = P+ a^\dag b P-
   // P+/- = 1/sqrt(1/2 +/- S^z)
   state_t state = basis_states_[idx];
@@ -284,11 +284,11 @@ SlaveSpinBasis::op_result SlaveSpinBasis::op_Zplus(const size_t& i,
   else return std::make_pair(0,null_idx_);
 }
 
-SlaveSpinBasis::op_result SlaveSpinBasis::op_Zminus(const size_t& i, 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zminus(const size_t& site, 
   const size_t& alpha, const idx_t& idx) const 
 {
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
-  idx_t pos = (i-1) * site_dim_ + alpha;
+  idx_t pos = site * site_dim_ + alpha;
   // z- = P- b^\dag a P+
   // P+/- = 1/sqrt(1/2 +/- S^z)
   state_t state = basis_states_[idx];

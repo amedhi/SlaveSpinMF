@@ -95,7 +95,9 @@ private:
   // slave spin hamiltonian
   SlaveSpinBasis ssbasis_;
   unsigned site_dim_;
+  unsigned basis_dim_;
   unsigned dim_;
+  std::vector<unsigned> spin_orbitals_; // for a single site
 
   // clusters
   cluster_t cluster_type_;
@@ -135,7 +137,7 @@ private:
   //ComplexMatrix psi_work2_;
   */
   void make_clusters(const SR_Params& srparams);
-  void construct_matrix(void);
+  void init_matrix_elems(const SR_Params& srparams);
   void set_renomalizing_params(const SR_Params& srparams);
   double solve_for_mu(void);
   void solve_clusters(void);

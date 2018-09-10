@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-07 08:43:06
+* @Last Modified time: 2018-09-10 12:20:28
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -39,34 +39,23 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   // Rotor lattice has only one original lattice unit cell 
   num_sites_ = srparams.num_sites();
   num_bonds_ = srparams.num_bonds();
-  /*for (auto vi=rotor_graph_.sites_begin(); vi!=rotor_graph_.sites_end(); ++vi) {
-    rotor_graph_.change_site_dimension(vi, 1);
-  }*/
-
-  // rotor parameters
-  /*int theta_min = inputs.set_value("min_rotor_charge", -2);
-  int theta_max = inputs.set_value("max_rotor_charge", +2);
-  std::string cluster_type = inputs.set_value("rotor_cluster", "SITE");
-  boost::to_upper(cluster_type);
-  if (cluster_type=="SITE") cluster_type_ = cluster_t::SITE;
-  else if (cluster_type=="BOND") cluster_type_ = cluster_t::BOND;
-  else if (cluster_type=="CELL") cluster_type_ = cluster_t::CELL;
-  else throw std::range_error("Rotor::Rotor: invalid 'rotor_cluster'");
-  */
 
   // slave spin basis
-  site_dim_ = 2;
-  ssbasis_.construct(1,site_dim_);
+  //----------Assuming all sites have same 'site_dim'-------------
+  spin_orbitals_ = srparams.site(0).spin_orbitals(); // including 'UP' & 'DN' spins
+  site_dim_ = spin_orbitals_.size(); 
 
-  // clusters & basis states per cluster
-  /*make_clusters(srparams);
-  basis_.construct(sites_per_cluster_,theta_min,theta_max);
-  dim_ = basis_.dim();
+  // 'slave boson' basis
+  //----------Assuming 'SITE' cluster-------------
+  sites_per_cluster_ = 1;
+  ssbasis_.construct(sites_per_cluster_,site_dim_);
+  basis_dim_ = ssbasis_.dim();
+
+  make_clusters(srparams);
   cluster_hams_.resize(clusters_.size());
   for (auto& mat : cluster_hams_) {
-    mat = ComplexMatrix::Zero(dim_, dim_);
+    mat = ComplexMatrix::Zero(basis_dim_, basis_dim_);
   }
-  */
 
   // Rotor model 
   using namespace model;
@@ -78,9 +67,11 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   rotor_model_.init(rotor_graph_.lattice());
   rotor_model_.add_parameter(name="U", defval=U);
   rotor_model_.add_parameter(name="mu", defval=0.0);
-  rotor_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+  //--Operators are directly implemeted in "init_matrix_matrix"
+  /*rotor_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
   rotor_model_.add_siteterm(name="e^i_theta", cc="1", op::ciup_dag());
   rotor_model_.add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+  */
   // finalize model
   rotor_model_.finalize(rotor_graph_.lattice());
 
@@ -98,10 +89,11 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
     site_mu_[i] = 0.0;
     site_phi_[i] = 1.0;
   }
-
-  construct_matrix();
+  init_matrix_elems(srparams);
   construct_cluster_hams();
 }
+
+
 
 void Rotor::solve(SR_Params& srparams) 
 {
@@ -112,7 +104,6 @@ void Rotor::solve(SR_Params& srparams)
 
   // renormalizing parameters from spinon sector
   set_renomalizing_params(srparams);
-
   int max_iter = 100;
   for (int i=0; i<num_sites_; ++i) trial_phi_[i] = 1.0;
   for (int iter=0; iter<max_iter; ++iter) {
@@ -135,7 +126,6 @@ void Rotor::set_renomalizing_params(const SR_Params& srparams)
 {
   // bond hopping parameters
   bond_tchi_ = srparams.bond_tchi();
-
   // site renormalizing parameters
   if (cluster_type_==cluster_t::SITE) {
     for (int i=0; i<num_sites_; ++i) {
@@ -182,7 +172,7 @@ double Rotor::avg_particle_density_eqn(const double& mu)
 void Rotor::make_clusters(const SR_Params& srparams)
 {
   bonds_ = srparams.bonds();
-  site_links_ = srparams.site_links();
+  //site_links_ = srparams.site_links();
   clusters_.clear();
   switch (cluster_type_) {
     case cluster_t::SITE:
@@ -190,13 +180,11 @@ void Rotor::make_clusters(const SR_Params& srparams)
       clusters_.resize(num_sites_);
       for (unsigned i=0; i<num_sites_; ++i) clusters_[i].push_back(i);
       break;
-
     case cluster_t::BOND:
       sites_per_cluster_ = 2;
       clusters_.resize(bonds_.size());
       for (int i=0; i<bonds_.size(); ++i) clusters_[i].push_back(i);
       break;
-
     case cluster_t::CELL:
       sites_per_cluster_ = num_sites_;
       clusters_.resize(1);
@@ -219,39 +207,6 @@ void Rotor::solve_clusters(void)
   }
 }
 
-void Rotor::construct_cluster_hams(void)
-{
-  if (cluster_type_==cluster_t::SITE) {
-    int i = 0;
-    for (auto& mat : cluster_hams_) {
-      // diagonal elements
-      double mu = site_mu_[i];
-      for (const auto& elem: diagonal_elems_) {
-        int n = elem.row();
-        double ntheta = elem.value();
-        mat(n,n) = (U_half_ * ntheta - mu) * ntheta;
-      }
-      // site operators
-      auto matrix_elem = site_phi_[i] * site_mfp_[i];
-      for (const auto& elem: siteop_elems_) {
-        int m = elem.row();
-        int n = elem.col();
-        mat(m,n) = -matrix_elem;
-        mat(n,m) = -std::conj(matrix_elem);
-      }
-      i++;
-    }
-  }
-  else if (cluster_type_==cluster_t::BOND) {
-    throw std::runtime_error("Rotor::construct_cluster_hams: undefined 'cluster_type'");
-  }
-  else if (cluster_type_==cluster_t::CELL) {
-    throw std::runtime_error("Rotor::construct_cluster_hams: undefined 'cluster_type'");
-  }
-  else {
-    throw std::runtime_error("Rotor::construct_cluster_hams: undefined 'cluster_type'");
-  }
-}
 
 void Rotor::update_with_mu(const double& new_mu) 
 {
@@ -375,36 +330,83 @@ void Rotor::eval_bond_ke(void)
   }
 }
 
-void Rotor::construct_matrix(void) 
+void Rotor::construct_cluster_hams(void)
 {
+  if (cluster_type_==cluster_t::SITE) {
+    int i = 0;
+    for (auto& mat : cluster_hams_) {
+      // diagonal elements
+      //double mu = site_mu_[i];
+      for (const auto& elem: diagonal_elems_) {
+        int n = elem.row();
+        double total_Sz = elem.value();
+        mat(n,n) = U_half_ * total_Sz  * total_Sz;
+        std::cout << "mat(n,n) = " << mat(n,n) << "\n";
+      }
+      // site operators
+      auto coupling = site_phi_[i] * site_mfp_[i];
+      for (const auto& elem: siteop_elems_) {
+        int m = elem.row();
+        int n = elem.col();
+        mat(m,n) = -coupling * elem.value();
+        mat(n,m) = std::conj(mat(m,n));
+      }
+      i++;
+      // check
+      // std::cout << "ham = " << mat << "\n";
+    }
+  }
+  else if (cluster_type_==cluster_t::BOND) {
+    throw std::runtime_error("Rotor::construct_cluster_hams: undefined 'cluster_type'");
+  }
+  else if (cluster_type_==cluster_t::CELL) {
+    throw std::runtime_error("Rotor::construct_cluster_hams: undefined 'cluster_type'");
+  }
+  else {
+    throw std::runtime_error("Rotor::construct_cluster_hams: undefined 'cluster_type'");
+  }
+}
+
+void Rotor::init_matrix_elems(const SR_Params& srparams) 
+{
+  // non-zero matrix elements of various operators in the Hamiltonian
+  SlaveSpinBasis::idx_t i, j;
+  double mat_elem;
+  unsigned site = 0; 
+  diagonal_elems_.clear();
+  for (i=0; i<basis_dim_; ++i) {
+    double total_Sz = 0.0;
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(mat_elem, j) = ssbasis_.apply_Sz(site,alpha,i);
+      total_Sz += mat_elem;
+    }
+    //std::cout << "total_Sz=" << total_Sz << "\n";
+    diagonal_elems_.push_back({i,i,total_Sz});
+  }
+  siteop_elems_.clear();
+  // operator S+
+  for (i=0; i<basis_dim_; ++i) {
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(mat_elem,j) = ssbasis_.apply_Splus(site,alpha,i);
+      if (j != ssbasis_.null_idx()) {
+        siteop_elems_.push_back({i,j,mat_elem});
+        //std::cout << "siteop elem ("<<i<<","<<j<<")="<<mat_elem<<"\n";
+      }
+    }
+  }
+/*
   // non-zero matrix elements of various operators in the Hamiltonian
   rotor_basis::idx_t i, j;
   int mat_elem;
   unsigned site = 0;
-
   diagonal_elems_.clear();
   for (i=0; i<dim_; ++i) {
     std::tie(mat_elem, j) = basis_.apply_ni(i, site);
     diagonal_elems_.push_back({i,i,mat_elem});
   }
-
-  siteop_elems_.clear();
-  for (auto sterm=rotor_model_.siteterms_begin(); sterm!=rotor_model_.siteterms_end(); ++sterm) {
-    if (sterm->qn_operator().id()==model::op_id::ciup_dag) {
-      //std::cout << "op = " << sterm->qn_operator().name() << "\n";
-      for (i=0; i<dim_; ++i) {
-        std::tie(mat_elem, j) = basis_.apply_cidag(i, site);
-        if (j != basis_.null_idx()) {
-          siteop_elems_.push_back({i,j,1});
-          //std::cout << "(i,j)=" << i << " " << j << "\n";
-        }
-      }
-    }
-  }
-
   //for (auto& elem : siteop_elems_) std::cout << elem.row() << " " << elem.col() << "\n";
   bondop_elems_.clear();
-
+  */
 }
 
 

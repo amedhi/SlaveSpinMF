@@ -136,17 +136,20 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
   for (int i=0; i<srparams.num_sites(); ++i) {
     srparams.site(i).spinon_density() /= num_kpoints_;
     // print
+    /*
     std::cout<<"site-"<<i<<":"<<"\n";
     for (int m=0; m<srparams.site(i).dim(); ++m) {
       std::cout << "<n_up>["<<m<<"] = " << srparams.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
+    */
   }
 
   // final KE average 
   for (int i=0; i<srparams.num_bonds(); ++i) {
     srparams.bond(i).spinon_ke() /= num_kpoints_;
     // print
+    /*
     std::cout<<"bond-"<<i<<":"<<"\n";
     for (int m=0; m<srparams.bond(i).spinon_ke().rows(); ++m) {
       for (int n=0; n<srparams.bond(i).spinon_ke().cols(); ++n) {
@@ -154,9 +157,10 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
       }
     }
     std::cout << "\n";
+    */
   }
 
-  std::cout << "Exiting at Spinon::compute_averages\n"; exit(0);
+  //std::cout << "Exiting at Spinon::compute_averages\n"; exit(0);
 }
 
 void Spinon::construct_groundstate(void)

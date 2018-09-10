@@ -14,6 +14,7 @@
 #include <vector>
 #include <tuple>
 #include <stdexcept>
+#include <numeric>
 #include "../scheduler/task.h"
 #include "../lattice/graph.h"
 #include "../lattice/matrix.h"
@@ -37,6 +38,8 @@ public:
     inout_types_.clear();
     spinon_density_.resize(dim);
     boson_density_.resize(dim);
+    spin_orbitals_.resize(2*dim); // spin + oribitals;
+    std::iota(spin_orbitals_.begin(), spin_orbitals_.end(), 0);
   }
   //sr_site(const unsigned& type, const idx_list& idx_list1, 
   //  const idx_list& idx_list2, const Vector3d& vector)
@@ -45,6 +48,7 @@ public:
   void clear(void) { connected_bonds_.clear(); inout_types_.clear(); }
   const unsigned& type(void) const { return type_; }
   const unsigned& dim(void) const { return dim_; }
+  const std::vector<unsigned> spin_orbitals(void) const { return spin_orbitals_; }
   void add_bond(const unsigned& id, const bool& outgoing) 
     { connected_bonds_.push_back(id); inout_types_.push_back(outgoing); } 
   const idx_list& state_indices(void) const { return state_indices_; }
@@ -52,6 +56,7 @@ public:
 private:
   unsigned type_;
   unsigned dim_;
+  std::vector<unsigned> spin_orbitals_;
   idx_list state_indices_;
   idx_list connected_bonds_;
   std::vector<bool> inout_types_;
@@ -93,7 +98,6 @@ private:
   ComplexArray boson_ke_;
 };
 
-
 class site_link 
 {
 public:
@@ -117,7 +121,9 @@ public:
   //int init(const lattice::Lattice& lattice) override;
   const unsigned& num_sites(void) const { return num_sites_; }
   const unsigned& num_bonds(void) const { return num_bonds_; }
+  const sr_site& site(const unsigned& i) const { return sites_[i]; }
   sr_site& site(const unsigned& i) { return sites_[i]; }
+  const sr_bond& bond(const unsigned& i) const { return bonds_[i]; }
   sr_bond& bond(const unsigned& i) { return bonds_[i]; }
 
   const std::vector<sr_bond>& bonds(void) const { return bonds_; }
