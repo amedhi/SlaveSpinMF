@@ -18,6 +18,7 @@
 #include "../scheduler/task.h"
 #include "../lattice/graph.h"
 #include "../lattice/matrix.h"
+#include "../model/model.h"
 
 namespace srmf {
 
@@ -52,6 +53,8 @@ public:
   void add_bond(const unsigned& id, const bool& outgoing) 
     { connected_bonds_.push_back(id); inout_types_.push_back(outgoing); } 
   const idx_list& state_indices(void) const { return state_indices_; }
+  const idx_list& connected_bonds(void) const { return connected_bonds_; }
+  bool is_outgoing_bond(const unsigned& i) const { return inout_types_[i]; }
   Array1D& spinon_density(void) { return spinon_density_; }
 private:
   unsigned type_;
@@ -74,11 +77,15 @@ public:
   {
     spinon_ke_.resize(src_dim, tgt_dim);
     boson_ke_.resize(src_dim, tgt_dim);
+    term_couplings_.clear();
+    term_spins_.clear();
   }
   sr_bond(const unsigned& type, const idx_list& idx_list1, 
     const idx_list& idx_list2, const Vector3d& vector)
     : type_{type}, src_state_indices_{idx_list1}, tgt_state_indices_{idx_list2}, 
       vector_{vector} {}
+  void add_term_cc(const ComplexArray& mat, const model::spin& s) 
+    { term_couplings_.push_back(mat); term_spins_.push_back(s); }
   const unsigned& type(void) const { return type_; }
   const unsigned& src(void) const { return src_; }
   const unsigned& tgt(void) const { return tgt_; }
@@ -87,6 +94,9 @@ public:
   const Vector3d& vector(void) const { return vector_; }
   ComplexArray& spinon_ke() { return spinon_ke_; }
   ComplexArray& boson_ke() { return boson_ke_; }
+  const ComplexArray& spinon_ke() const { return spinon_ke_; }
+  const ComplexArray& boson_ke() const { return boson_ke_; }
+  const ComplexArray& term_cc(const unsigned& i) const { return term_couplings_[i]; }
 private:
   unsigned type_;
   unsigned src_;
@@ -94,6 +104,8 @@ private:
   idx_list src_state_indices_;
   idx_list tgt_state_indices_;
   Vector3d vector_;
+  std::vector<ComplexArray> term_couplings_; // model term coupling constants 
+  std::vector<model::spin> term_spins_; 
   ComplexArray spinon_ke_;
   ComplexArray boson_ke_;
 };
@@ -116,7 +128,8 @@ public:
   //using bond = sr_bond;
   //using site = sr_site;
   using links = std::vector<site_link>;
-  SR_Params(const input::Parameters& inputs, const lattice::LatticeGraph& graph);
+  SR_Params(const input::Parameters& inputs, const lattice::LatticeGraph& graph,
+    const model::Hamiltonian& model);
   ~SR_Params() {}
   //int init(const lattice::Lattice& lattice) override;
   const unsigned& num_sites(void) const { return num_sites_; }
@@ -125,8 +138,9 @@ public:
   sr_site& site(const unsigned& i) { return sites_[i]; }
   const sr_bond& bond(const unsigned& i) const { return bonds_[i]; }
   sr_bond& bond(const unsigned& i) { return bonds_[i]; }
-
+  const std::vector<sr_site>& sites(void) const { return sites_; }
   const std::vector<sr_bond>& bonds(void) const { return bonds_; }
+
   const std::vector<links>& site_links(void) const { return site_links_; }
   ComplexArray& sp_bond_ke(const int& i) { return sp_bond_ke_[i]; }
   ComplexArray1D& sp_site_density(const int& i) { return sp_site_density_[i]; }

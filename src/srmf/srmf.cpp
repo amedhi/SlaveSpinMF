@@ -16,7 +16,7 @@ SRMF::SRMF(const input::Parameters& inputs)
   : graph_(inputs) 
   //, blochbasis_(graph_)
   , model_(inputs, graph_.lattice())
-  , sr_parms_(inputs, graph_)
+  , sr_parms_(inputs, graph_,model_)
   , spinon_(inputs,model_,graph_,sr_parms_)
   , rotor_(inputs,model_,graph_,sr_parms_)
 {

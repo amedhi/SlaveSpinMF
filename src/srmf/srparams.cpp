@@ -2,14 +2,15 @@
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-09 11:42:19
+* @Last Modified time: 2018-09-12 12:02:29
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "srparams.h"
 
 namespace srmf {
 
-SR_Params::SR_Params(const input::Parameters& inputs, const lattice::LatticeGraph& graph)
+SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph& graph,
+  const model::Hamiltonian& model)
 {
   //std::cout << "----SR_Params::SR_Params----\n";
   // sites in the unit cell
@@ -58,10 +59,17 @@ SR_Params::SR_Params(const input::Parameters& inputs, const lattice::LatticeGrap
 
       //std::cout << "m="<<m<<", n="<<n<<"\n"; getchar();
       bonds_.push_back({type,src,src_dim,tgt,tgt_dim,graph.vector(ei)});
-      //bonds_.push_back({type,src_state_indices,tgt_state_indices,graph.vector(ei)});
+      // Hamiltonian terms for this bonds
+      //ComplexMatrix coeff_mat = hamterm.coupling(btype);
+      for (auto bterm=model.bondterms_begin(); bterm!=model.bondterms_end(); ++bterm) {
+        if (bterm->qn_operator().is_quadratic()) {
+          bonds_.back().add_term_cc(bterm->coupling(type), bterm->qn_operator().sigma());
+          //std::cout << "coupling = " << bterm->coupling(type) << "\n";
+        }
+      }
+
       // store id of the bond connected to the site
       int id = bonds_.size()-1;
-
       sites_[src].add_bond(id,true); // outgoing true 
       sites_[tgt].add_bond(id,false); // outgoing false
 

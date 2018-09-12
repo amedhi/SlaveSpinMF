@@ -2,12 +2,13 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-10 12:20:28
+* @Last Modified time: 2018-09-12 14:47:05
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
 #include <stdexcept>
 #include <string>
+#include <cassert>
 #include <boost/algorithm/string.hpp>
 #include <boost/math/tools/roots.hpp>
 
@@ -33,12 +34,14 @@ void Cluster::solve()
 
 Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model, 
   const lattice::LatticeGraph& graph, const SR_Params& srparams)
-  : rotor_graph_(graph)
+  //: rotor_graph_(graph)
 {
   std::cout << "----Rotor::Rotor-------\n";
   // Rotor lattice has only one original lattice unit cell 
   num_sites_ = srparams.num_sites();
   num_bonds_ = srparams.num_bonds();
+  //sites_ = srparams.sites();
+  //bonds_ = srparams.bonds();
 
   // slave spin basis
   //----------Assuming all sites have same 'site_dim'-------------
@@ -64,7 +67,7 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   CouplingConstant cc;
   double U = model.get_parameter_value("U");
   U_half_ = 0.5 * U;
-  rotor_model_.init(rotor_graph_.lattice());
+  rotor_model_.init(graph.lattice());
   rotor_model_.add_parameter(name="U", defval=U);
   rotor_model_.add_parameter(name="mu", defval=0.0);
   //--Operators are directly implemeted in "init_matrix_matrix"
@@ -73,9 +76,19 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   rotor_model_.add_siteterm(name="hubbard", cc="U", op::hubbard_int());
   */
   // finalize model
-  rotor_model_.finalize(rotor_graph_.lattice());
+  rotor_model_.finalize(graph.lattice());
 
   // storages
+  renorm_site_fields_.resize(num_sites_);
+  for (auto& elem : renorm_site_fields_) elem.resize(site_dim_);
+
+  site_qp_weights_.resize(num_sites_);
+  for (auto& elem : site_qp_weights_) elem.resize(site_dim_);
+  renorm_bond_fields_.resize(num_bonds_);
+  for (auto& elem : renorm_bond_fields_) 
+    elem.resize(site_dim_,site_dim_);
+
+
   bond_tchi_.resize(num_bonds_);
   bond_ke_.resize(num_bonds_);
   site_density_.resize(num_sites_);
@@ -90,10 +103,8 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
     site_phi_[i] = 1.0;
   }
   init_matrix_elems(srparams);
-  construct_cluster_hams();
+  //construct_cluster_hams();
 }
-
-
 
 void Rotor::solve(SR_Params& srparams) 
 {
@@ -103,11 +114,19 @@ void Rotor::solve(SR_Params& srparams)
   std::cout << "cons_density = " << constrained_density_ << "\n";
 
   // renormalizing parameters from spinon sector
-  set_renomalizing_params(srparams);
-  int max_iter = 100;
-  for (int i=0; i<num_sites_; ++i) trial_phi_[i] = 1.0;
+  set_bond_fields(srparams);
+
+  std::vector<ComplexArray1D> trial_qp_weights(num_sites_);
+  for (auto& elem : trial_qp_weights) elem = ComplexArray1D::Ones(site_dim_);
+  //set_site_fields(srparams, trial_qp_weights);
+
+  int max_iter = 1;
   for (int iter=0; iter<max_iter; ++iter) {
-    update_with_phi(trial_phi_);
+    set_site_fields(srparams, trial_qp_weights);
+    //update_chemical_potential();
+
+    //update_with_phi(trial_phi_);
+    /*
     double mu = solve_for_mu();
     update_with_mu(mu);
     solve_clusters();
@@ -117,25 +136,84 @@ void Rotor::solve(SR_Params& srparams)
     std::cout << "iter = " << iter+1 << ", norm = " << norm << "\n";
     if (norm<1.0E-8) break;
     trial_phi_ = site_phi_;
+    */
   }
   // bond ke parameters
-  eval_bond_ke();
+  //eval_bond_ke();
 }
 
-void Rotor::set_renomalizing_params(const SR_Params& srparams) 
+void Rotor::set_bond_fields(const SR_Params& srparams) 
 {
-  // bond hopping parameters
-  bond_tchi_ = srparams.bond_tchi();
-  // site renormalizing parameters
+  // Assuming spinorbitals includes both UP & DOWN spins
+  int num_orb = static_cast<int>(site_dim_)/2;
+  assert(2*num_orb == static_cast<int>(site_dim_));
+
+  for (int i=0; i<num_bonds_; ++i) {
+    renorm_bond_fields_[i].setZero();
+    auto bfield_spinUP = srparams.bond(i).spinon_ke() * srparams.bond(i).term_cc(0);
+    // first diagonal block for spin-UP
+    renorm_bond_fields_[i].block(0,0,num_orb,num_orb) = bfield_spinUP;
+    // second diagonal block for spin-DN
+    // assuming spin-UP and DN symmetry
+    renorm_bond_fields_[i].block(num_orb,num_orb,num_orb,num_orb) = bfield_spinUP;
+    //std::cout << "bond_field["<<i<<"]="<< renorm_bond_fields_[i] << "\n";
+  }
+
+  /*
+  // Renormalizing field on each site due to hopping from the 'bath'
+  ArrayXcd tchi_field(site_dim_);
   if (cluster_type_==cluster_t::SITE) {
     for (int i=0; i<num_sites_; ++i) {
-      std::complex<double> sum = 0.0;
-      for (const auto& link: site_links_[i] ) {
-        auto tchi = bond_tchi_[link.id()];
-        if (link.is_incoming()) tchi = std::conj(tchi);
-        sum += tchi;
+      ArrayXcd tchi_sum = ArrayXcd::Zero(num_orb);
+      for (const auto& b: srparams.site(i).connected_bonds()) {
+        // t * chi product for UP-spins
+        auto tchi_UP = srparams.bond(b).spinon_ke() * srparams.bond(b).term_cc(0);
+        // partial sum over 'orbital' index of the neighbour site
+        auto tchi_orbital_sum = tchi_UP.rowwise().sum();
+        // sum over all neighbouring sites
+        if (srparams.site(i).is_outgoing_bond(b)) {
+          tchi_sum += tchi_orbital_sum;
+        }
+        else {
+          tchi_sum += tchi_orbital_sum.conjugate();
+        }
       }
-      site_mfp_[i] = sum;
+      // Assuming spin-UP and DN symmetry
+      for (int j=0; j<num_orb; ++j) tchi_field(j) = tchi_sum(j); 
+      for (int j=num_orb; j<site_dim_; ++j) tchi_field(j) = tchi_sum(j-num_orb); 
+      renorm_site_fields_[i] = tchi_field;
+      //std::cout << "site field ["<<i<<"] = " << tchi_field.transpose() << "\n"; 
+    }
+  }
+  else if (cluster_type_ == cluster_t::BOND) {
+  }
+  else if (cluster_type_ == cluster_t::CELL) {
+  }
+  else {
+  }
+  */
+}
+
+void Rotor::set_site_fields(const SR_Params& srparams, 
+  const std::vector<ComplexArray1D>& site_qp_weights) 
+{
+  // Renormalizing field on each site due to hopping terms from the 'bath'
+  if (cluster_type_==cluster_t::SITE) {
+    int i = 0;
+    for (const auto& bond : srparams.bonds()) {
+      auto s = bond.src();
+      auto t = bond.tgt();
+
+      // partial sum over 'orbital' index of the neighbour site
+      auto tchi_sum = renorm_bond_fields_[i].rowwise().sum();
+
+      // sum over all neighbouring sites
+      renorm_site_fields_[s] += tchi_sum * site_qp_weights[t];
+      renorm_site_fields_[t] += tchi_sum.conjugate() * site_qp_weights[s];
+      ++i;
+    }
+    for (int i=0; i<num_sites_; ++i) {
+      std::cout << "site field ["<<i<<"] = " << renorm_site_fields_[i].transpose() << "\n"; 
     }
   }
   else if (cluster_type_ == cluster_t::BOND) {
@@ -206,7 +284,6 @@ void Rotor::solve_clusters(void)
     i++;
   }
 }
-
 
 void Rotor::update_with_mu(const double& new_mu) 
 {
@@ -341,7 +418,7 @@ void Rotor::construct_cluster_hams(void)
         int n = elem.row();
         double total_Sz = elem.value();
         mat(n,n) = U_half_ * total_Sz  * total_Sz;
-        std::cout << "mat(n,n) = " << mat(n,n) << "\n";
+        //std::cout << "mat(n,n) = " << mat(n,n) << "\n";
       }
       // site operators
       auto coupling = site_phi_[i] * site_mfp_[i];

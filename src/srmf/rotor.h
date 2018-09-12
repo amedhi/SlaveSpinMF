@@ -83,14 +83,16 @@ public:
   double avg_density(void) const { return site_density_.sum()/num_sites_; }
   //void update(const input::Parameters& inputs);
 private:
-  using LatticeGraph = lattice::LatticeGraph;
+  //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
-  using bond = sr_bond;
-  using links = SR_Params::links;
-  LatticeGraph rotor_graph_;
+  //using bond = sr_bond;
+  //using links = SR_Params::links;
+  //LatticeGraph rotor_graph_;
   Model rotor_model_;
   unsigned num_sites_;
   unsigned num_bonds_;
+  std::vector<sr_site> sites_; 
+  std::vector<sr_bond> bonds_; 
 
   // slave spin hamiltonian
   SlaveSpinBasis ssbasis_;
@@ -101,8 +103,7 @@ private:
 
   // clusters
   cluster_t cluster_type_;
-  std::vector<bond> bonds_; 
-  std::vector<links> site_links_; 
+  //std::vector<links> site_links_; 
   std::vector<std::vector<unsigned> > clusters_;
   unsigned sites_per_cluster_{1};
   // site & bond parameters
@@ -113,6 +114,9 @@ private:
   std::vector<double> site_mu_;
   ArrayXcd site_phi_;
   ArrayXcd site_mfp_;
+  std::vector<ComplexArray1D> site_qp_weights_;
+  std::vector<ComplexArray> renorm_bond_fields_;
+  std::vector<ArrayXcd> renorm_site_fields_;
   ArrayXcd bond_tchi_;
   ArrayXcd bond_ke_;
 
@@ -138,7 +142,10 @@ private:
   */
   void make_clusters(const SR_Params& srparams);
   void init_matrix_elems(const SR_Params& srparams);
-  void set_renomalizing_params(const SR_Params& srparams);
+  void set_bond_fields(const SR_Params& srparams);
+  void set_site_fields(const SR_Params& srparams, 
+    const std::vector<ComplexArray1D>& site_qp_weights);
+  void set_site_fields(void);
   double solve_for_mu(void);
   void solve_clusters(void);
   void eval_particle_density(void);
