@@ -28,20 +28,6 @@ namespace srmf {
 
 enum cluster_t {SITE, BOND, CELL};
 
-/*
-class Cluster 
-{
-public:
-  Cluster() {}
-  Cluster(const cluster_t& type, const int& id, const rotor_basis& basis);
-  ~Cluster() {}
-private:
-  cluster_t type_{cluster_t::SITE};
-  int id_{0};
-  unsigned num_sites_{0};
-  rotor_basis::idx_t dim_{0};
-  ComplexMatrix ham_;
-};*/
 
 class MatrixElem
 {
@@ -60,6 +46,37 @@ private:
   double value_{0.0};
 };
 
+class Cluster 
+{
+public:
+  Cluster() {}
+  Cluster(const cluster_t& type, const unsigned& site, 
+    const std::vector<unsigned>& spin_orbitals) 
+  : type_{type}, site_{site}, spin_orbitals_{spin_orbitals}
+  {
+    basis_.construct(1, spin_orbitals_.size());
+    basis_dim_ = basis_.dim();
+    interaction_elems_.resize(basis_dim_);
+    lagrange_elems_.resize(basis_dim_);
+    hmatrix_.resize(basis_dim_, basis_dim_);
+  }
+  ~Cluster() {}
+  void init_hamiltonian(const double& U, const std::vector<ArrayXd>& lagrange_fields,
+    const std::vector<ArrayXcd>& site_fields);
+  void update_siteop_elems(const std::vector<ArrayXcd>& site_fields);
+  void update_lagrange_elems(const std::vector<ArrayXd>& lagrange_fields);
+private:
+  cluster_t type_{cluster_t::SITE};
+  unsigned site_{0};
+  unsigned basis_dim_{0};
+  std::vector<unsigned> spin_orbitals_; 
+  SlaveSpinBasis basis_;
+
+  RealVector interaction_elems_; 
+  RealVector lagrange_elems_; 
+  ComplexMatrix hmatrix_;
+};
+
 /*
 template <class T=double> 
 struct f_of_mu 
@@ -68,7 +85,6 @@ struct f_of_mu
 private:
   T mu_;
 };*/
-
 
 class Rotor 
 {
@@ -104,6 +120,7 @@ private:
   // clusters
   cluster_t cluster_type_;
   //std::vector<links> site_links_; 
+  std::vector<Cluster> cluster_list_;
   std::vector<std::vector<unsigned> > clusters_;
   unsigned sites_per_cluster_{1};
   // site & bond parameters
@@ -114,6 +131,7 @@ private:
   std::vector<double> site_mu_;
   ArrayXcd site_phi_;
   ArrayXcd site_mfp_;
+  std::vector<ArrayXd> site_lagrange_fields_;
   std::vector<ComplexArray1D> site_qp_weights_;
   std::vector<ComplexArray> renorm_bond_fields_;
   std::vector<ArrayXcd> renorm_site_fields_;
@@ -127,8 +145,11 @@ private:
   // hamiltonian matrix
   rotor_basis basis_;
   std::vector<ComplexMatrix> cluster_hams_;
-  ComplexMatrix cluster_groundstate_;
+  std::vector<ComplexMatrix> cluster_hams_siteop_;
+  std::vector<ArrayXd> cluster_hams_lag_;
 
+  ComplexMatrix cluster_groundstate_;
+  std::vector<MatrixElem> interaction_elems_; 
   std::vector<MatrixElem> diagonal_elems_; 
   std::vector<MatrixElem> siteop_elems_; 
   std::vector<MatrixElem> bondop_elems_; 
@@ -142,10 +163,11 @@ private:
   */
   void make_clusters(const SR_Params& srparams);
   void init_matrix_elems(const SR_Params& srparams);
-  void set_bond_fields(const SR_Params& srparams);
-  void set_site_fields(const SR_Params& srparams, 
+  void set_renormalized_bond_fields(const SR_Params& srparams);
+  void set_renormalized_site_fields(const SR_Params& srparams, 
     const std::vector<ComplexArray1D>& site_qp_weights);
   void set_site_fields(void);
+  void solve_lagrange_fields(void);
   double solve_for_mu(void);
   void solve_clusters(void);
   void eval_particle_density(void);

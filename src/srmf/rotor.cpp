@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-12 14:47:05
+* @Last Modified time: 2018-09-13 15:55:00
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -80,7 +80,9 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
 
   // storages
   renorm_site_fields_.resize(num_sites_);
-  for (auto& elem : renorm_site_fields_) elem.resize(site_dim_);
+  for (auto& elem : renorm_site_fields_) elem = ComplexArray1D::Ones(site_dim_);
+  site_lagrange_fields_.resize(num_sites_);
+  for (auto& elem : site_lagrange_fields_) elem = ArrayXd::Ones(site_dim_);
 
   site_qp_weights_.resize(num_sites_);
   for (auto& elem : site_qp_weights_) elem.resize(site_dim_);
@@ -104,6 +106,8 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   }
   init_matrix_elems(srparams);
   //construct_cluster_hams();
+  for (auto& cluster : cluster_list_) 
+    cluster.init_hamiltonian(U,site_lagrange_fields_,renorm_site_fields_);
 }
 
 void Rotor::solve(SR_Params& srparams) 
@@ -114,15 +118,22 @@ void Rotor::solve(SR_Params& srparams)
   std::cout << "cons_density = " << constrained_density_ << "\n";
 
   // renormalizing parameters from spinon sector
-  set_bond_fields(srparams);
+  set_renormalized_bond_fields(srparams);
 
   std::vector<ComplexArray1D> trial_qp_weights(num_sites_);
   for (auto& elem : trial_qp_weights) elem = ComplexArray1D::Ones(site_dim_);
-  //set_site_fields(srparams, trial_qp_weights);
+
+  //set_renormalized_site_fields(srparams, trial_qp_weights);
 
   int max_iter = 1;
   for (int iter=0; iter<max_iter; ++iter) {
-    set_site_fields(srparams, trial_qp_weights);
+    set_renormalized_site_fields(srparams, trial_qp_weights);
+
+    //for (auto& cluster : cluster_list_) {
+    //   cluster.update_siteop_elems(renorm_site_fields_);
+    //}
+
+    //solve_lagrange_fields()
     //update_chemical_potential();
 
     //update_with_phi(trial_phi_);
@@ -142,7 +153,11 @@ void Rotor::solve(SR_Params& srparams)
   //eval_bond_ke();
 }
 
-void Rotor::set_bond_fields(const SR_Params& srparams) 
+void Rotor::solve_lagrange_fields(void)
+{
+}
+
+void Rotor::set_renormalized_bond_fields(const SR_Params& srparams) 
 {
   // Assuming spinorbitals includes both UP & DOWN spins
   int num_orb = static_cast<int>(site_dim_)/2;
@@ -194,27 +209,27 @@ void Rotor::set_bond_fields(const SR_Params& srparams)
   */
 }
 
-void Rotor::set_site_fields(const SR_Params& srparams, 
+void Rotor::set_renormalized_site_fields(const SR_Params& srparams, 
   const std::vector<ComplexArray1D>& site_qp_weights) 
 {
   // Renormalizing field on each site due to hopping terms from the 'bath'
   if (cluster_type_==cluster_t::SITE) {
-    int i = 0;
+    for (auto& elem : renorm_site_fields_) elem.setZero();
+    int id = 0;
     for (const auto& bond : srparams.bonds()) {
       auto s = bond.src();
       auto t = bond.tgt();
 
       // partial sum over 'orbital' index of the neighbour site
-      auto tchi_sum = renorm_bond_fields_[i].rowwise().sum();
+      auto tchi_sum = renorm_bond_fields_[id++].rowwise().sum();
 
       // sum over all neighbouring sites
       renorm_site_fields_[s] += tchi_sum * site_qp_weights[t];
       renorm_site_fields_[t] += tchi_sum.conjugate() * site_qp_weights[s];
-      ++i;
     }
-    for (int i=0; i<num_sites_; ++i) {
-      std::cout << "site field ["<<i<<"] = " << renorm_site_fields_[i].transpose() << "\n"; 
-    }
+    //for (int i=0; i<num_sites_; ++i) {
+    //  std::cout << "site field ["<<i<<"] = " << renorm_site_fields_[i].transpose() << "\n"; 
+    //}
   }
   else if (cluster_type_ == cluster_t::BOND) {
   }
@@ -252,11 +267,19 @@ void Rotor::make_clusters(const SR_Params& srparams)
   bonds_ = srparams.bonds();
   //site_links_ = srparams.site_links();
   clusters_.clear();
+  cluster_list_.clear();
   switch (cluster_type_) {
     case cluster_t::SITE:
       sites_per_cluster_ = 1;
       clusters_.resize(num_sites_);
       for (unsigned i=0; i<num_sites_; ++i) clusters_[i].push_back(i);
+
+      for (unsigned i=0; i<num_sites_; ++i) {
+        cluster_list_.push_back({cluster_t::SITE,i,srparams.site(i).spin_orbitals()});
+      }
+
+
+
       break;
     case cluster_t::BOND:
       sites_per_cluster_ = 2;
@@ -410,25 +433,37 @@ void Rotor::eval_bond_ke(void)
 void Rotor::construct_cluster_hams(void)
 {
   if (cluster_type_==cluster_t::SITE) {
-    int i = 0;
+    int s = 0;
     for (auto& mat : cluster_hams_) {
-      // diagonal elements
-      //double mu = site_mu_[i];
-      for (const auto& elem: diagonal_elems_) {
+      // interaction operator
+      for (const auto& elem: interaction_elems_) {
         int n = elem.row();
         double total_Sz = elem.value();
         mat(n,n) = U_half_ * total_Sz  * total_Sz;
         //std::cout << "mat(n,n) = " << mat(n,n) << "\n";
       }
+
+      // lagrange fields
+      //for (i=0; i<basis_dim_; ++i) {
+      //  double total_Sz = 0.0;
+      //  for (auto& alpha : spin_orbitals_) {
+      //    std::tie(mat_elem,j) = ssbasis_.apply_Sz(s,alpha,i);
+      //    total_Sz += mat_elem;
+      //  }
+      //  //std::cout << "total_Sz=" << total_Sz << "\n";
+      //  interaction_elems_.push_back({i,i,total_Sz});
+      //}
+
+
       // site operators
-      auto coupling = site_phi_[i] * site_mfp_[i];
+      auto coupling = site_phi_[s] * site_mfp_[s];
       for (const auto& elem: siteop_elems_) {
         int m = elem.row();
         int n = elem.col();
         mat(m,n) = -coupling * elem.value();
         mat(n,m) = std::conj(mat(m,n));
       }
-      i++;
+      s++;
       // check
       // std::cout << "ham = " << mat << "\n";
     }
@@ -450,16 +485,18 @@ void Rotor::init_matrix_elems(const SR_Params& srparams)
   SlaveSpinBasis::idx_t i, j;
   double mat_elem;
   unsigned site = 0; 
-  diagonal_elems_.clear();
+  // interaction matrix elements
+  interaction_elems_.clear();
   for (i=0; i<basis_dim_; ++i) {
     double total_Sz = 0.0;
     for (auto& alpha : spin_orbitals_) {
-      std::tie(mat_elem, j) = ssbasis_.apply_Sz(site,alpha,i);
+      std::tie(mat_elem,j) = ssbasis_.apply_Sz(site,alpha,i);
       total_Sz += mat_elem;
     }
     //std::cout << "total_Sz=" << total_Sz << "\n";
-    diagonal_elems_.push_back({i,i,total_Sz});
+    interaction_elems_.push_back({i,i,total_Sz});
   }
+
   siteop_elems_.clear();
   // operator S+
   for (i=0; i<basis_dim_; ++i) {
@@ -471,6 +508,7 @@ void Rotor::init_matrix_elems(const SR_Params& srparams)
       }
     }
   }
+
 /*
   // non-zero matrix elements of various operators in the Hamiltonian
   rotor_basis::idx_t i, j;
@@ -484,6 +522,56 @@ void Rotor::init_matrix_elems(const SR_Params& srparams)
   //for (auto& elem : siteop_elems_) std::cout << elem.row() << " " << elem.col() << "\n";
   bondop_elems_.clear();
   */
+}
+
+void Cluster::init_hamiltonian(const double& U, const std::vector<ArrayXd>& lagrange_fields,
+    const std::vector<ArrayXcd>& site_fields)
+{
+  hmatrix_.setZero();
+  // interaction matrix elements
+  double U_half = 0.5 * U;
+  double mat_elem;
+  SlaveSpinBasis::idx_t i, j;
+  for (i=0; i<basis_dim_; ++i) {
+    double total_Sz = 0.0;
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(mat_elem,j) = basis_.apply_Sz(site_,alpha,i);
+      total_Sz += mat_elem;
+    }
+    //std::cout << "total_Sz=" << total_Sz << "\n";
+    interaction_elems_(i) = U_half * total_Sz  * total_Sz;
+  }
+
+  // lagrange fields
+  double Sz;
+  for (i=0; i<basis_dim_; ++i) {
+    double sum = 0.0;
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
+      sum += Sz * lagrange_fields[site_][alpha];
+    }
+    //std::cout << "lambda=" << sum << "\n";
+    lagrange_elems_(i) = sum;
+  }
+
+  // site operator
+  // operator S+
+  for (i=0; i<basis_dim_; ++i) {
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(mat_elem,j) = basis_.apply_Splus(site_,alpha,i);
+      if (j != basis_.null_idx()) {
+        auto term = mat_elem * site_fields[site_][alpha];
+        hmatrix_(i,j) = term;
+        hmatrix_(j,i) = std::conj(term);
+      }
+    }
+  }
+
+  // final matrix 
+  for (i=0; i<basis_dim_; ++i) {
+    hmatrix_(i,i) = interaction_elems_(i) + lagrange_elems_(i);
+  }
+  std::cout << "cluster_mat = " << hmatrix_ << "\n";
 }
 
 
