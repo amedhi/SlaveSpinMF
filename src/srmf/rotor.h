@@ -14,20 +14,22 @@
 #include <vector>
 #include <tuple>
 #include <stdexcept>
-#include <Eigen/Sparse>
+//#include <Eigen/Sparse>
 #include "../scheduler/task.h"
 #include "../lattice/graph.h"
 #include "../lattice/matrix.h"
-#include "../model/quantum_op.h"
+//#include "../model/quantum_op.h"
 #include "../model/model.h"
 #include "srparams.h"
 #include "rbasis_states.h"
+#include "root_solver.h"
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_multiroots.h>
 //#include "./blochbasis.h"
 
 namespace srmf {
 
 enum cluster_t {SITE, BOND, CELL};
-
 
 class MatrixElem
 {
@@ -59,12 +61,17 @@ public:
     interaction_elems_.resize(basis_dim_);
     lagrange_elems_.resize(basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
+    groundstate_.resize(basis_dim_);
   }
   ~Cluster() {}
-  void init_hamiltonian(const double& U, const std::vector<ArrayXd>& lagrange_fields,
-    const std::vector<ArrayXcd>& site_fields);
-  void update_siteop_elems(const std::vector<ArrayXcd>& site_fields);
-  void update_lagrange_elems(const std::vector<ArrayXd>& lagrange_fields);
+  void init_hamiltonian(const double& U, const real_siteparms_t& lagrange_fields,
+    const cmpl_siteparms_t& site_fields);
+  void update_for_lagrange_fields(const real_siteparms_t& lagrange_fields);
+  void update_for_site_fields(const cmpl_siteparms_t& site_fields);
+  //void get_groundstate(ComplexVector& eigvec) const;
+  void solve_hamiltonian(void) const;
+  const ComplexVector& groundstate(void) const { return groundstate_; }
+  void get_avg_Sz(real_siteparms_t& Sz_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
   unsigned site_{0};
@@ -75,16 +82,10 @@ private:
   RealVector interaction_elems_; 
   RealVector lagrange_elems_; 
   ComplexMatrix hmatrix_;
+  mutable ComplexVector groundstate_;
+  mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> eigen_solver_;
 };
 
-/*
-template <class T=double> 
-struct f_of_mu 
-{
-  f_of_mu(const T& mu): mu_(mu) {};
-private:
-  T mu_;
-};*/
 
 class Rotor 
 {
@@ -96,57 +97,33 @@ public:
   void solve(SR_Params& srparams);
   //int init(const lattice::Lattice& lattice) override;
   //int finalize(const lattice::LatticeGraph& graph);
-  double avg_density(void) const { return site_density_.sum()/num_sites_; }
   //void update(const input::Parameters& inputs);
+  friend int lagrange_eqn(const gsl_vector * x, void * Rotor, gsl_vector * f);
 private:
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
-  //using bond = sr_bond;
-  //using links = SR_Params::links;
-  //LatticeGraph rotor_graph_;
-  Model rotor_model_;
+  //Model rotor_model_;
   unsigned num_sites_;
   unsigned num_bonds_;
   std::vector<sr_site> sites_; 
   std::vector<sr_bond> bonds_; 
 
-  // slave spin hamiltonian
-  SlaveSpinBasis ssbasis_;
-  unsigned site_dim_;
-  unsigned basis_dim_;
-  unsigned dim_;
-  std::vector<unsigned> spin_orbitals_; // for a single site
-
   // clusters
+  unsigned site_dim_;
+  std::vector<unsigned> spin_orbitals_; // for a single site
   cluster_t cluster_type_;
-  //std::vector<links> site_links_; 
-  std::vector<Cluster> cluster_list_;
-  std::vector<std::vector<unsigned> > clusters_;
-  unsigned sites_per_cluster_{1};
+  std::vector<Cluster> clusters_;
+  root::gsl_solver solver_;
+
   // site & bond parameters
   double U_half_{0.0};
-  double constrained_density_{0.0};
-  double avg_density_{0.0};
-  ArrayXd site_density_;
-  std::vector<double> site_mu_;
-  ArrayXcd site_phi_;
-  ArrayXcd site_mfp_;
-  std::vector<ArrayXd> site_lagrange_fields_;
-  std::vector<ComplexArray1D> site_qp_weights_;
-  std::vector<ComplexArray> renorm_bond_fields_;
-  std::vector<ArrayXcd> renorm_site_fields_;
-  ArrayXcd bond_tchi_;
-  ArrayXcd bond_ke_;
+  real_siteparms_t lm_parms_;
+  real_siteparms_t qp_weights_;
+  cmpl_siteparms_t renorm_site_couplings_;
+  cmpl_bondparms_t renorm_bond_couplings_;
+  real_siteparms_t spinon_density_;
 
-
-  ArrayXcd trial_phi_;
-  ArrayXcd diff_phi_;
-
-  // hamiltonian matrix
-  rotor_basis basis_;
-  std::vector<ComplexMatrix> cluster_hams_;
-  std::vector<ComplexMatrix> cluster_hams_siteop_;
-  std::vector<ArrayXd> cluster_hams_lag_;
+  real_siteparms_t Sz_avg_;
 
   ComplexMatrix cluster_groundstate_;
   std::vector<MatrixElem> interaction_elems_; 
@@ -163,11 +140,11 @@ private:
   */
   void make_clusters(const SR_Params& srparams);
   void init_matrix_elems(const SR_Params& srparams);
-  void set_renormalized_bond_fields(const SR_Params& srparams);
-  void set_renormalized_site_fields(const SR_Params& srparams, 
-    const std::vector<ComplexArray1D>& site_qp_weights);
+  void set_bond_couplings(const SR_Params& srparams);
+  void set_site_couplings(const SR_Params& srparams, 
+    const real_siteparms_t& site_qp_weights);
   void set_site_fields(void);
-  void solve_lagrange_fields(void);
+  void solve_for_lagrange_fields(void);
   double solve_for_mu(void);
   void solve_clusters(void);
   void eval_particle_density(void);
@@ -175,9 +152,10 @@ private:
   void eval_bond_ke(void);
   void construct_cluster_hams(void);
   void update_with_mu(const double& new_mu);
-  void update_with_phi(const ArrayXcd& new_phi);
+  void update_with_phi(const cmplArray1D& new_phi);
   void solve_number_density(double mu);
   double avg_particle_density_eqn(const double& mu); 
+  int lagrange_fields_equation(void);
 };
 
 

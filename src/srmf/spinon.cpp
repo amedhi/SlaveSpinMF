@@ -84,7 +84,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
       Eigen::VectorXcd eigvec_wt(nmax-nmin+1);
       for (int j=0; j<srparams.num_sites(); ++j) {
         unsigned site_dim = srparams.site(j).dim();
-        Array1D n_avg(site_dim);
+        realArray1D n_avg(2*site_dim); // UP & DN spin
         for (unsigned m=0; m<site_dim; ++m) {
           auto ii = srparams.site(j).state_indices()[m];
           double norm = 0.0;
@@ -107,7 +107,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
         unsigned rows = srparams.site(src).dim();
         unsigned cols = srparams.site(tgt).dim();
         //sr_bond bond(srparams.bonds()[j]);
-        ComplexArray ke_matrix(rows, cols);
+        cmplArray2D ke_matrix(rows, cols);
         for (unsigned m=0; m<rows; ++m) {
           auto ii = srparams.site(src).state_indices()[m];
           for (unsigned n=0; n<cols; ++n) {
@@ -134,7 +134,12 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
 
   // final site density 
   for (int i=0; i<srparams.num_sites(); ++i) {
-    srparams.site(i).spinon_density() /= num_kpoints_;
+    //srparams.site(i).spinon_density() /= num_kpoints_;
+    realArray1D n_avg = srparams.site(i).spinon_density()/num_kpoints_;
+    // for DN spins, same as UP spins
+    auto dim = srparams.site(i).dim();
+    for (int n=0; n<dim; ++n) n_avg(dim+n) = n_avg(n);
+    srparams.site(i).spinon_density() = n_avg;
     // print
     /*
     std::cout<<"site-"<<i<<":"<<"\n";

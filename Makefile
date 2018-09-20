@@ -29,6 +29,7 @@ SRCS+= model/model.cpp
 SRCS+= model/modellibrary.cpp
 SRCS+= srmf/srparams.cpp
 SRCS+= srmf/rbasis_states.cpp
+SRCS+= srmf/root_solver.cpp
 SRCS+= srmf/rotor.cpp
 SRCS+= srmf/spinon.cpp
 SRCS+= srmf/srmf.cpp
@@ -51,6 +52,7 @@ HDRS=    scheduler/mpi_comm.h \
 	 model/model.h \
 	 srmf/srparams.h \
 	 srmf/rbasis_states.h \
+	 srmf/root_solver.h \
 	 srmf/rotor.h \
 	 srmf/spinon.h \
 	 srmf/srmf.h 

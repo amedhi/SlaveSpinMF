@@ -22,6 +22,10 @@
 
 namespace srmf {
 
+using real_siteparms_t = std::vector<realArray1D>;
+using cmpl_siteparms_t = std::vector<cmplArray1D>;
+using cmpl_bondparms_t = std::vector<cmplArray2D>;
+
 class sr_site
 {
 public:
@@ -37,7 +41,7 @@ public:
   {
     connected_bonds_.clear();
     inout_types_.clear();
-    spinon_density_.resize(dim);
+    spinon_density_.resize(2*dim);
     boson_density_.resize(dim);
     spin_orbitals_.resize(2*dim); // spin + oribitals;
     std::iota(spin_orbitals_.begin(), spin_orbitals_.end(), 0);
@@ -55,7 +59,7 @@ public:
   const idx_list& state_indices(void) const { return state_indices_; }
   const idx_list& connected_bonds(void) const { return connected_bonds_; }
   bool is_outgoing_bond(const unsigned& i) const { return inout_types_[i]; }
-  Array1D& spinon_density(void) { return spinon_density_; }
+  realArray1D& spinon_density(void) { return spinon_density_; }
 private:
   unsigned type_;
   unsigned dim_;
@@ -63,8 +67,8 @@ private:
   idx_list state_indices_;
   idx_list connected_bonds_;
   std::vector<bool> inout_types_;
-  Array1D spinon_density_;
-  Array1D boson_density_;
+  realArray1D spinon_density_;
+  realArray1D boson_density_;
 };
 
 class sr_bond
@@ -84,7 +88,7 @@ public:
     const idx_list& idx_list2, const Vector3d& vector)
     : type_{type}, src_state_indices_{idx_list1}, tgt_state_indices_{idx_list2}, 
       vector_{vector} {}
-  void add_term_cc(const ComplexArray& mat, const model::spin& s) 
+  void add_term_cc(const cmplArray2D& mat, const model::spin& s) 
     { term_couplings_.push_back(mat); term_spins_.push_back(s); }
   const unsigned& type(void) const { return type_; }
   const unsigned& src(void) const { return src_; }
@@ -92,11 +96,11 @@ public:
   const idx_list& src_state_indices(void) const { return src_state_indices_; }
   const idx_list& tgt_state_indices(void) const { return tgt_state_indices_; }
   const Vector3d& vector(void) const { return vector_; }
-  ComplexArray& spinon_ke() { return spinon_ke_; }
-  ComplexArray& boson_ke() { return boson_ke_; }
-  const ComplexArray& spinon_ke() const { return spinon_ke_; }
-  const ComplexArray& boson_ke() const { return boson_ke_; }
-  const ComplexArray& term_cc(const unsigned& i) const { return term_couplings_[i]; }
+  cmplArray2D& spinon_ke() { return spinon_ke_; }
+  cmplArray2D& boson_ke() { return boson_ke_; }
+  const cmplArray2D& spinon_ke() const { return spinon_ke_; }
+  const cmplArray2D& boson_ke() const { return boson_ke_; }
+  const cmplArray2D& term_cc(const unsigned& i) const { return term_couplings_[i]; }
 private:
   unsigned type_;
   unsigned src_;
@@ -104,10 +108,10 @@ private:
   idx_list src_state_indices_;
   idx_list tgt_state_indices_;
   Vector3d vector_;
-  std::vector<ComplexArray> term_couplings_; // model term coupling constants 
+  std::vector<cmplArray2D> term_couplings_; // model term coupling constants 
   std::vector<model::spin> term_spins_; 
-  ComplexArray spinon_ke_;
-  ComplexArray boson_ke_;
+  cmplArray2D spinon_ke_;
+  cmplArray2D boson_ke_;
 };
 
 class site_link 
@@ -142,13 +146,13 @@ public:
   const std::vector<sr_bond>& bonds(void) const { return bonds_; }
 
   const std::vector<links>& site_links(void) const { return site_links_; }
-  ComplexArray& sp_bond_ke(const int& i) { return sp_bond_ke_[i]; }
-  ComplexArray1D& sp_site_density(const int& i) { return sp_site_density_[i]; }
+  cmplArray2D& sp_bond_ke(const int& i) { return sp_bond_ke_[i]; }
+  realArray1D& sp_site_density(const int& i) { return sp_site_density_[i]; }
   //std::vector<std::complex<double>> sbond_avg(void) { return sbond_avg_; }
   std::vector<std::complex<double>> rbond_avg(void) { return rbond_avg_; }
   const double& spinon_density(const int& i) const { return spinon_site_density_[i]; }
-  const ArrayXcd& bond_tchi(void) const { return bond_tchi_; }
-  ArrayXcd& bond_tchi(void) { return bond_tchi_; }
+  const cmplArray1D& bond_tchi(void) const { return bond_tchi_; }
+  cmplArray1D& bond_tchi(void) { return bond_tchi_; }
 private:
   //using LatticeGraph = lattice::LatticeGraph;
   unsigned num_sites_{0}; // no of sites per unitcell
@@ -156,9 +160,9 @@ private:
   std::vector<sr_site> sites_; // list of all sites in unitcell
   std::vector<sr_bond> bonds_; // list of all bonds
   std::vector<links> site_links_; // bonds connecting every site
-  ArrayXcd bond_tchi_;
-  std::vector<ComplexArray> sp_bond_ke_;
-  std::vector<ComplexArray1D> sp_site_density_;
+  cmplArray1D bond_tchi_;
+  std::vector<cmplArray2D> sp_bond_ke_;
+  std::vector<realArray1D> sp_site_density_;
   std::vector<std::complex<double>> rbond_avg_;
   std::vector<double> spinon_site_density_;
   std::vector<double> ssite_avg_;
