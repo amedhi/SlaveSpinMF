@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-20 23:37:56
+* @Last Modified time: 2018-09-24 16:00:59
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -35,8 +35,8 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
 
   // storages
   // Lagrange multipliers
-  lm_parms_.resize(num_sites_);
-  for (auto& elem : lm_parms_) elem = realArray1D::Ones(site_dim_);
+  lm_params_.resize(num_sites_);
+  for (auto& elem : lm_params_) elem = realArray1D::Ones(site_dim_);
   // Quasi-particle weights
   qp_weights_.resize(num_sites_);
   for (auto& elem : qp_weights_) elem = realArray1D::Ones(site_dim_);
@@ -58,10 +58,13 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   // Rotor clusters
   make_clusters(srparams);
   for (auto& cluster : clusters_) 
-    cluster.init_hamiltonian(U,lm_parms_,renorm_site_couplings_);
+    cluster.init_hamiltonian(U,lm_params_,renorm_site_couplings_);
 
   // For solving for LM parameter equation
-  solver_.allocate(num_sites_*site_dim_);
+  fx_dim_ = num_sites_*site_dim_;
+  x_vec_.resize(fx_dim_);
+  fx_vec_.resize(fx_dim_);
+  solver_.allocate(fx_dim_);
 
   // 'slave boson' basis
   //----------Assuming 'SITE' cluster-------------
@@ -99,27 +102,47 @@ void Rotor::solve(SR_Params& srparams)
   for (int i=0; i<num_sites_; ++i) {
     spinon_density_[i] = srparams.site(i).spinon_density();
   }
-  //constrained_density_ = site_density_.sum()/num_sites_;
-  //std::cout << "cons_density = " << constrained_density_ << "\n";
 
   // renormalized bond couplings
   set_bond_couplings(srparams);
 
+  // trial 'qp_weights'
   real_siteparms_t trial_qp_weights(num_sites_);
-  for (auto& elem : trial_qp_weights) elem = realArray1D::Ones(site_dim_);
+  for (auto& elem : trial_qp_weights) elem = realArray1D::Constant(site_dim_,0.5);
 
-  //set_site_couplings(srparams, trial_qp_weights);
+  realArray1D qp_weights_diff(num_sites_*site_dim_);
 
-  int max_iter = 1;
+  int max_iter = 100;
   for (int iter=0; iter<max_iter; ++iter) {
+    // update 'renormalized site couplings' for the new 'qp_weights'
     set_site_couplings(srparams, trial_qp_weights);
-
     for (auto& cluster : clusters_) {
-      cluster.update_for_site_fields(renorm_site_couplings_);
+      cluster.update_hamiltonian(renorm_site_couplings_);
+    }
+    // solve for new LM-parameters to satisfy the 'slave-spin constraint'
+    update_lm_params();
+    // update cluster hamiltonians for new LM-parameters
+    for (auto& cluster : clusters_) {
+      cluster.update_hamiltonian(lm_params_);
+    }
+    // calculate new QP weights
+    update_qp_weights();
+    // check convergence
+    int i = 0;
+    for (unsigned site=0; site<num_sites_; ++site) {
+      for (auto& alpha: spin_orbitals_) {
+        qp_weights_diff(i) = qp_weights_[site][alpha]-trial_qp_weights[site][alpha];
+        ++i; 
+      }
+    }
+    double norm = qp_weights_diff.abs2().maxCoeff();
+    std::cout << "iter = " << iter+1 << ", norm = " << norm << "\n";
+    if (norm<1.0E-6) break;
+    // continue
+    for (unsigned site=0; site<num_sites_; ++site) {
+      trial_qp_weights[site] = qp_weights_[site];
     }
 
-    solve_for_lagrange_fields();
-    //update_chemical_potential();
 
     //update_with_phi(trial_phi_);
     /*
@@ -138,64 +161,78 @@ void Rotor::solve(SR_Params& srparams)
   //eval_bond_ke();
 }
 
-int lagrange_eqn(const gsl_vector* x, void* parms, gsl_vector* f)
+int gsl_problem_equation(const gsl_vector* x, void* parms, gsl_vector* f)
 {
-  //std::cout <<  "Lagrange Eqn" << "\n";
-  Rotor * p_this = ((class Rotor *) parms);
+  Rotor * pThis = ((class Rotor *) parms);
+  for (int i=0; i<pThis->fx_dim_; ++i) {
+    pThis->x_vec_[i] = gsl_vector_get(x,i);
+  }
+  int status = pThis->constraint_equation(pThis->x_vec_, pThis->fx_vec_);
+  for (int i=0; i<pThis->fx_dim_; ++i) {
+    gsl_vector_set(f, i, pThis->fx_vec_[i]);
+  }
+  if (status ==0 ) return GSL_SUCCESS;
+  else return GSL_FAILURE;
+}
+
+int Rotor::constraint_equation(const std::vector<double>& x, std::vector<double>& fx)
+{
+  // read the new LM-parameters
   int i=0;
-  for (int site=0; site<p_this->num_sites_; ++site) {
-    for (auto& alpha: p_this->spin_orbitals_) {
-      p_this->lm_parms_[site][alpha] = gsl_vector_get(x, i);
+  for (unsigned site=0; site<num_sites_; ++site) {
+    for (auto& alpha: spin_orbitals_) {
+      lm_params_[site][alpha] = x[i];
       ++i; 
-      //std::cout << "lambda = " << p_this->lm_parms_[site][alpha] << "\n";
+      //std::cout << "lambda = " << lm_params_[site][alpha] << "\n";
     }
   }
-  for (auto& cluster : p_this->clusters_) {
-      cluster.update_for_lagrange_fields(p_this->lm_parms_);
+  // calculate <Sz> for the new parameters
+  for (auto& cluster : clusters_) {
+      cluster.update_hamiltonian(lm_params_);
       cluster.solve_hamiltonian();
-      cluster.get_avg_Sz(p_this->Sz_avg_);
+      cluster.get_avg_Sz(Sz_avg_);
   }
+  // LHS of the constraint equation: fx = (<Sz> + 1/2) - n_f
   i=0;
-  for (int site=0; site<p_this->num_sites_; ++site) {
-    for (auto& alpha: p_this->spin_orbitals_) {
-      double fx = p_this->Sz_avg_[site][alpha]-p_this->spinon_density_[site][alpha];
-      gsl_vector_set(f, i, fx);
+  for (unsigned site=0; site<num_sites_; ++site) {
+    for (auto& alpha: spin_orbitals_) {
+      fx[i] = (0.5 + Sz_avg_[site][alpha]) - spinon_density_[site][alpha];
       ++i; 
-      //std::cout << "fx = " << fx << "\n";
+      //std::cout << "fx = " << fx[i] << "\n";
     }
   }
   //getchar();
-  return GSL_SUCCESS;;
-}
-
-void Rotor::solve_for_lagrange_fields(void)
-{
-  //solver_.set_problem(&lagrange_eqn, 2, this);
-  std::vector<double> x0(num_sites_*site_dim_, 1.0); 
-  solver_.find_root(this, &lagrange_eqn, x0);
-
-  /* const gsl_multiroot_fsolver_type *T;
-  gsl_multiroot_fsolver *s;
-  int status;
-  std::size_t i, iter = 0;
-  const std::size_t n = 2;
-  gsl_multiroot_function f = {&lagrange_eqn, n, this};
-  double x_init[2] = {-10.0, -5.0};
-  gsl_vector *x = gsl_vector_alloc (n);
-  gsl_vector_set (x, 0, x_init[0]);
-  gsl_vector_set (x, 1, x_init[1]);
-  T = gsl_multiroot_fsolver_hybrids;
-  s = gsl_multiroot_fsolver_alloc(T, 2);
-  gsl_multiroot_fsolver_set(s, &f, x);
-  status = gsl_multiroot_fsolver_iterate(s);
-  */
-}
-
-int Rotor::lagrange_fields_equation(void)
-{
   return 0;
 }
 
+void Rotor::update_lm_params(void)
+{
+  //solver_.set_problem(&lagrange_eqn, 2, this);
+  //std::vector<double> x0(num_sites_*site_dim_, 1.0); 
+  for (auto& x : x_vec_) x = 1.0;
+  solver_.find_root(this, &gsl_problem_equation, x_vec_, lm_ftol_);
+  // solved 'LM' parameters
+  int i = 0;
+  for (unsigned site=0; site<num_sites_; ++site) {
+    for (auto& alpha: spin_orbitals_) {
+      lm_params_[site][alpha] = x_vec_[i];
+      std::cout << "lambda["<<i<<"] = " << x_vec_[i] << "\n";
+      ++i; 
+    }
+  }
+}
+
+void Rotor::update_qp_weights(void)
+{
+  // calculate Z=<Sz> 
+  for (auto& cluster : clusters_) {
+      cluster.solve_hamiltonian();
+      cluster.get_avg_Splus(qp_weights_);
+  }
+  for (unsigned site=0; site<num_sites_; ++site) {
+    std::cout << "Z["<<site<<"] = " << qp_weights_[site].transpose() << "\n";
+  }
+}
 
 void Rotor::set_bond_couplings(const SR_Params& srparams) 
 {
@@ -301,6 +338,7 @@ void Rotor::make_clusters(const SR_Params& srparams)
 void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange_fields,
     const cmpl_siteparms_t& site_fields)
 {
+  //std::cout << "Rotor:: applying Zplus instead of Splus\n";
   hmatrix_.setZero();
   // interaction matrix elements
   double U_half = 0.5 * U;
@@ -312,8 +350,8 @@ void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange
       std::tie(mat_elem,j) = basis_.apply_Sz(site_,alpha,i);
       total_Sz += mat_elem;
     }
-    //std::cout << "total_Sz=" << total_Sz << "\n";
     interaction_elems_(i) = U_half * total_Sz  * total_Sz;
+    //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
   }
 
   // lagrange fields
@@ -322,7 +360,7 @@ void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange
     double sum = 0.0;
     for (auto& alpha : spin_orbitals_) {
       std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
-      sum += Sz * lagrange_fields[site_][alpha];
+      sum += (Sz+0.5) * lagrange_fields[site_][alpha];
     }
     //std::cout << "lambda=" << sum << "\n";
     lagrange_elems_(i) = sum;
@@ -333,6 +371,7 @@ void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange
   for (i=0; i<basis_dim_; ++i) {
     for (auto& alpha : spin_orbitals_) {
       std::tie(mat_elem,j) = basis_.apply_Splus(site_,alpha,i);
+      //std::tie(mat_elem,j) = basis_.apply_Zplus(site_,alpha,i);
       if (j != basis_.null_idx()) {
         auto term = mat_elem * site_fields[site_][alpha];
         hmatrix_(i,j) = term;
@@ -348,27 +387,8 @@ void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange
   //std::cout << "cluster_mat =\n" << hmatrix_ << "\n";
 }
 
-void Cluster::update_for_lagrange_fields(const real_siteparms_t& lagrange_fields)
-{
-  // lagrange fields
-  SlaveSpinBasis::idx_t i, j;
-  double Sz;
-  for (i=0; i<basis_dim_; ++i) {
-    double sum = 0.0;
-    for (auto& alpha : spin_orbitals_) {
-      std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
-      sum += Sz * lagrange_fields[site_][alpha];
-    }
-    //std::cout << "lambda=" << sum << "\n";
-    lagrange_elems_(i) = sum;
-  }
-  for (i=0; i<basis_dim_; ++i) {
-    hmatrix_(i,i) = interaction_elems_(i) + lagrange_elems_(i);
-  }
-  //std::cout << "cluster_mat = \n" << hmatrix_ << "\n"; getchar();
-}
-
-void Cluster::update_for_site_fields(const cmpl_siteparms_t& site_fields)
+// update for new 'site_couplings'
+void Cluster::update_hamiltonian(const cmpl_siteparms_t& new_site_couplings)
 {
   // site operator
   // operator S+
@@ -377,14 +397,36 @@ void Cluster::update_for_site_fields(const cmpl_siteparms_t& site_fields)
   for (i=0; i<basis_dim_; ++i) {
     for (auto& alpha : spin_orbitals_) {
       std::tie(mat_elem,j) = basis_.apply_Splus(site_,alpha,i);
+      //std::tie(mat_elem,j) = basis_.apply_Zplus(site_,alpha,i);
       if (j != basis_.null_idx()) {
-        auto term = mat_elem * site_fields[site_][alpha];
+        auto term = mat_elem * new_site_couplings[site_][alpha];
         hmatrix_(i,j) = term;
         hmatrix_(j,i) = std::conj(term);
       }
     }
   }
-  //std::cout << hmatrix_ << "\n"; getchar();
+  //std::cout<<"H (site-coupling-update) =\n" << hmatrix_ << "\n"; getchar();
+}
+
+// update for new 'lm parameters'
+void Cluster::update_hamiltonian(const real_siteparms_t& new_lm_params)
+{
+  // lagrange fields
+  SlaveSpinBasis::idx_t i, j;
+  double Sz;
+  for (i=0; i<basis_dim_; ++i) {
+    double sum = 0.0;
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
+      sum += (Sz + 0.5) * new_lm_params[site_][alpha];
+    }
+    //std::cout << "lambda=" << sum << "\n";
+    lagrange_elems_(i) = sum;
+  }
+  for (i=0; i<basis_dim_; ++i) {
+    hmatrix_(i,i) = interaction_elems_(i) + lagrange_elems_(i);
+  }
+  //std::cout<<"H (LM-update) =\n" << hmatrix_ << "\n"; getchar();
 }
 
 void Cluster::solve_hamiltonian(void) const
@@ -404,9 +446,27 @@ void Cluster::get_avg_Sz(real_siteparms_t& Sz_avg) const
       Sz_avg[site_][alpha] += Sz * std::norm(groundstate_(i));
     }
   }
-  std::cout << "<Sz>["<<site_<<"] = "<< Sz_avg[site_].transpose() << "\n";
+  //std::cout << "<Sz>["<<site_<<"] = "<< Sz_avg[site_].transpose() << "\n";
 }
 
+void Cluster::get_avg_Splus(real_siteparms_t& Splus_avg) const
+{
+  for (auto& alpha : spin_orbitals_) Splus_avg[site_][alpha] = 0.0;
+  SlaveSpinBasis::idx_t i, j;
+  double mat_elem;
+  for (i=0; i<basis_dim_; ++i) {
+    auto c_i = groundstate_(i);
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(mat_elem,j) = basis_.apply_Splus(site_,alpha,i);
+      if (j != basis_.null_idx()) {
+        auto c_j = groundstate_(j);
+        Splus_avg[site_][alpha] += std::real(mat_elem*std::conj(c_j)*c_i);
+      }
+    }
+  }
+  std::cout << "<Zplus>["<<site_<<"] = "<< Splus_avg[site_].transpose() << "\n";
+  //std::cout << "groundstate = "<< groundstate_.transpose() << "\n";
+}
 
 
 } // end namespace srmf

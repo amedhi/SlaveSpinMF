@@ -66,12 +66,13 @@ public:
   ~Cluster() {}
   void init_hamiltonian(const double& U, const real_siteparms_t& lagrange_fields,
     const cmpl_siteparms_t& site_fields);
-  void update_for_lagrange_fields(const real_siteparms_t& lagrange_fields);
-  void update_for_site_fields(const cmpl_siteparms_t& site_fields);
+  void update_hamiltonian(const real_siteparms_t& new_lm_params);
+  void update_hamiltonian(const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
   void solve_hamiltonian(void) const;
   const ComplexVector& groundstate(void) const { return groundstate_; }
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
+  void get_avg_Splus(real_siteparms_t& Splus_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
   unsigned site_{0};
@@ -98,7 +99,7 @@ public:
   //int init(const lattice::Lattice& lattice) override;
   //int finalize(const lattice::LatticeGraph& graph);
   //void update(const input::Parameters& inputs);
-  friend int lagrange_eqn(const gsl_vector * x, void * Rotor, gsl_vector * f);
+  friend int gsl_problem_equation(const gsl_vector* x, void* parms, gsl_vector* f);
 private:
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
@@ -113,11 +114,17 @@ private:
   std::vector<unsigned> spin_orbitals_; // for a single site
   cluster_t cluster_type_;
   std::vector<Cluster> clusters_;
+
+  // gsl solver
+  double lm_ftol_{1.0E-8};
+  unsigned fx_dim_;
+  std::vector<double> x_vec_;
+  std::vector<double> fx_vec_;
   root::gsl_solver solver_;
 
   // site & bond parameters
   double U_half_{0.0};
-  real_siteparms_t lm_parms_;
+  real_siteparms_t lm_params_;
   real_siteparms_t qp_weights_;
   cmpl_siteparms_t renorm_site_couplings_;
   cmpl_bondparms_t renorm_bond_couplings_;
@@ -144,7 +151,9 @@ private:
   void set_site_couplings(const SR_Params& srparams, 
     const real_siteparms_t& site_qp_weights);
   void set_site_fields(void);
-  void solve_for_lagrange_fields(void);
+  void update_lm_params(void);
+  void update_qp_weights(void);
+  int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);
   double solve_for_mu(void);
   void solve_clusters(void);
   void eval_particle_density(void);
@@ -155,7 +164,6 @@ private:
   void update_with_phi(const cmplArray1D& new_phi);
   void solve_number_density(double mu);
   double avg_particle_density_eqn(const double& mu); 
-  int lagrange_fields_equation(void);
 };
 
 

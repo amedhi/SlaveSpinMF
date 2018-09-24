@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-20 23:34:27
+* @Last Modified time: 2018-09-21 22:55:16
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"
@@ -31,21 +31,30 @@ void gsl_solver::allocate(const std::size_t& n)
   gsl_multiroot_fsolver_set(solver_.get(),&func_,xvec_.get());
 }*/
 
-void gsl_solver::find_root(void* params, int (*func) (const gsl_vector* x, void* params, gsl_vector* fvec),
-  const std::vector<double>& x_init)
+int gsl_solver::find_root(void* params, int (*func) (const gsl_vector* x, void* params, gsl_vector* fvec),
+  std::vector<double>& xvec, const double& eps_ftol)
 {
-  assert(x_init.size() == ndim_);
+  assert(xvec.size() == ndim_);
   func_ = {func, ndim_, params};
-  for (int i=0; i<ndim_; ++i) gsl_vector_set(xvec_.get(), i, x_init[i]);
+  for (int i=0; i<ndim_; ++i) gsl_vector_set(xvec_.get(), i, xvec[i]);
   //for (int i=0; i<ndim_; ++i) std::cout << gsl_vector_get(xvec_.get(), i) << "\n";
   gsl_multiroot_fsolver_set(solver_.get(), &func_, xvec_.get());
   int status = GSL_CONTINUE;
   int iter = 0;
   while (status==GSL_CONTINUE && iter < 50) {
-    int status = gsl_multiroot_fsolver_iterate(solver_.get());
+    status = gsl_multiroot_fsolver_iterate(solver_.get());
+    status = gsl_multiroot_test_residual(solver_.get()->f, eps_ftol);
     ++iter;
   }
-  std::cout << "gsl_solver::find_root: status = " << gsl_strerror(status) << "\n";
+  if (status != GSL_SUCCESS) {
+    std::cout << ">> gsl_solver::find_root: iteration exited with status = " 
+    << gsl_strerror(status) << "\n";
+  }
+  // solution
+  for (int i=0; i<ndim_; ++i) xvec[i] = gsl_vector_get(solver_.get()->x,i);
+  //gsl_multiroot_fsolver_free(solver_.get());
+  //gsl_vector_free(xvec_.get());
+  return status;
 }
 
 

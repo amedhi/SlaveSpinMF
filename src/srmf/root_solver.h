@@ -24,8 +24,8 @@ public:
   //void set_problem(int (*f) (const gsl_vector * x, void * params, gsl_vector * f),
   //  const std::size_t& n, void * params);
   //void find_root(const std::vector<double>& x_init);
-  void find_root(void* params, int (*func) (const gsl_vector* x, void* params, gsl_vector* fvec),
-  const std::vector<double>& x_init);
+  int find_root(void* params, int (*func) (const gsl_vector* x, void* params, gsl_vector* fvec),
+    std::vector<double>& xvec, const double& eps_ftol=1.0E-6);
 private:
   std::size_t ndim_{0};
   gsl_multiroot_function func_;
