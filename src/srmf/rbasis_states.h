@@ -100,9 +100,13 @@ public:
   // quantum operators
   const idx_t& dim(void) const { return ndim_; }
   const idx_t& null_idx(void) const { return null_idx_; }
+  op_result apply_adag_a(const size_t& site, const size_t& alpha, const idx_t& idx) const;
+  op_result apply_bdag_b(const size_t& site, const size_t& alpha, const idx_t& idx) const;
   op_result apply_Sz(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   op_result apply_Splus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   op_result apply_Sminus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Oplus(const double& c, const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Ominus(const double& c, const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   op_result apply_Zplus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   op_result apply_Zminus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   //op_result op_b_dag(const size_t& i, const size_t& alpha, const idx_t& idx) const; 

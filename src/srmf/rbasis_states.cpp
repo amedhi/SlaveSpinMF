@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-04-21 11:41:01
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-23 22:05:59
+* @Last Modified time: 2018-09-26 11:20:19
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <cassert>
@@ -198,8 +198,8 @@ void SlaveSpinBasis::construct(const int& num_sites, const int& site_dim)
     per site is 'site_dim'. For each spin-orbital index, the following
     constraint applies: (a^\dag a + b^\dag b) = 1.  
 
-    'a'-particle is represented by bit value: '0'
-    'b'-particle is represented by bit value: '1'
+    'a'-particle is represented by bit value: '1' == |+1/2>
+    'b'-particle is represented by bit value: '0' == |-1/2>
   */
   //std::cout << "SlaveSpinBasis::construct\n";
   num_sites_ = num_sites;
@@ -222,6 +222,28 @@ void SlaveSpinBasis::construct(const int& num_sites, const int& site_dim)
   null_idx_ = ndim_;
 }
 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_adag_a(const size_t& site, 
+  const size_t& alpha, const idx_t& idx) const
+{
+  if (idx == null_idx_) return std::make_pair(0,null_idx_);
+  idx_t pos = site * site_dim_ + alpha;
+  // a^\dag a 
+  state_t state = basis_states_[idx];
+  if (state.test(pos)) return std::make_pair(1,idx);
+  else return std::make_pair(0,idx);
+}
+
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_bdag_b(const size_t& site, 
+  const size_t& alpha, const idx_t& idx) const
+{
+  if (idx == null_idx_) return std::make_pair(0,null_idx_);
+  idx_t pos = site * site_dim_ + alpha;
+  // b^\dag b 
+  state_t state = basis_states_[idx];
+  if (state.test(pos)) return std::make_pair(0,idx);
+  else return std::make_pair(1,idx);
+}
+
 SlaveSpinBasis::op_result SlaveSpinBasis::apply_Sz(const size_t& site, 
   const size_t& alpha, const idx_t& idx) const
 {
@@ -229,8 +251,42 @@ SlaveSpinBasis::op_result SlaveSpinBasis::apply_Sz(const size_t& site,
   idx_t pos = site * site_dim_ + alpha;
   // Sz == 1/2(a^\dag a - b^\dag b)
   state_t state = basis_states_[idx];
-  if (state.test(pos)) return std::make_pair(-0.5,idx);
-  else return std::make_pair(+0.5,idx);
+  if (state.test(pos)) return std::make_pair(+0.5,idx);
+  else return std::make_pair(-0.5,idx);
+}
+
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Oplus(const double& c,
+  const size_t& site, const size_t& alpha, const idx_t& idx) const
+{
+  if (idx == null_idx_) return std::make_pair(0,null_idx_);
+  idx_t pos = site * site_dim_ + alpha;
+  // O+ == (S- + c*S+)
+  state_t state = basis_states_[idx];
+  if (state.test(pos)) {
+    state.reset(pos);
+    return std::make_pair(c,state_indices_[state.to_ullong()]);
+  }
+  else {
+    state.set(pos);
+    return std::make_pair(1,state_indices_[state.to_ullong()]);
+  }
+}
+
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Ominus(const double& c,
+  const size_t& site, const size_t& alpha, const idx_t& idx) const
+{
+  if (idx == null_idx_) return std::make_pair(0,null_idx_);
+  idx_t pos = site * site_dim_ + alpha;
+  // O- == (S+ + c*S-)
+  state_t state = basis_states_[idx];
+  if (state.test(pos)) {
+    state.reset(pos);
+    return std::make_pair(1,state_indices_[state.to_ullong()]);
+  }
+  else {
+    state.set(pos);
+    return std::make_pair(c,state_indices_[state.to_ullong()]);
+  }
 }
 
 SlaveSpinBasis::op_result SlaveSpinBasis::apply_Splus(const size_t& site, 
@@ -241,10 +297,12 @@ SlaveSpinBasis::op_result SlaveSpinBasis::apply_Splus(const size_t& site,
   // S+ == a^\dag . b
   state_t state = basis_states_[idx];
   if (state.test(pos)) {
-    state.reset(pos);
+    return std::make_pair(0,null_idx_);
+  }
+  else {
+    state.set(pos);
     return std::make_pair(1,state_indices_[state.to_ullong()]);
   }
-  else return std::make_pair(0,null_idx_);
 }
 
 
@@ -256,11 +314,11 @@ SlaveSpinBasis::op_result SlaveSpinBasis::apply_Sminus(const size_t& site,
   // S- == b^dag . a
   state_t state = basis_states_[idx];
   if (state.test(pos)) {
-    return std::make_pair(0,null_idx_);
+    state.reset(pos);
+    return std::make_pair(1,state_indices_[state.to_ullong()]);
   }
   else {
-    state.set(pos);
-    return std::make_pair(1,state_indices_[state.to_ullong()]);
+    return std::make_pair(0,null_idx_);
   }
 }
 
@@ -270,26 +328,6 @@ SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zplus(const size_t& site,
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
   idx_t pos = site * site_dim_ + alpha;
   // z+ = P+ a^\dag b P-
-  // P+/- = 1/sqrt(1/2 +/- S^z)
-  state_t state = basis_states_[idx];
-  if (state.test(pos)) {
-    // apply P-
-    double matrix_elem = 1.0; // state remains same
-    // apply a^\dag b
-    state.reset(pos); 
-    // apply P+
-    matrix_elem *= 1.0; //state remains same
-    return std::make_pair(1,state_indices_[state.to_ullong()]);
-  }
-  else return std::make_pair(0,null_idx_);
-}
-
-SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zminus(const size_t& site, 
-  const size_t& alpha, const idx_t& idx) const 
-{
-  if (idx == null_idx_) return std::make_pair(0,null_idx_);
-  idx_t pos = site * site_dim_ + alpha;
-  // z- = P- b^\dag a P+
   // P+/- = 1/sqrt(1/2 +/- S^z)
   state_t state = basis_states_[idx];
   if (state.test(pos)) {
@@ -304,6 +342,26 @@ SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zminus(const size_t& site,
     matrix_elem *= 1.0; //state remains same
     return std::make_pair(1,state_indices_[state.to_ullong()]);
   }
+}
+
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zminus(const size_t& site, 
+  const size_t& alpha, const idx_t& idx) const 
+{
+  if (idx == null_idx_) return std::make_pair(0,null_idx_);
+  idx_t pos = site * site_dim_ + alpha;
+  // z- = P- b^\dag a P+
+  // P+/- = 1/sqrt(1/2 +/- S^z)
+  state_t state = basis_states_[idx];
+  if (state.test(pos)) {
+    // apply P-
+    double matrix_elem = 1.0; // state remains same
+    // apply a^\dag b
+    state.reset(pos); 
+    // apply P+
+    matrix_elem *= 1.0; //state remains same
+    return std::make_pair(1,state_indices_[state.to_ullong()]);
+  }
+  else return std::make_pair(0,null_idx_);
 }
 
 

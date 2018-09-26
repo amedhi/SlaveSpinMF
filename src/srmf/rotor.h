@@ -64,15 +64,16 @@ public:
     groundstate_.resize(basis_dim_);
   }
   ~Cluster() {}
-  void init_hamiltonian(const double& U, const real_siteparms_t& lagrange_fields,
-    const cmpl_siteparms_t& site_fields);
+  void init_hamiltonian(const double& U, const real_siteparms_t& gauge_factors, 
+    const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& site_fields);
   void update_hamiltonian(const real_siteparms_t& new_lm_params);
-  void update_hamiltonian(const cmpl_siteparms_t& new_site_couplings);
+  void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
   void solve_hamiltonian(void) const;
   const ComplexVector& groundstate(void) const { return groundstate_; }
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
+  void get_avg_Oplus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
 private:
   cluster_t type_{cluster_t::SITE};
   unsigned site_{0};
@@ -126,6 +127,8 @@ private:
   double U_half_{0.0};
   real_siteparms_t lm_params_;
   real_siteparms_t qp_weights_;
+  real_siteparms_t gauge_factors_;
+  cmpl_siteparms_t site_order_params_;
   cmpl_siteparms_t renorm_site_couplings_;
   cmpl_bondparms_t renorm_bond_couplings_;
   real_siteparms_t spinon_density_;
@@ -149,10 +152,10 @@ private:
   void init_matrix_elems(const SR_Params& srparams);
   void set_bond_couplings(const SR_Params& srparams);
   void set_site_couplings(const SR_Params& srparams, 
-    const real_siteparms_t& site_qp_weights);
+    const cmpl_siteparms_t& site_order_params);
   void set_site_fields(void);
   void update_lm_params(void);
-  void update_qp_weights(void);
+  void update_order_params(void);
   int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);
   double solve_for_mu(void);
   void solve_clusters(void);

@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-24 16:00:59
+* @Last Modified time: 2018-09-26 23:16:01
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -37,6 +37,12 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   // Lagrange multipliers
   lm_params_.resize(num_sites_);
   for (auto& elem : lm_params_) elem = realArray1D::Ones(site_dim_);
+  // gauge factors, c for the operator O+ = (S- + cS+)
+  gauge_factors_.resize(num_sites_);
+  for (auto& elem : gauge_factors_) elem = realArray1D::Ones(site_dim_);
+  // order parameters: <O+>
+  site_order_params_.resize(num_sites_);
+  for (auto& elem : site_order_params_) elem = cmplArray1D::Ones(site_dim_);
   // Quasi-particle weights
   qp_weights_.resize(num_sites_);
   for (auto& elem : qp_weights_) elem = realArray1D::Ones(site_dim_);
@@ -58,7 +64,7 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   // Rotor clusters
   make_clusters(srparams);
   for (auto& cluster : clusters_) 
-    cluster.init_hamiltonian(U,lm_params_,renorm_site_couplings_);
+    cluster.init_hamiltonian(U,gauge_factors_,lm_params_,renorm_site_couplings_);
 
   // For solving for LM parameter equation
   fx_dim_ = num_sites_*site_dim_;
@@ -93,7 +99,6 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   // finalize model
   rotor_model_.finalize(graph.lattice());
   */
-
 }
 
 void Rotor::solve(SR_Params& srparams) 
@@ -102,22 +107,30 @@ void Rotor::solve(SR_Params& srparams)
   for (int i=0; i<num_sites_; ++i) {
     spinon_density_[i] = srparams.site(i).spinon_density();
   }
+  // gauge factors
+  for (int site=0; site<num_sites_; ++site) {
+    for (auto alpha : spin_orbitals_) {
+      double nf = spinon_density_[site][alpha];
+      gauge_factors_[site][alpha] = 1.0/std::sqrt(nf*(1.0-nf))-1.0;
+      //std::cout << "c["<<site<<"]["<<alpha<<"] = "<<gauge_factors_[site][alpha]<<"\n";
+    }
+  }
 
   // renormalized bond couplings
   set_bond_couplings(srparams);
 
   // trial 'qp_weights'
-  real_siteparms_t trial_qp_weights(num_sites_);
-  for (auto& elem : trial_qp_weights) elem = realArray1D::Constant(site_dim_,0.5);
+  cmpl_siteparms_t trial_order_params(num_sites_);
+  for (auto& elem : trial_order_params) elem = cmplArray1D::Constant(site_dim_,1.0);
 
-  realArray1D qp_weights_diff(num_sites_*site_dim_);
+  cmplArray1D order_params_diff(num_sites_*site_dim_);
 
   int max_iter = 100;
   for (int iter=0; iter<max_iter; ++iter) {
-    // update 'renormalized site couplings' for the new 'qp_weights'
-    set_site_couplings(srparams, trial_qp_weights);
+    // update 'renormalized site couplings' for the new 'order parameters'
+    set_site_couplings(srparams, trial_order_params);
     for (auto& cluster : clusters_) {
-      cluster.update_hamiltonian(renorm_site_couplings_);
+      cluster.update_hamiltonian(gauge_factors_,renorm_site_couplings_);
     }
     // solve for new LM-parameters to satisfy the 'slave-spin constraint'
     update_lm_params();
@@ -126,24 +139,22 @@ void Rotor::solve(SR_Params& srparams)
       cluster.update_hamiltonian(lm_params_);
     }
     // calculate new QP weights
-    update_qp_weights();
+    update_order_params();
     // check convergence
     int i = 0;
     for (unsigned site=0; site<num_sites_; ++site) {
       for (auto& alpha: spin_orbitals_) {
-        qp_weights_diff(i) = qp_weights_[site][alpha]-trial_qp_weights[site][alpha];
+        order_params_diff(i) = site_order_params_[site][alpha]-trial_order_params[site][alpha];
         ++i; 
       }
     }
-    double norm = qp_weights_diff.abs2().maxCoeff();
+    double norm = order_params_diff.abs2().maxCoeff();
     std::cout << "iter = " << iter+1 << ", norm = " << norm << "\n";
     if (norm<1.0E-6) break;
     // continue
     for (unsigned site=0; site<num_sites_; ++site) {
-      trial_qp_weights[site] = qp_weights_[site];
+      trial_order_params[site] = site_order_params_[site];
     }
-
-
     //update_with_phi(trial_phi_);
     /*
     double mu = solve_for_mu();
@@ -156,6 +167,12 @@ void Rotor::solve(SR_Params& srparams)
     if (norm<1.0E-8) break;
     trial_phi_ = site_phi_;
     */
+  }
+  std::cout<<"Bosons converged!\n";
+  // QP weights
+  for (int site=0; site<num_sites_; ++site) {
+    qp_weights_[site] = site_order_params_[site].abs2();
+    std::cout<<"Z["<<site<<"] = "<< qp_weights_[site].transpose()<<"\n";
   }
   // bond ke parameters
   //eval_bond_ke();
@@ -196,7 +213,7 @@ int Rotor::constraint_equation(const std::vector<double>& x, std::vector<double>
   i=0;
   for (unsigned site=0; site<num_sites_; ++site) {
     for (auto& alpha: spin_orbitals_) {
-      fx[i] = (0.5 + Sz_avg_[site][alpha]) - spinon_density_[site][alpha];
+      fx[i] = (Sz_avg_[site][alpha] + 0.5) - spinon_density_[site][alpha];
       ++i; 
       //std::cout << "fx = " << fx[i] << "\n";
     }
@@ -222,15 +239,15 @@ void Rotor::update_lm_params(void)
   }
 }
 
-void Rotor::update_qp_weights(void)
+void Rotor::update_order_params(void)
 {
-  // calculate Z=<Sz> 
+  // calculate <O+> 
   for (auto& cluster : clusters_) {
       cluster.solve_hamiltonian();
-      cluster.get_avg_Splus(qp_weights_);
+      cluster.get_avg_Oplus(gauge_factors_,site_order_params_);
   }
   for (unsigned site=0; site<num_sites_; ++site) {
-    std::cout << "Z["<<site<<"] = " << qp_weights_[site].transpose() << "\n";
+    std::cout << "<Oplus>["<<site<<"] = " << site_order_params_[site].transpose() << "\n";
   }
 }
 
@@ -287,7 +304,7 @@ void Rotor::set_bond_couplings(const SR_Params& srparams)
 }
 
 void Rotor::set_site_couplings(const SR_Params& srparams, 
-  const real_siteparms_t& site_qp_weights) 
+  const cmpl_siteparms_t& site_order_params) 
 {
   // Renormalizing field on each site due to hopping terms from the 'bath'
   if (cluster_type_==cluster_t::SITE) {
@@ -301,8 +318,8 @@ void Rotor::set_site_couplings(const SR_Params& srparams,
       auto tchi_sum = renorm_bond_couplings_[id++].rowwise().sum();
 
       // sum over all neighbouring sites
-      renorm_site_couplings_[s] += tchi_sum * site_qp_weights[t];
-      renorm_site_couplings_[t] += tchi_sum.conjugate() * site_qp_weights[s];
+      renorm_site_couplings_[s] += tchi_sum * site_order_params[t];
+      renorm_site_couplings_[t] += tchi_sum.conjugate() * site_order_params[s];
     }
     //for (int i=0; i<num_sites_; ++i) {
     //  std::cout << "site field ["<<i<<"] = " << renorm_site_couplings_[i].transpose() << "\n"; 
@@ -335,8 +352,8 @@ void Rotor::make_clusters(const SR_Params& srparams)
   }
 }
 
-void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange_fields,
-    const cmpl_siteparms_t& site_fields)
+void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& gauge_factors,
+  const real_siteparms_t& lm_params, const cmpl_siteparms_t& site_fields)
 {
   //std::cout << "Rotor:: applying Zplus instead of Splus\n";
   hmatrix_.setZero();
@@ -354,24 +371,24 @@ void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange
     //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
   }
 
-  // lagrange fields
+  // LM parameter term
   double Sz;
   for (i=0; i<basis_dim_; ++i) {
     double sum = 0.0;
     for (auto& alpha : spin_orbitals_) {
       std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
-      sum += (Sz+0.5) * lagrange_fields[site_][alpha];
+      sum += (Sz+0.5) * lm_params[site_][alpha];
     }
     //std::cout << "lambda=" << sum << "\n";
     lagrange_elems_(i) = sum;
   }
 
   // site operator
-  // operator S+
+  // operator O+
   for (i=0; i<basis_dim_; ++i) {
     for (auto& alpha : spin_orbitals_) {
-      std::tie(mat_elem,j) = basis_.apply_Splus(site_,alpha,i);
-      //std::tie(mat_elem,j) = basis_.apply_Zplus(site_,alpha,i);
+      double c = gauge_factors[site_][alpha];
+      std::tie(mat_elem,j) = basis_.apply_Oplus(c,site_,alpha,i);
       if (j != basis_.null_idx()) {
         auto term = mat_elem * site_fields[site_][alpha];
         hmatrix_(i,j) = term;
@@ -388,7 +405,8 @@ void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& lagrange
 }
 
 // update for new 'site_couplings'
-void Cluster::update_hamiltonian(const cmpl_siteparms_t& new_site_couplings)
+void Cluster::update_hamiltonian(const real_siteparms_t& gauge_factors,
+  const cmpl_siteparms_t& new_site_couplings)
 {
   // site operator
   // operator S+
@@ -396,8 +414,8 @@ void Cluster::update_hamiltonian(const cmpl_siteparms_t& new_site_couplings)
   SlaveSpinBasis::idx_t i, j;
   for (i=0; i<basis_dim_; ++i) {
     for (auto& alpha : spin_orbitals_) {
-      std::tie(mat_elem,j) = basis_.apply_Splus(site_,alpha,i);
-      //std::tie(mat_elem,j) = basis_.apply_Zplus(site_,alpha,i);
+      double c = gauge_factors[site_][alpha];
+      std::tie(mat_elem,j) = basis_.apply_Oplus(c,site_,alpha,i);
       if (j != basis_.null_idx()) {
         auto term = mat_elem * new_site_couplings[site_][alpha];
         hmatrix_(i,j) = term;
@@ -418,7 +436,7 @@ void Cluster::update_hamiltonian(const real_siteparms_t& new_lm_params)
     double sum = 0.0;
     for (auto& alpha : spin_orbitals_) {
       std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
-      sum += (Sz + 0.5) * new_lm_params[site_][alpha];
+      sum += (Sz+0.5) * new_lm_params[site_][alpha];
     }
     //std::cout << "lambda=" << sum << "\n";
     lagrange_elems_(i) = sum;
@@ -457,14 +475,35 @@ void Cluster::get_avg_Splus(real_siteparms_t& Splus_avg) const
   for (i=0; i<basis_dim_; ++i) {
     auto c_i = groundstate_(i);
     for (auto& alpha : spin_orbitals_) {
-      std::tie(mat_elem,j) = basis_.apply_Splus(site_,alpha,i);
+      std::tie(mat_elem,j) = basis_.apply_Oplus(1.0,site_,alpha,i);
       if (j != basis_.null_idx()) {
         auto c_j = groundstate_(j);
         Splus_avg[site_][alpha] += std::real(mat_elem*std::conj(c_j)*c_i);
       }
     }
   }
-  std::cout << "<Zplus>["<<site_<<"] = "<< Splus_avg[site_].transpose() << "\n";
+  std::cout << "<Oplus>["<<site_<<"] = "<< Splus_avg[site_].transpose() << "\n";
+  //std::cout << "groundstate = "<< groundstate_.transpose() << "\n";
+}
+
+void Cluster::get_avg_Oplus(const real_siteparms_t& gauge_factors, 
+  cmpl_siteparms_t& Oplus_avg) const
+{
+  Oplus_avg[site_].setZero(); 
+  SlaveSpinBasis::idx_t i, j;
+  double mat_elem;
+  for (i=0; i<basis_dim_; ++i) {
+    auto c_i = groundstate_(i);
+    for (auto& alpha : spin_orbitals_) {
+      double c = gauge_factors[site_][alpha];
+      std::tie(mat_elem,j) = basis_.apply_Oplus(c,site_,alpha,i);
+      if (j != basis_.null_idx()) {
+        auto c_j = groundstate_(j);
+        Oplus_avg[site_][alpha] += mat_elem*std::conj(c_j)*c_i;
+      }
+    }
+  }
+  //std::cout << "<Oplus>["<<site_<<"] = "<< Oplus_avg[site_].transpose() << "\n";
   //std::cout << "groundstate = "<< groundstate_.transpose() << "\n";
 }
 
