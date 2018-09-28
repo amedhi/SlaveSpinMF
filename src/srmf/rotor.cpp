@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-26 23:16:01
+* @Last Modified time: 2018-09-27 22:47:30
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -155,18 +155,6 @@ void Rotor::solve(SR_Params& srparams)
     for (unsigned site=0; site<num_sites_; ++site) {
       trial_order_params[site] = site_order_params_[site];
     }
-    //update_with_phi(trial_phi_);
-    /*
-    double mu = solve_for_mu();
-    update_with_mu(mu);
-    solve_clusters();
-    eval_site_phi();
-    diff_phi_ = site_phi_ - trial_phi_;
-    double norm = diff_phi_.abs2().maxCoeff();
-    std::cout << "iter = " << iter+1 << ", norm = " << norm << "\n";
-    if (norm<1.0E-8) break;
-    trial_phi_ = site_phi_;
-    */
   }
   std::cout<<"Bosons converged!\n";
   // QP weights
@@ -233,7 +221,7 @@ void Rotor::update_lm_params(void)
   for (unsigned site=0; site<num_sites_; ++site) {
     for (auto& alpha: spin_orbitals_) {
       lm_params_[site][alpha] = x_vec_[i];
-      std::cout << "lambda["<<i<<"] = " << x_vec_[i] << "\n";
+      //std::cout << "lambda["<<i<<"] = " << x_vec_[i] << "\n";
       ++i; 
     }
   }
@@ -246,9 +234,9 @@ void Rotor::update_order_params(void)
       cluster.solve_hamiltonian();
       cluster.get_avg_Oplus(gauge_factors_,site_order_params_);
   }
-  for (unsigned site=0; site<num_sites_; ++site) {
+  /*for (unsigned site=0; site<num_sites_; ++site) {
     std::cout << "<Oplus>["<<site<<"] = " << site_order_params_[site].transpose() << "\n";
-  }
+  }*/
 }
 
 void Rotor::set_bond_couplings(const SR_Params& srparams) 

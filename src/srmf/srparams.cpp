@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-19 23:24:20
+* @Last Modified time: 2018-09-28 10:12:26
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "srparams.h"
@@ -12,6 +12,7 @@ namespace srmf {
 SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph& graph,
   const model::Hamiltonian& model)
 {
+  SO_coupling_ = model.is_spinorbit_coupled();
   //std::cout << "----SR_Params::SR_Params----\n";
   // sites in the unit cell
   num_sites_ = graph.lattice().num_basis_sites();
@@ -24,7 +25,7 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
     state_indices.resize(dim);
     for (unsigned j=0; j<dim; ++j) 
        state_indices[j] = graph.lattice().basis_index_number(i,j);
-    sites_.push_back({type, dim, state_indices});
+    sites_.push_back({type, dim, state_indices, SO_coupling_});
   }
 
   // store the bonds in a 'unit cell'
@@ -32,8 +33,8 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
   std::vector<unsigned> tgt_state_indices;
   lattice::LatticeGraph::out_edge_iterator ei, ei_end;
   bonds_.clear();
-  site_links_.clear();
-  site_links_.resize(num_sites_);
+  //site_links_.clear();
+  //site_links_.resize(num_sites_);
   for (auto& site : sites_) site.clear();
   for (unsigned i=0; i<num_sites_; ++i) {
     for (std::tie(ei, ei_end)=graph.out_bonds(i); ei!=ei_end; ++ei) {
@@ -80,6 +81,8 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
   }
   num_bonds_ = bonds_.size();
 
+
+  /*
   // storages
   sp_bond_ke_.resize(num_bonds_);
   for (int i=0; i<num_bonds_; ++i) {
@@ -92,7 +95,6 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
   for (int i=0; i<num_sites_; ++i) {
     sp_site_density_[i].resize(graph.site_dim(i));
   }
-
 
   //bond_tchi_.resize(num_bonds_);
   rbond_avg_.resize(num_bonds_);
@@ -111,7 +113,7 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
   }
 
   // spinon density
-
+  */
 }
 
 

@@ -36,20 +36,19 @@ public:
     connected_bonds_.clear();
     inout_types_.clear();
   } 
-  sr_site(const unsigned& type, const unsigned& dim, const idx_list& state_indices)
+  sr_site(const unsigned& type, const unsigned& dim, const idx_list& state_indices, 
+    const bool& SO_coupled)
     : type_{type}, dim_{dim}, state_indices_{state_indices}
   {
     connected_bonds_.clear();
     inout_types_.clear();
-    spinon_density_.resize(2*dim);
-    boson_density_.resize(dim);
-    spin_orbitals_.resize(2*dim); // spin + oribitals;
+    // spin-oribitals
+    if (SO_coupled) spin_orbitals_.resize(dim); 
+    else spin_orbitals_.resize(2*dim); // spin + oribitals;
     std::iota(spin_orbitals_.begin(), spin_orbitals_.end(), 0);
+    spinon_density_.resize(spin_orbitals_.size());
+    boson_density_.resize(spin_orbitals_.size());
   }
-  //sr_site(const unsigned& type, const idx_list& idx_list1, 
-  //  const idx_list& idx_list2, const Vector3d& vector)
-  //  : type_{type}, src_state_indices_{idx_list1}, tgt_state_indices_{idx_list2}, 
-  //    vector_{vector} {}
   void clear(void) { connected_bonds_.clear(); inout_types_.clear(); }
   const unsigned& type(void) const { return type_; }
   const unsigned& dim(void) const { return dim_; }
@@ -84,17 +83,17 @@ public:
     term_couplings_.clear();
     term_spins_.clear();
   }
-  sr_bond(const unsigned& type, const idx_list& idx_list1, 
-    const idx_list& idx_list2, const Vector3d& vector)
-    : type_{type}, src_state_indices_{idx_list1}, tgt_state_indices_{idx_list2}, 
-      vector_{vector} {}
+  //sr_bond(const unsigned& type, const idx_list& idx_list1, 
+  //  const idx_list& idx_list2, const Vector3d& vector)
+  //  : type_{type}, src_state_indices_{idx_list1}, tgt_state_indices_{idx_list2}, 
+  //    vector_{vector} {}
   void add_term_cc(const cmplArray2D& mat, const model::spin& s) 
     { term_couplings_.push_back(mat); term_spins_.push_back(s); }
   const unsigned& type(void) const { return type_; }
   const unsigned& src(void) const { return src_; }
   const unsigned& tgt(void) const { return tgt_; }
-  const idx_list& src_state_indices(void) const { return src_state_indices_; }
-  const idx_list& tgt_state_indices(void) const { return tgt_state_indices_; }
+  //const idx_list& src_state_indices(void) const { return src_state_indices_; }
+  //const idx_list& tgt_state_indices(void) const { return tgt_state_indices_; }
   const Vector3d& vector(void) const { return vector_; }
   cmplArray2D& spinon_ke() { return spinon_ke_; }
   cmplArray2D& boson_ke() { return boson_ke_; }
@@ -105,8 +104,8 @@ private:
   unsigned type_;
   unsigned src_;
   unsigned tgt_;
-  idx_list src_state_indices_;
-  idx_list tgt_state_indices_;
+  //idx_list src_state_indices_;
+  //idx_list tgt_state_indices_;
   Vector3d vector_;
   std::vector<cmplArray2D> term_couplings_; // model term coupling constants 
   std::vector<model::spin> term_spins_; 
@@ -145,28 +144,29 @@ public:
   const std::vector<sr_site>& sites(void) const { return sites_; }
   const std::vector<sr_bond>& bonds(void) const { return bonds_; }
 
-  const std::vector<links>& site_links(void) const { return site_links_; }
-  cmplArray2D& sp_bond_ke(const int& i) { return sp_bond_ke_[i]; }
-  realArray1D& sp_site_density(const int& i) { return sp_site_density_[i]; }
+  //const std::vector<links>& site_links(void) const { return site_links_; }
+  //cmplArray2D& sp_bond_ke(const int& i) { return sp_bond_ke_[i]; }
+  //realArray1D& sp_site_density(const int& i) { return sp_site_density_[i]; }
   //std::vector<std::complex<double>> sbond_avg(void) { return sbond_avg_; }
-  std::vector<std::complex<double>> rbond_avg(void) { return rbond_avg_; }
-  const double& spinon_density(const int& i) const { return spinon_site_density_[i]; }
-  const cmplArray1D& bond_tchi(void) const { return bond_tchi_; }
-  cmplArray1D& bond_tchi(void) { return bond_tchi_; }
+  //std::vector<std::complex<double>> rbond_avg(void) { return rbond_avg_; }
+  //const double& spinon_density(const int& i) const { return spinon_site_density_[i]; }
+  //const cmplArray1D& bond_tchi(void) const { return bond_tchi_; }
+  //cmplArray1D& bond_tchi(void) { return bond_tchi_; }
 private:
   //using LatticeGraph = lattice::LatticeGraph;
+  bool SO_coupling_{false};
   unsigned num_sites_{0}; // no of sites per unitcell
   unsigned num_bonds_{0}; // no of bonds connected to all sites in unitcell
   std::vector<sr_site> sites_; // list of all sites in unitcell
   std::vector<sr_bond> bonds_; // list of all bonds
-  std::vector<links> site_links_; // bonds connecting every site
-  cmplArray1D bond_tchi_;
-  std::vector<cmplArray2D> sp_bond_ke_;
-  std::vector<realArray1D> sp_site_density_;
-  std::vector<std::complex<double>> rbond_avg_;
-  std::vector<double> spinon_site_density_;
-  std::vector<double> ssite_avg_;
-  std::vector<double> rsite_avg_;
+  //std::vector<links> site_links_; // bonds connecting every site
+  //cmplArray1D bond_tchi_;
+  //std::vector<cmplArray2D> sp_bond_ke_;
+  //std::vector<realArray1D> sp_site_density_;
+  //std::vector<std::complex<double>> rbond_avg_;
+  //std::vector<double> spinon_site_density_;
+  //std::vector<double> ssite_avg_;
+  //std::vector<double> rsite_avg_;
 };
 
 

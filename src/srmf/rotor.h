@@ -128,10 +128,10 @@ private:
   real_siteparms_t lm_params_;
   real_siteparms_t qp_weights_;
   real_siteparms_t gauge_factors_;
+  real_siteparms_t spinon_density_;
   cmpl_siteparms_t site_order_params_;
   cmpl_siteparms_t renorm_site_couplings_;
   cmpl_bondparms_t renorm_bond_couplings_;
-  real_siteparms_t spinon_density_;
 
   real_siteparms_t Sz_avg_;
 

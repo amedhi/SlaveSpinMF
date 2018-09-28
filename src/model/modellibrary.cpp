@@ -40,6 +40,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
   if (model_name == "HUBBARD") {
     mid = model_id::HUBBARD;
+    set_TP_symmetry(true);
     // model parameters
     add_parameter(name="t", defval=1.0, inputs);
     add_parameter(name="U", defval=0.0, inputs);
@@ -65,6 +66,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     mid = model_id::TBI_HUBBARD;
     switch (lattice.id()) {
       case lattice::lattice_id::SQUARE_2BAND:
+        set_TP_symmetry(true);
         add_parameter(name="e0", defval=1.0, inputs);
         add_parameter(name="t", defval=1.0, inputs);
         add_parameter(name="tsp", defval=1.0, inputs);
@@ -173,6 +175,8 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         break;
 
       case lattice::lattice_id::PYROCHLORE_3D:
+        set_spinorbit_coupling(true);
+        set_TP_symmetry(true);
         add_parameter(name="t", defval=1.0, inputs);
         add_parameter(name="lambda", defval=1.0, inputs);
 

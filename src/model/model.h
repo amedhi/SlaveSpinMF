@@ -61,6 +61,8 @@ public:
   unsigned add_bondterm(const std::string& name, const CouplingConstant& cc, const op::quantum_op& op);
   unsigned add_disorder_term(const std::string& name, const op::quantum_op& op);
   void set_no_dbloccupancy(void) { double_occupancy_=false; }
+  void set_spinorbit_coupling(const bool& SOC) { SO_coupled_ = SOC; }
+  void set_TP_symmetry(const bool& TP_symmetry) { TP_symmetry_ = TP_symmetry; }
 
   //const BasisDescriptor& basis(void) const { return basis_; }
   //const SiteBasis& site_basis(const unsigned& site_type) const { return basis_.at(site_type); }
@@ -92,6 +94,8 @@ public:
   void get_term_names(std::vector<std::string>& term_names) const;
   const std::string& signature_str(void) const { return signature_str_; }
   std::ostream& print_info(std::ostream& os) const { return os << info_str_; }
+  bool is_spinorbit_coupled(void) const { return SO_coupled_; }
+  bool have_TP_symmetry(void) const { return TP_symmetry_; }
   //const BondTerm::BondSiteMap& bond_sites_map(void) const { return bond_sites_map_; }
 
   //const SiteTerm& siteterm(const unsigned& i) const { return siteterms_[i]; };
@@ -110,6 +114,8 @@ private:
   bool double_occupancy_{true};
   bool have_siteterm_{false};
   bool have_bondterm_{false};
+  bool SO_coupled_{false};
+  bool TP_symmetry_{true};
   siteterm_iterator st_begin_;
   siteterm_iterator st_end_;
   bondterm_iterator bt_begin_;
