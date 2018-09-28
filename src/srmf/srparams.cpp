@@ -2,13 +2,68 @@
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-28 10:12:26
+* @Last Modified time: 2018-09-28 23:33:04
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "srparams.h"
 
 namespace srmf {
 
+//-------------------------SR_Bonds------------------------
+sr_bond::sr_bond(const unsigned& type, const unsigned& src, const unsigned& src_dim,
+  const unsigned& tgt, const unsigned& tgt_dim, const Vector3d& vector,
+  const bool& SO_coupled)
+  : type_{type}, src_{src}, tgt_{tgt}, vector_{vector}, SO_coupled_{SO_coupled}
+{
+  if (SO_coupled_) {
+    spinon_ke_.resize(src_dim, tgt_dim);
+    boson_ke_.resize(src_dim, tgt_dim);
+  }
+  else {
+    spinon_ke_.resize(2*src_dim, 2*tgt_dim);
+    boson_ke_.resize(2*src_dim, 2*tgt_dim);
+  }
+  term_couplings_.clear();
+  term_spins_.clear();
+  spinon_renormed_couplings_.clear();
+  boson_renormed_couplings_.clear();
+}
+
+void sr_bond::add_term_cc(const cmplArray2D& mat, const model::spin& s) 
+{ 
+  term_couplings_.push_back(mat); 
+  term_spins_.push_back(s);
+  int m = mat.rows();
+  int n = mat.cols();
+  if (!SO_coupled_) {
+    m *= 2;
+    n *= 2;
+  }
+  spinon_renormed_couplings_.push_back(cmplArray2D::Zero(m,n));
+  boson_renormed_couplings_.push_back(cmplArray2D::Zero(m,n));
+}
+
+void sr_bond::set_spinon_renormalization(void)
+{
+  if(SO_coupled_) {
+    for (int i=0; i<term_couplings_.size(); ++i) {
+      spinon_renormed_couplings_[i] = term_couplings_[i] * spinon_ke_;   
+    }
+  }
+  else {
+    int m = spinon_ke_.rows();
+    int n = spinon_ke_.cols();
+    cmplArray2D coupling=cmplArray2D::Zero(m,n);
+    for (int i=0; i<term_couplings_.size(); ++i) {
+      coupling.block(0,0,m/2,n/2) = term_couplings_[i];
+      coupling.block(m/2,n/2,m/2,n/2) = term_couplings_[i];
+      spinon_renormed_couplings_[i] = coupling * spinon_ke_;   
+    }
+  }
+}
+
+
+//-------------------------SR_Params------------------------
 SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph& graph,
   const model::Hamiltonian& model)
 {
@@ -59,7 +114,7 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
       //  tgt_state_indices[j] = graph.lattice().basis_index_number(p,j);
 
       //std::cout << "m="<<m<<", n="<<n<<"\n"; getchar();
-      bonds_.push_back({type,src,src_dim,tgt,tgt_dim,graph.vector(ei)});
+      bonds_.push_back({type,src,src_dim,tgt,tgt_dim,graph.vector(ei),SO_coupling_});
       // Hamiltonian terms for this bonds
       //ComplexMatrix coeff_mat = hamterm.coupling(btype);
       for (auto bterm=model.bondterms_begin(); bterm!=model.bondterms_end(); ++bterm) {

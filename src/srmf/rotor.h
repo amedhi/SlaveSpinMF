@@ -155,13 +155,13 @@ private:
     const cmpl_siteparms_t& site_order_params);
   void set_site_fields(void);
   void update_lm_params(void);
-  void update_order_params(void);
+  void update_site_order_params(void);
+  void update_bond_order_params(SR_Params& srparams);
   int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);
   double solve_for_mu(void);
   void solve_clusters(void);
   void eval_particle_density(void);
   void eval_site_phi(void);
-  void eval_bond_ke(void);
   void construct_cluster_hams(void);
   void update_with_mu(const double& new_mu);
   void update_with_phi(const cmplArray1D& new_phi);

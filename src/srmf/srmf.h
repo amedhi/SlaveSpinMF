@@ -38,18 +38,18 @@ private:
   SR_Params sr_parms_;
   Spinon spinon_;
   Rotor rotor_;
-  unsigned num_kpoints_{1};
-  unsigned kblock_dim_{1};
-  mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up_;
-  std::vector<Vector3d> symm_line_;
+  //unsigned num_kpoints_{1};
+  //unsigned kblock_dim_{1};
+  //mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up_;
+  //std::vector<Vector3d> symm_line_;
   // outputs
   /*bool need_chern_number_{false};
   bool need_ebands_full_{false};
   bool need_ebands_symm_{false};
   bool need_band_gap_{false};*/
 
-  int compute_chern_number(void);
-  int compute_band_gap(void);
+  //int compute_chern_number(void);
+  //int compute_band_gap(void);
 };
 
 

@@ -75,23 +75,15 @@ class sr_bond
 public:
   using idx_list = std::vector<unsigned>;
   sr_bond(const unsigned& type, const unsigned& src, const unsigned& src_dim,
-    const unsigned& tgt, const unsigned& tgt_dim, const Vector3d& vector)
-    : type_{type}, src_{src}, tgt_{tgt}, vector_{vector} 
-  {
-    spinon_ke_.resize(src_dim, tgt_dim);
-    boson_ke_.resize(src_dim, tgt_dim);
-    term_couplings_.clear();
-    term_spins_.clear();
-  }
-  //sr_bond(const unsigned& type, const idx_list& idx_list1, 
-  //  const idx_list& idx_list2, const Vector3d& vector)
-  //  : type_{type}, src_state_indices_{idx_list1}, tgt_state_indices_{idx_list2}, 
-  //    vector_{vector} {}
-  void add_term_cc(const cmplArray2D& mat, const model::spin& s) 
-    { term_couplings_.push_back(mat); term_spins_.push_back(s); }
+    const unsigned& tgt, const unsigned& tgt_dim, const Vector3d& vector,
+    const bool& SO_coupled);
+  void add_term_cc(const cmplArray2D& mat, const model::spin& s);
   const unsigned& type(void) const { return type_; }
   const unsigned& src(void) const { return src_; }
   const unsigned& tgt(void) const { return tgt_; }
+  void set_spinon_renormalization(void);
+  void set_boson_ke(void) { boson_ke_.setOnes(); }
+  void set_spinon_ke(void) { spinon_ke_.setOnes(); set_spinon_renormalization(); }
   //const idx_list& src_state_indices(void) const { return src_state_indices_; }
   //const idx_list& tgt_state_indices(void) const { return tgt_state_indices_; }
   const Vector3d& vector(void) const { return vector_; }
@@ -99,18 +91,24 @@ public:
   cmplArray2D& boson_ke() { return boson_ke_; }
   const cmplArray2D& spinon_ke() const { return spinon_ke_; }
   const cmplArray2D& boson_ke() const { return boson_ke_; }
+  int num_bond_terms(void) const { return term_couplings_.size(); }
   const cmplArray2D& term_cc(const unsigned& i) const { return term_couplings_[i]; }
+  const cmplArray2D& spinon_renormed_cc(const unsigned& i) const 
+    { return spinon_renormed_couplings_[i]; }
 private:
   unsigned type_;
   unsigned src_;
   unsigned tgt_;
+  Vector3d vector_;
+  bool SO_coupled_;
   //idx_list src_state_indices_;
   //idx_list tgt_state_indices_;
-  Vector3d vector_;
   std::vector<cmplArray2D> term_couplings_; // model term coupling constants 
   std::vector<model::spin> term_spins_; 
   cmplArray2D spinon_ke_;
+  std::vector<cmplArray2D> spinon_renormed_couplings_;
   cmplArray2D boson_ke_;
+  std::vector<cmplArray2D> boson_renormed_couplings_;
 };
 
 class site_link 

@@ -24,12 +24,15 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
 
   if (graph.lattice().id()==lattice::lattice_id::PYROCHLORE_3D) {
   }
-
+  have_TP_symmetry_ = model.have_TP_symmetry();
+  SO_coupling_ = model.is_spinorbit_coupled();
+  if (SO_coupling_) spin_multiply_ = 1;
+  else spin_multiply_ = 2;
   num_sites_ = graph.num_sites();
   num_bonds_ = graph.num_bonds();
   num_kpoints_ = blochbasis_.num_kpoints();
   kblock_dim_ = blochbasis_.subspace_dimension();
-  num_total_states_ = 2 * num_kpoints_ * kblock_dim_;
+  num_total_states_ = spin_multiply_ * num_kpoints_ * kblock_dim_;
   num_basis_sites_ = graph.lattice().num_basis_sites();
   //dim_ = graph.lattice().num_basis_orbitals();
   quadratic_block_up_.resize(kblock_dim_,kblock_dim_);
@@ -58,7 +61,7 @@ int Spinon::finalize(const lattice::LatticeGraph& graph)
 
 void Spinon::solve(const lattice::LatticeGraph& graph, SR_Params& srparams)
 {
-  construct_groundstate();
+  construct_groundstate(srparams);
   compute_averages(graph, srparams);
 }
 
@@ -75,7 +78,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
     for (int i=0; i<kshells_up_.size(); ++i) {
       unsigned k = kshells_up_[i].k;
       Vector3d kvec = blochbasis_.kvector(k);
-      construct_kspace_block(kvec);
+      construct_kspace_block(srparams, kvec);
       es_k_up_.compute(quadratic_spinup_block());
 
       // site density
@@ -84,7 +87,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
       Eigen::VectorXcd eigvec_wt(nmax-nmin+1);
       for (int j=0; j<srparams.num_sites(); ++j) {
         unsigned site_dim = srparams.site(j).dim();
-        realArray1D n_avg(2*site_dim); // UP & DN spin
+        realArray1D n_avg(spin_multiply_*site_dim); 
         for (unsigned m=0; m<site_dim; ++m) {
           auto ii = srparams.site(j).state_indices()[m];
           double norm = 0.0;
@@ -107,7 +110,8 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
         unsigned rows = srparams.site(src).dim();
         unsigned cols = srparams.site(tgt).dim();
         //sr_bond bond(srparams.bonds()[j]);
-        cmplArray2D ke_matrix(rows, cols);
+        cmplArray2D ke_matrix(spin_multiply_*rows, spin_multiply_*cols);
+        ke_matrix.setZero();
         for (unsigned m=0; m<rows; ++m) {
           auto ii = srparams.site(src).state_indices()[m];
           for (unsigned n=0; n<cols; ++n) {
@@ -136,9 +140,11 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
   for (int i=0; i<srparams.num_sites(); ++i) {
     //srparams.site(i).spinon_density() /= num_kpoints_;
     realArray1D n_avg = srparams.site(i).spinon_density()/num_kpoints_;
-    // for DN spins, same as UP spins
-    auto dim = srparams.site(i).dim();
-    for (int n=0; n<dim; ++n) n_avg(dim+n) = n_avg(n);
+    if (spin_multiply_==2) {
+      // for DN spins, same as UP spins
+      auto dim = srparams.site(i).dim();
+      for (int n=0; n<dim; ++n) n_avg(dim+n) = n_avg(n);
+    }
     srparams.site(i).spinon_density() = n_avg;
     // print
     /*
@@ -152,7 +158,14 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
 
   // final KE average 
   for (int i=0; i<srparams.num_bonds(); ++i) {
-    srparams.bond(i).spinon_ke() /= num_kpoints_;
+    cmplArray2D ke_matrix = srparams.bond(i).spinon_ke()/num_kpoints_;
+    if (spin_multiply_==2) {
+      int m = ke_matrix.rows()/2;
+      int n = ke_matrix.cols()/2;
+      ke_matrix.block(m,n,m,n) = ke_matrix.block(0,0,m,n);
+    }
+    srparams.bond(i).spinon_ke() = ke_matrix;
+    srparams.bond(i).set_spinon_renormalization();
     // print
     /*
     std::cout<<"bond-"<<i<<":"<<"\n";
@@ -168,7 +181,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
   //std::cout << "Exiting at Spinon::compute_averages\n"; exit(0);
 }
 
-void Spinon::construct_groundstate(void)
+void Spinon::construct_groundstate(const SR_Params& srparams)
 {
   if (have_TP_symmetry_) {
     /* Has T.P (Time Reversal * Inversion) symmetry. 
@@ -178,7 +191,7 @@ void Spinon::construct_groundstate(void)
     std::vector<double> ek;
     for (unsigned k=0; k<num_kpoints_; ++k) {
       Vector3d kvec = blochbasis_.kvector(k);
-      construct_kspace_block(kvec);
+      construct_kspace_block(srparams, kvec);
       es_k_up_.compute(quadratic_spinup_block(), Eigen::EigenvaluesOnly);
       ek.insert(ek.end(),es_k_up_.eigenvalues().data(),
         es_k_up_.eigenvalues().data()+kblock_dim_);
@@ -343,7 +356,7 @@ void Spinon::build_unitcell_terms(const lattice::LatticeGraph& graph)
   }
 }
 
-void Spinon::construct_kspace_block(const Vector3d& kvec)
+void Spinon::construct_kspace_block(const SR_Params& srparams, const Vector3d& kvec)
 {
   work.setZero(); 
   pairing_block_.setZero();
@@ -355,7 +368,21 @@ void Spinon::construct_kspace_block(const Vector3d& kvec)
       //std::cout << term.num_out_bonds() << "\n";
       for (unsigned i=0; i<term.num_out_bonds(); ++i) {
         Vector3d delta = term.bond_vector(i);
-        work += term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
+        // renormalization by bosonic order parameter
+        cmplArray2D boson_bond_avg = srparams.bond(i).boson_ke();
+        if (SO_coupling_) {
+          cmplArray2D term_matrix = term.coeff_matrix(i).array() * boson_bond_avg  
+                                    * std::exp(ii()*kvec.dot(delta));
+          work += term_matrix.matrix();
+        }
+        else {
+          int m = boson_bond_avg.rows()/2;
+          int n = boson_bond_avg.cols()/2;
+          cmplArray2D term_matrix = term.coeff_matrix(i).array()  
+                                    * boson_bond_avg.block(0,0,m,n)  
+                                    * std::exp(ii()*kvec.dot(delta));
+          work += term_matrix.matrix();
+        }
         //std::cout << "delta = " << delta.transpose() << "\n"; getchar();
       }
     }

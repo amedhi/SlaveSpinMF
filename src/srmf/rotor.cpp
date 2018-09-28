@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-27 22:47:30
+* @Last Modified time: 2018-09-28 23:39:28
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -126,6 +126,7 @@ void Rotor::solve(SR_Params& srparams)
   cmplArray1D order_params_diff(num_sites_*site_dim_);
 
   int max_iter = 100;
+  bool converged = false;
   for (int iter=0; iter<max_iter; ++iter) {
     // update 'renormalized site couplings' for the new 'order parameters'
     set_site_couplings(srparams, trial_order_params);
@@ -138,8 +139,8 @@ void Rotor::solve(SR_Params& srparams)
     for (auto& cluster : clusters_) {
       cluster.update_hamiltonian(lm_params_);
     }
-    // calculate new QP weights
-    update_order_params();
+    // calculate new site op-s
+    update_site_order_params();
     // check convergence
     int i = 0;
     for (unsigned site=0; site<num_sites_; ++site) {
@@ -149,22 +150,51 @@ void Rotor::solve(SR_Params& srparams)
       }
     }
     double norm = order_params_diff.abs2().maxCoeff();
-    std::cout << "iter = " << iter+1 << ", norm = " << norm << "\n";
-    if (norm<1.0E-6) break;
+    std::cout << "boson iter = " << iter+1 << ", norm = " << norm << "\n";
+    if (norm<1.0E-6) {
+      converged = true;
+      break;
+    } 
     // continue
     for (unsigned site=0; site<num_sites_; ++site) {
       trial_order_params[site] = site_order_params_[site];
     }
   }
-  std::cout<<"Bosons converged!\n";
+  if (converged) std::cout<<"Bosons converged!\n";
   // QP weights
   for (int site=0; site<num_sites_; ++site) {
     qp_weights_[site] = site_order_params_[site].abs2();
     std::cout<<"Z["<<site<<"] = "<< qp_weights_[site].transpose()<<"\n";
   }
   // bond ke parameters
-  //eval_bond_ke();
+  update_bond_order_params(srparams);
 }
+
+void Rotor::update_bond_order_params(SR_Params& srparams) 
+{
+  // Renormalizing field on each site due to hopping terms from the 'bath'
+  cmplArray2D bond_op(site_dim_,site_dim_);
+  if (cluster_type_==cluster_t::SITE) {
+    for (int i=0; i<srparams.num_bonds(); ++i) {
+      auto s = srparams.bond(i).src();
+      auto t = srparams.bond(i).tgt();
+      for (int m=0; m<site_dim_; ++m) {
+        for (int n=0; n<site_dim_; ++n) {
+          bond_op(m,n) = site_order_params_[s](m) * site_order_params_[t](n);
+        }
+      }
+      srparams.bond(i).boson_ke() = bond_op;
+      //std::cout << "bond_op["<<i<<"] =\n" << bond_op << "\n";
+    }
+  }
+  else if (cluster_type_ == cluster_t::BOND) {
+  }
+  else if (cluster_type_ == cluster_t::CELL) {
+  }
+  else {
+  }
+}
+
 
 int gsl_problem_equation(const gsl_vector* x, void* parms, gsl_vector* f)
 {
@@ -227,7 +257,7 @@ void Rotor::update_lm_params(void)
   }
 }
 
-void Rotor::update_order_params(void)
+void Rotor::update_site_order_params(void)
 {
   // calculate <O+> 
   for (auto& cluster : clusters_) {
@@ -246,49 +276,17 @@ void Rotor::set_bond_couplings(const SR_Params& srparams)
   assert(2*num_orb == static_cast<int>(site_dim_));
 
   for (int i=0; i<num_bonds_; ++i) {
-    renorm_bond_couplings_[i].setZero();
+    /*renorm_bond_couplings_[i].setZero();
     auto bfield_spinUP = srparams.bond(i).spinon_ke() * srparams.bond(i).term_cc(0);
     // first diagonal block for spin-UP
     renorm_bond_couplings_[i].block(0,0,num_orb,num_orb) = bfield_spinUP;
     // second diagonal block for spin-DN
     // assuming spin-UP and DN symmetry
     renorm_bond_couplings_[i].block(num_orb,num_orb,num_orb,num_orb) = bfield_spinUP;
-    //std::cout << "bond_field["<<i<<"]="<< renorm_bond_couplings_[i] << "\n";
+    */
+    renorm_bond_couplings_[i] = srparams.bond(i).spinon_renormed_cc(0);
+    //std::cout << "bond_field["<<i<<"]="<< renorm_bond_couplings_[i] << "\n"; getchar();
   }
-
-  /*
-  // Renormalizing field on each site due to hopping from the 'bath'
-  ArrayXcd tchi_field(site_dim_);
-  if (cluster_type_==cluster_t::SITE) {
-    for (int i=0; i<num_sites_; ++i) {
-      ArrayXcd tchi_sum = ArrayXcd::Zero(num_orb);
-      for (const auto& b: srparams.site(i).connected_bonds()) {
-        // t * chi product for UP-spins
-        auto tchi_UP = srparams.bond(b).spinon_ke() * srparams.bond(b).term_cc(0);
-        // partial sum over 'orbital' index of the neighbour site
-        auto tchi_orbital_sum = tchi_UP.rowwise().sum();
-        // sum over all neighbouring sites
-        if (srparams.site(i).is_outgoing_bond(b)) {
-          tchi_sum += tchi_orbital_sum;
-        }
-        else {
-          tchi_sum += tchi_orbital_sum.conjugate();
-        }
-      }
-      // Assuming spin-UP and DN symmetry
-      for (int j=0; j<num_orb; ++j) tchi_field(j) = tchi_sum(j); 
-      for (int j=num_orb; j<site_dim_; ++j) tchi_field(j) = tchi_sum(j-num_orb); 
-      renorm_site_couplings_[i] = tchi_field;
-      //std::cout << "site field ["<<i<<"] = " << tchi_field.transpose() << "\n"; 
-    }
-  }
-  else if (cluster_type_ == cluster_t::BOND) {
-  }
-  else if (cluster_type_ == cluster_t::CELL) {
-  }
-  else {
-  }
-  */
 }
 
 void Rotor::set_site_couplings(const SR_Params& srparams, 

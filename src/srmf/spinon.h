@@ -62,7 +62,7 @@ public:
   void update(const input::Parameters& inputs);
   void update_terms(void) override;
   void update_site_parameter(const std::string& pname, const double& pvalue);
-  void construct_kspace_block(const Vector3d& kvec);
+  void construct_kspace_block(const SR_Params& srparams, const Vector3d& kvec);
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
 private:
@@ -70,14 +70,15 @@ private:
   std::vector<UnitcellTerm> usite_terms_;
   std::vector<UnitcellTerm> ubond_terms_;
   basis::BlochBasis blochbasis_;
-  // matrices in kspace representation
+  bool have_TP_symmetry_{true};
+  bool SO_coupling_{false};
+  unsigned spin_multiply_{2};
   unsigned num_sites_{0};
   unsigned num_bonds_{0};
   unsigned num_kpoints_{0};
   unsigned kblock_dim_{0};
   unsigned num_basis_sites_{0};
-  //unsigned dim_{0};
-  bool have_TP_symmetry_{true};
+  // matrices in kspace representation
   ComplexMatrix quadratic_block_up_;
   ComplexMatrix quadratic_block_dn_;
   ComplexMatrix pairing_block_;
@@ -101,7 +102,7 @@ private:
   void build_unitcell_terms(const lattice::LatticeGraph& graph);
   void update_unitcell_terms(void);
   void set_particle_num(const input::Parameters& inputs);
-  void construct_groundstate(void);
+  void construct_groundstate(const SR_Params& srparams);
   void compute_averages(const lattice::LatticeGraph& graph, SR_Params& srparams);
 };
 

@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-26 10:47:41
+* @Last Modified time: 2018-09-28 23:05:09
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"
@@ -47,8 +47,8 @@ int gsl_solver::find_root(void* params, int (*func) (const gsl_vector* x, void* 
     ++iter;
   }
   if (status != GSL_SUCCESS) {
-    std::cout << ">> gsl_solver::find_root: iteration exited with status = " 
-    << gsl_strerror(status) << "\n";
+    std::cout << ">> gsl_solver::find_root: iteration exited with status '" 
+    << gsl_strerror(status)<< "'\n";
   }
   // solution
   for (int i=0; i<ndim_; ++i) xvec[i] = gsl_vector_get(solver_.get()->x,i);
