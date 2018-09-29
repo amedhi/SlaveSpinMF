@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-28 23:39:28
+* @Last Modified time: 2018-09-29 15:00:55
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -20,7 +20,6 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   const lattice::LatticeGraph& graph, const SR_Params& srparams)
   //: rotor_graph_(graph)
 {
-  std::cout << "----Rotor::Rotor-------\n";
   // Rotor lattice has only one original lattice unit cell 
   num_sites_ = srparams.num_sites();
   num_bonds_ = srparams.num_bonds();
@@ -101,6 +100,14 @@ Rotor::Rotor(const input::Parameters& inputs, const model::Hamiltonian& model,
   */
 }
 
+void Rotor::update(const model::Hamiltonian& model)
+{
+  double U = model.get_parameter_value("U");
+  for (auto& cluster : clusters_) {
+    cluster.update_parameters(U);
+  }
+}
+
 void Rotor::solve(SR_Params& srparams) 
 {
   // set constrained density
@@ -127,6 +134,7 @@ void Rotor::solve(SR_Params& srparams)
 
   int max_iter = 100;
   bool converged = false;
+  bool print_progress = false;
   for (int iter=0; iter<max_iter; ++iter) {
     // update 'renormalized site couplings' for the new 'order parameters'
     set_site_couplings(srparams, trial_order_params);
@@ -150,7 +158,9 @@ void Rotor::solve(SR_Params& srparams)
       }
     }
     double norm = order_params_diff.abs2().maxCoeff();
-    std::cout << "boson iter = " << iter+1 << ", norm = " << norm << "\n";
+    if (print_progress) {
+      std::cout << "boson iter = " << iter+1 << ", norm = " << norm << "\n";
+    }
     if (norm<1.0E-6) {
       converged = true;
       break;
@@ -160,13 +170,20 @@ void Rotor::solve(SR_Params& srparams)
       trial_order_params[site] = site_order_params_[site];
     }
   }
-  if (converged) std::cout<<"Bosons converged!\n";
+  if (converged) {
+    if(print_progress) std::cout<<"Bosons converged!\n";
+  } 
   // QP weights
   for (int site=0; site<num_sites_; ++site) {
     qp_weights_[site] = site_order_params_[site].abs2();
-    std::cout<<"Z["<<site<<"] = "<< qp_weights_[site].transpose()<<"\n";
+    //std::cout<<"Z["<<site<<"] = "<< qp_weights_[site].transpose()<<"\n";
   }
-  // bond ke parameters
+
+  // update boson parameters
+  for (int i=0; i<num_sites_; ++i) {
+    srparams.site(i).lm_params() = lm_params_[i];
+    srparams.site(i).qp_weights() = qp_weights_[i];
+  }
   update_bond_order_params(srparams);
 }
 
@@ -388,6 +405,23 @@ void Cluster::init_hamiltonian(const double& U, const real_siteparms_t& gauge_fa
     hmatrix_(i,i) = interaction_elems_(i) + lagrange_elems_(i);
   }
   //std::cout << "cluster_mat =\n" << hmatrix_ << "\n";
+}
+
+void Cluster::update_parameters(const double& U)
+{
+  // interaction matrix elements
+  double U_half = 0.5 * U;
+  double mat_elem;
+  SlaveSpinBasis::idx_t i, j;
+  for (i=0; i<basis_dim_; ++i) {
+    double total_Sz = 0.0;
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(mat_elem,j) = basis_.apply_Sz(site_,alpha,i);
+      total_Sz += mat_elem;
+    }
+    interaction_elems_(i) = U_half * total_Sz  * total_Sz;
+    //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
+  }
 }
 
 // update for new 'site_couplings'

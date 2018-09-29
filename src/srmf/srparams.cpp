@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-28 23:33:04
+* @Last Modified time: 2018-09-29 13:18:35
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "srparams.h"
@@ -135,42 +135,20 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
     }
   }
   num_bonds_ = bonds_.size();
-
-
-  /*
-  // storages
-  sp_bond_ke_.resize(num_bonds_);
-  for (int i=0; i<num_bonds_; ++i) {
-    int rows = bonds_[i].src_state_indices().size();
-    int cols = bonds_[i].tgt_state_indices().size();
-    sp_bond_ke_[i].resize(rows,cols);
-  }
-
-  sp_site_density_.resize(num_sites_);
-  for (int i=0; i<num_sites_; ++i) {
-    sp_site_density_[i].resize(graph.site_dim(i));
-  }
-
-  //bond_tchi_.resize(num_bonds_);
-  rbond_avg_.resize(num_bonds_);
-  ssite_avg_.resize(num_sites_);
-  rsite_avg_.resize(num_sites_);
-  spinon_site_density_.resize(num_sites_);
-
-  for (int i=0; i<num_bonds_; ++i) {
-    //bond_tchi_[i] = 1.0;
-    rbond_avg_[i] = 1.0;
-  }
-  for (int i=0; i<num_sites_; ++i) {
-    ssite_avg_[i] = 0.0;
-    rsite_avg_[i] = 0.0;
-    spinon_site_density_[i] = 1.0;
-  }
-
-  // spinon density
-  */
 }
 
+void SR_Params::init_mf_params(void)
+{
+  for (unsigned i=0; i<num_sites_; ++i) {
+    sites_[i].lm_params().setZero();
+    sites_[i].qp_weights().setOnes();
+  }
+  for (unsigned i=0; i<num_bonds_; ++i) {
+    bonds_[i].boson_ke().setOnes();
+    bonds_[i].spinon_ke().setOnes();
+    bonds_[i].set_spinon_renormalization();
+  }
+}
 
 
 } // end namespace srmf

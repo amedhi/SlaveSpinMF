@@ -24,6 +24,9 @@ SRMF::SRMF(const input::Parameters& inputs)
 
 int SRMF::run(const input::Parameters& inputs) 
 {
+  spinon_.update(inputs);
+  rotor_.update(spinon_);
+
   //sr_parms_.
   cmpl_bondparms_t boson_ke(sr_parms_.num_bonds());
   cmpl_bondparms_t spinon_ke(sr_parms_.num_bonds());
@@ -31,12 +34,15 @@ int SRMF::run(const input::Parameters& inputs)
   cmpl_bondparms_t diff_spinon_ke(sr_parms_.num_bonds());
   realArray1D boson_ke_norm(sr_parms_.num_bonds());
   realArray1D spinon_ke_norm(sr_parms_.num_bonds());
+
+  sr_parms_.init_mf_params();
   for (int i=0; i<sr_parms_.num_bonds(); ++i) {
-    sr_parms_.bond(i).set_spinon_ke();
-    sr_parms_.bond(i).set_boson_ke();
+    //sr_parms_.bond(i).set_spinon_ke();
+    //sr_parms_.bond(i).set_boson_ke();
     spinon_ke[i] = sr_parms_.bond(i).spinon_ke();
     boson_ke[i] = sr_parms_.bond(i).boson_ke();
   }
+
 
   int max_sb_iter = 10;
   bool converged = false;
@@ -53,7 +59,7 @@ int SRMF::run(const input::Parameters& inputs)
     double sp_norm = spinon_ke_norm.maxCoeff();
     double sb_norm = boson_ke_norm.maxCoeff();
 
-    std::cout<<"ssmf iter="<<iter+1<<", norm=("<<sp_norm<<","<<sb_norm<<")\n";
+    //std::cout<<"ssmf iter="<<iter+1<<", norm=("<<sp_norm<<","<<sb_norm<<")\n";
     if (sp_norm<1.0E-6 && sb_norm<1.0E-6) {
       converged = true;
       break;
@@ -65,7 +71,15 @@ int SRMF::run(const input::Parameters& inputs)
       boson_ke[i] = sr_parms_.bond(i).boson_ke();
     }
   }
-  if (converged) std::cout<<"ssmf converged!\n";
+  //if (converged) std::cout<<"ssmf converged!\n";
+
+  std::cout<<spinon_.get_parameter_value("U")<<"  ";
+  for (int i=0; i<sr_parms_.num_sites(); ++i) {
+    //std::cout<<"Z["<<i<<"] = "<< sr_parms_.site(i).qp_weights().transpose()<<"\n";
+    std::cout<<sr_parms_.site(i).qp_weights().transpose()<<"\n";
+  }
+
+
   return 0;
 }
 

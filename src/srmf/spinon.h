@@ -95,6 +95,7 @@ private:
   double last_hole_doping_{10.39}; // unlikely input
   double band_filling_{1.0};
   double fermi_energy_;
+  bool degeneracy_warning_{false};
   struct kshell_t {unsigned k; unsigned nmin; unsigned nmax;};
   std::vector<kshell_t> kshells_up_;
   std::vector<kshell_t> kshells_dn_;

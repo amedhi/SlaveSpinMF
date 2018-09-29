@@ -59,6 +59,12 @@ int Spinon::finalize(const lattice::LatticeGraph& graph)
   return 0;
 }
 
+void Spinon::update(const input::Parameters& inputs)
+{
+  Model::update_parameters(inputs);
+  update_terms();
+}
+
 void Spinon::solve(const lattice::LatticeGraph& graph, SR_Params& srparams)
 {
   construct_groundstate(srparams);
@@ -231,8 +237,10 @@ void Spinon::construct_groundstate(const SR_Params& srparams)
         num_valence_particle++;
       }
       // warn
-      std::cout << ">> warning: Spinon groundstate degeneracy: " << 2*num_valence_particle <<
-        " particles in " << 2*num_degen_states << " states." << "\n";
+      if (degeneracy_warning_) {
+        std::cout << ">> warning: Spinon groundstate degeneracy: " << 2*num_valence_particle <<
+          " particles in " << 2*num_degen_states << " states." << "\n";
+      }
     }
     /* 
       Filled k-shells. A k-shell is a group of energy levels having same 
@@ -303,12 +311,6 @@ void Spinon::set_particle_num(const input::Parameters& inputs)
   std::cout << "N_up = " << num_upspins_ << "\n";
   std::cout << "N_dn = " << num_dnspins_ << "\n";
   */
-}
-
-void Spinon::update(const input::Parameters& inputs)
-{
-  Model::update_parameters(inputs);
-  update_terms();
 }
 
 void Spinon::update_terms(void)
@@ -404,6 +406,18 @@ void Spinon::construct_kspace_block(const SR_Params& srparams, const Vector3d& k
       //std::cout << " sterm =" << term.coeff_matrix() << "\n"; getchar();
     }
   }
+  // LM parameters/chemical potential
+  // site density
+  for (int i=0; i<srparams.num_sites(); ++i) {
+    unsigned site_dim = srparams.site(i).dim();
+    realArray1D lm_params = srparams.site(i).lm_params(); 
+    for (unsigned m=0; m<site_dim; ++m) {
+      auto n = srparams.site(i).state_indices()[m];
+      quadratic_block_up_(n,n) += -lm_params(m);
+      //std::cout << "lamba["<<n<<"] = " << lm_params[m] << "\n"; 
+    }
+  }
+
   //quadratic_block_up_ += work1.adjoint();
   //pairing_block_ = work2;
   //pairing_block_ += work2.adjoint();

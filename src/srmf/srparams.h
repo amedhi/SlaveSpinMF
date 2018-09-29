@@ -48,6 +48,7 @@ public:
     std::iota(spin_orbitals_.begin(), spin_orbitals_.end(), 0);
     spinon_density_.resize(spin_orbitals_.size());
     boson_density_.resize(spin_orbitals_.size());
+    lm_params_.resize(spin_orbitals_.size());
   }
   void clear(void) { connected_bonds_.clear(); inout_types_.clear(); }
   const unsigned& type(void) const { return type_; }
@@ -59,6 +60,10 @@ public:
   const idx_list& connected_bonds(void) const { return connected_bonds_; }
   bool is_outgoing_bond(const unsigned& i) const { return inout_types_[i]; }
   realArray1D& spinon_density(void) { return spinon_density_; }
+  realArray1D& lm_params(void) { return lm_params_; }
+  const realArray1D& lm_params(void) const { return lm_params_; }
+  realArray1D& qp_weights(void) { return qp_weights_; }
+  const realArray1D& qp_weights(void) const { return qp_weights_; }
 private:
   unsigned type_;
   unsigned dim_;
@@ -68,6 +73,8 @@ private:
   std::vector<bool> inout_types_;
   realArray1D spinon_density_;
   realArray1D boson_density_;
+  realArray1D lm_params_;
+  realArray1D qp_weights_;
 };
 
 class sr_bond
@@ -133,6 +140,7 @@ public:
     const model::Hamiltonian& model);
   ~SR_Params() {}
   //int init(const lattice::Lattice& lattice) override;
+  void init_mf_params(void);
   const unsigned& num_sites(void) const { return num_sites_; }
   const unsigned& num_bonds(void) const { return num_bonds_; }
   const sr_site& site(const unsigned& i) const { return sites_[i]; }

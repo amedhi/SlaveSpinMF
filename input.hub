@@ -36,12 +36,12 @@ bc2 = "periodic"
 #model = "tJ"
 model = "HUBBARD"
 t = 1.0
-U = 0.0
+U = 0.0, 0.1, 7.0
 
 #---------------------------------------------
 # Variational wavefunction
 #---------------------------------------------
-hole_doping = 0.18 
+hole_doping = 0 # 0.18 
 
 #---------------------------------------------
 # List of observable to calculate:

@@ -66,6 +66,7 @@ public:
   ~Cluster() {}
   void init_hamiltonian(const double& U, const real_siteparms_t& gauge_factors, 
     const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& site_fields);
+  void update_parameters(const double& U);
   void update_hamiltonian(const real_siteparms_t& new_lm_params);
   void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
@@ -96,6 +97,7 @@ public:
   Rotor(const input::Parameters& inputs, const model::Hamiltonian& model, 
     const lattice::LatticeGraph& graph, const SR_Params& srparams);
   ~Rotor() {}
+  void update(const model::Hamiltonian& model);
   void solve(SR_Params& srparams);
   //int init(const lattice::Lattice& lattice) override;
   //int finalize(const lattice::LatticeGraph& graph);
