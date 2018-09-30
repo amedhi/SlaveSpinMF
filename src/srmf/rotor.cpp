@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-29 15:00:55
+* @Last Modified time: 2018-09-30 09:57:14
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "rotor.h"
@@ -116,6 +116,7 @@ void Rotor::solve(SR_Params& srparams)
   }
   // gauge factors
   for (int site=0; site<num_sites_; ++site) {
+    //std::cout << "nf["<<site<<"] = "<<spinon_density_[site].transpose()<<"\n";
     for (auto alpha : spin_orbitals_) {
       double nf = spinon_density_[site][alpha];
       gauge_factors_[site][alpha] = 1.0/std::sqrt(nf*(1.0-nf))-1.0;
@@ -183,6 +184,8 @@ void Rotor::solve(SR_Params& srparams)
   for (int i=0; i<num_sites_; ++i) {
     srparams.site(i).lm_params() = lm_params_[i];
     srparams.site(i).qp_weights() = qp_weights_[i];
+    //std::cout<<"lambda["<<i<<"] = "<< lm_params_[i].transpose()<<"\n";
+    //std::cout<<"Z["<<i<<"] = "<< qp_weights_[i].transpose()<<"\n";
   }
   update_bond_order_params(srparams);
 }
@@ -318,15 +321,25 @@ void Rotor::set_site_couplings(const SR_Params& srparams,
       auto t = bond.tgt();
 
       // partial sum over 'orbital' index of the neighbour site
-      auto tchi_sum = renorm_bond_couplings_[id++].rowwise().sum();
+      //auto tchi_sum = renorm_bond_couplings_[id++].rowwise().sum();
+      auto tchi_phi = renorm_bond_couplings_[id++].rowwise()*site_order_params[s].transpose();
+      auto tchi_phi_sum = tchi_phi.rowwise().sum();
+      /*std::cout << "chi=\n"<<renorm_bond_couplings_[id-1]<<"\n";
+      std::cout << "phi="<<site_order_params[s].transpose()<<"\n";
+      std::cout << "tchi=\n"<<tchi_phi<<"\n";
+      std::cout << "tchi_sum=\n"<<tchi_phi_sum.transpose()<<"\n\n\n";
+      getchar();
+      */
 
       // sum over all neighbouring sites
-      renorm_site_couplings_[s] += tchi_sum * site_order_params[t];
-      renorm_site_couplings_[t] += tchi_sum.conjugate() * site_order_params[s];
+      renorm_site_couplings_[s] += tchi_phi_sum; // * site_order_params[t];
+      renorm_site_couplings_[t] += tchi_phi_sum.conjugate(); // * site_order_params[s];
     }
-    //for (int i=0; i<num_sites_; ++i) {
-    //  std::cout << "site field ["<<i<<"] = " << renorm_site_couplings_[i].transpose() << "\n"; 
-    //}
+    /*for (int i=0; i<num_sites_; ++i) {
+      std::cout << "site field ["<<i<<"] = " << renorm_site_couplings_[i].transpose() << "\n"; 
+    }
+    getchar();
+    */
   }
   else if (cluster_type_ == cluster_t::BOND) {
   }
