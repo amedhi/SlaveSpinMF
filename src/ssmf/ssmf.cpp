@@ -8,7 +8,7 @@
 *----------------------------------------------------------------------------*/
 #include <iomanip>
 #include <fstream>
-#include "srmf.h"
+#include "ssmf.h"
 
 namespace srmf {
 

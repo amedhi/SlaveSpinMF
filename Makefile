@@ -27,12 +27,12 @@ SRCS+= model/strmatrix.cpp
 SRCS+= model/hamiltonian_term.cpp
 SRCS+= model/model.cpp
 SRCS+= model/modellibrary.cpp
-SRCS+= srmf/sb_params.cpp
-SRCS+= srmf/boson_basis.cpp
-SRCS+= srmf/root_solver.cpp
-SRCS+= srmf/slavespin.cpp
-SRCS+= srmf/spinon.cpp
-SRCS+= srmf/srmf.cpp
+SRCS+= ssmf/sb_params.cpp
+SRCS+= ssmf/boson_basis.cpp
+SRCS+= ssmf/root_solver.cpp
+SRCS+= ssmf/slavespin.cpp
+SRCS+= ssmf/spinon.cpp
+SRCS+= ssmf/ssmf.cpp
 SRCS+= main.cpp
 VMC_SRCS = $(addprefix src/,$(SRCS))
 #-------------------------------------------------------------
@@ -55,7 +55,7 @@ HDRS=    scheduler/mpi_comm.h \
 	 srmf/root_solver.h \
 	 srmf/slavespin.h \
 	 srmf/spinon.h \
-	 srmf/srmf.h 
+	 srmf/ssmf.h 
 #         expression/expression.h expression/shunting_yard.h \
          expression/tokens.h expression/functions.h expression/objects.h \
          expression/pack.h \

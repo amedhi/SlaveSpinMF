@@ -7,6 +7,6 @@
 #define __SRMF_PLUS_PLUS_H
 
 #include "./scheduler/scheduler.h"
-#include "./srmf/srmf.h"
+#include "./ssmf/ssmf.h"
 
 #endif
