@@ -14,7 +14,7 @@
 namespace srmf {
 
 Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model, 
-    const lattice::LatticeGraph& graph, const SR_Params& srparams)
+    const lattice::LatticeGraph& graph, const SB_Params& srparams)
 : model::Hamiltonian(model)
 , blochbasis_(graph)
 {
@@ -65,15 +65,16 @@ void Spinon::update(const input::Parameters& inputs)
   update_terms();
 }
 
-void Spinon::solve(const lattice::LatticeGraph& graph, SR_Params& srparams)
+void Spinon::solve(const lattice::LatticeGraph& graph, SB_Params& srparams)
 {
   construct_groundstate(srparams);
   compute_averages(graph, srparams);
 }
 
-void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srparams)
+void Spinon::compute_averages(const lattice::LatticeGraph& graph, SB_Params& srparams)
 {
-  Eigen::VectorXcd amplitude_vec1, amplitude_vec2;
+  //Eigen::VectorXcd amplitude_vec1, amplitude_vec2;
+  Eigen::Matrix<std::complex<double>,1,Eigen::Dynamic> amplitude_vec1, amplitude_vec2;
   for (int i=0; i<srparams.num_sites(); ++i) {
     srparams.site(i).spinon_density().setZero();
   }
@@ -90,7 +91,8 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
       // site density
       unsigned nmin = kshells_up_[i].nmin;
       unsigned nmax = kshells_up_[i].nmax;
-      Eigen::VectorXcd eigvec_wt(nmax-nmin+1);
+      unsigned nbands = nmax-nmin+1;
+      Eigen::VectorXcd eigvec_wt(nbands);
       for (int j=0; j<srparams.num_sites(); ++j) {
         unsigned site_dim = srparams.site(j).dim();
         realArray1D n_avg(spin_multiply_*site_dim); 
@@ -106,8 +108,8 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
       }
 
       // bond averages
-      amplitude_vec1.resize(nmax-nmin+1);
-      amplitude_vec2.resize(nmax-nmin+1);
+      amplitude_vec1.resize(nbands);
+      amplitude_vec2.resize(nbands);
       for (int j=0; j<srparams.num_bonds(); ++j) {
         Vector3d delta = srparams.bond(j).vector();
         std::complex<double> exp_kdotr = std::exp(ii()*kvec.dot(delta));
@@ -116,18 +118,21 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
         unsigned rows = srparams.site(src).dim();
         unsigned cols = srparams.site(tgt).dim();
         //sr_bond bond(srparams.bonds()[j]);
-        cmplArray2D ke_matrix(spin_multiply_*rows, spin_multiply_*cols);
-        ke_matrix.setZero();
+        cmplArray2D ke_matrix=cmplArray2D::Zero(spin_multiply_*rows, spin_multiply_*cols);
         for (unsigned m=0; m<rows; ++m) {
           auto ii = srparams.site(src).state_indices()[m];
+          amplitude_vec1 = es_k_up_.eigenvectors().block(ii,nmin,1,nbands);
           for (unsigned n=0; n<cols; ++n) {
             auto jj = srparams.site(tgt).state_indices()[n];
-            std::complex<double> chi_sum(0.0);
-            for (unsigned band=nmin; band<=nmax; ++band) {
-              chi_sum += exp_kdotr * std::conj(es_k_up_.eigenvectors().row(ii)[band]) * 
-                     es_k_up_.eigenvectors().row(jj)[band];
-            }
-            ke_matrix(m,n) = chi_sum;
+            amplitude_vec2 = es_k_up_.eigenvectors().block(jj,nmin,1,nbands);
+            std::complex<double> chi_sum = amplitude_vec1.dot(amplitude_vec2);
+            ke_matrix(m,n) = exp_kdotr * chi_sum;
+            //std::complex<double> chi_sum(0.0);
+            //for (unsigned band=nmin; band<=nmax; ++band) {
+            //  chi_sum += exp_kdotr * std::conj(es_k_up_.eigenvectors().row(ii)[band]) * 
+            //         es_k_up_.eigenvectors().row(jj)[band];
+            //}
+            //ke_matrix(m,n) = chi_sum;
           }
         }
         srparams.bond(j).spinon_ke() += ke_matrix;
@@ -169,12 +174,13 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
       int m = ke_matrix.rows()/2;
       int n = ke_matrix.cols()/2;
       ke_matrix.block(m,n,m,n) = ke_matrix.block(0,0,m,n);
+      ke_matrix.block(0,n,m,n) = cmplArray2D::Zero(m,n);
+      ke_matrix.block(m,0,m,n) = cmplArray2D::Zero(m,n);
     }
     srparams.bond(i).spinon_ke() = ke_matrix;
     srparams.bond(i).set_spinon_renormalization();
     // print
-    /*
-    std::cout<<"bond-"<<i<<":"<<"\n";
+    /*std::cout<<"bond-"<<i<<":"<<"\n";
     for (int m=0; m<srparams.bond(i).spinon_ke().rows(); ++m) {
       for (int n=0; n<srparams.bond(i).spinon_ke().cols(); ++n) {
         std::cout << "chi["<<m<<","<<n<<"] = " << srparams.bond(i).spinon_ke()(m,n) << "\n";
@@ -183,11 +189,10 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SR_Params& srp
     std::cout << "\n";
     */
   }
-
   //std::cout << "Exiting at Spinon::compute_averages\n"; exit(0);
 }
 
-void Spinon::construct_groundstate(const SR_Params& srparams)
+void Spinon::construct_groundstate(const SB_Params& srparams)
 {
   if (have_TP_symmetry_) {
     /* Has T.P (Time Reversal * Inversion) symmetry. 
@@ -217,6 +222,14 @@ void Spinon::construct_groundstate(const SR_Params& srparams)
     /*for (int i=0; i<ek.size(); ++i) {
       std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << "\n";
     }*/
+    // mean energy
+    /*double e0 = 0.0;
+    for (int i=0; i<num_upspins_; ++i) {
+      e0 += ek[idx[i]];
+    }
+    e0 = 2 * e0 / num_sites_;
+    std::cout << "e0 = " << e0 << "\n"; getchar();
+    */
 
     // check for degeneracy 
     double degeneracy_tol = 1.0E-12;
@@ -358,7 +371,7 @@ void Spinon::build_unitcell_terms(const lattice::LatticeGraph& graph)
   }
 }
 
-void Spinon::construct_kspace_block(const SR_Params& srparams, const Vector3d& kvec)
+void Spinon::construct_kspace_block(const SB_Params& srparams, const Vector3d& kvec)
 {
   work.setZero(); 
   pairing_block_.setZero();
@@ -384,6 +397,9 @@ void Spinon::construct_kspace_block(const SR_Params& srparams, const Vector3d& k
                                     * boson_bond_avg.block(0,0,m,n)  
                                     * std::exp(ii()*kvec.dot(delta));
           work += term_matrix.matrix();
+          //std::cout << "t = " << term.coeff_matrix(i).array() << "\n";
+          //std::cout << "tB = " << term.coeff_matrix(i).array()* boson_bond_avg.block(0,0,m,n) << "\n";
+          //getchar();
         }
         //std::cout << "delta = " << delta.transpose() << "\n"; getchar();
       }

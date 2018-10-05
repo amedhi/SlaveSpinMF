@@ -17,15 +17,15 @@ SRMF::SRMF(const input::Parameters& inputs)
   //, blochbasis_(graph_)
   , model_(inputs, graph_.lattice())
   , sr_parms_(inputs, graph_,model_)
-  , spinon_(inputs,model_,graph_,sr_parms_)
-  , rotor_(inputs,model_,graph_,sr_parms_)
+  , spinon_model_(inputs,model_,graph_,sr_parms_)
+  , boson_model_(inputs,model_,graph_,sr_parms_)
 {
 }
 
 int SRMF::run(const input::Parameters& inputs) 
 {
-  spinon_.update(inputs);
-  rotor_.update(spinon_);
+  spinon_model_.update(inputs);
+  boson_model_.update(spinon_model_);
 
   //sr_parms_.
   cmpl_bondparms_t boson_ke(sr_parms_.num_bonds());
@@ -43,12 +43,11 @@ int SRMF::run(const input::Parameters& inputs)
     boson_ke[i] = sr_parms_.bond(i).boson_ke();
   }
 
-
   int max_sb_iter = 10;
   bool converged = false;
   for (int iter=0; iter<max_sb_iter; ++iter) {
-    spinon_.solve(graph_, sr_parms_);
-    rotor_.solve(sr_parms_);
+    spinon_model_.solve(graph_, sr_parms_);
+    boson_model_.solve(sr_parms_);
     // check convergence
     for (int i=0; i<sr_parms_.num_bonds(); ++i) {
       diff_spinon_ke[i] = spinon_ke[i] - sr_parms_.bond(i).spinon_ke();
@@ -73,7 +72,7 @@ int SRMF::run(const input::Parameters& inputs)
   }
   //if (converged) std::cout<<"ssmf converged!\n";
 
-  std::cout<<spinon_.get_parameter_value("U")<<"  ";
+  std::cout<<spinon_model_.get_parameter_value("U")<<"  ";
   for (int i=0; i<sr_parms_.num_sites(); ++i) {
     //std::cout<<"Z["<<i<<"] = "<< sr_parms_.site(i).qp_weights().transpose()<<"\n";
     std::cout<<sr_parms_.site(i).qp_weights().transpose()<<"\n";

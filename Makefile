@@ -27,10 +27,10 @@ SRCS+= model/strmatrix.cpp
 SRCS+= model/hamiltonian_term.cpp
 SRCS+= model/model.cpp
 SRCS+= model/modellibrary.cpp
-SRCS+= srmf/srparams.cpp
-SRCS+= srmf/rbasis_states.cpp
+SRCS+= srmf/sb_params.cpp
+SRCS+= srmf/boson_basis.cpp
 SRCS+= srmf/root_solver.cpp
-SRCS+= srmf/rotor.cpp
+SRCS+= srmf/slavespin.cpp
 SRCS+= srmf/spinon.cpp
 SRCS+= srmf/srmf.cpp
 SRCS+= main.cpp
@@ -50,10 +50,10 @@ HDRS=    scheduler/mpi_comm.h \
          model/strmatrix.h model/modelparams.h  model/quantum_op.h \
 	 model/hamiltonian_term.h \
 	 model/model.h \
-	 srmf/srparams.h \
-	 srmf/rbasis_states.h \
+	 srmf/sb_params.h \
+	 srmf/boson_basis.h \
 	 srmf/root_solver.h \
-	 srmf/rotor.h \
+	 srmf/slavespin.h \
 	 srmf/spinon.h \
 	 srmf/srmf.h 
 #         expression/expression.h expression/shunting_yard.h \

@@ -5,8 +5,8 @@
 * @Last Modified time: 2018-04-19 11:26:10
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
-#ifndef ROTOR_H
-#define ROTOR_H
+#ifndef SLAVESPIN_H
+#define SLAVESPIN_H
 
 #include <iostream>
 #include <string>
@@ -20,8 +20,8 @@
 #include "../lattice/matrix.h"
 //#include "../model/quantum_op.h"
 #include "../model/model.h"
-#include "srparams.h"
-#include "rbasis_states.h"
+#include "sb_params.h"
+#include "boson_basis.h"
 #include "root_solver.h"
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
@@ -90,15 +90,15 @@ private:
 };
 
 
-class Rotor 
+class SlaveSpin 
 {
 public:
-  //Rotor() {}
-  Rotor(const input::Parameters& inputs, const model::Hamiltonian& model, 
-    const lattice::LatticeGraph& graph, const SR_Params& srparams);
-  ~Rotor() {}
+  //SlaveSpin() {}
+  SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& model, 
+    const lattice::LatticeGraph& graph, const SB_Params& srparams);
+  ~SlaveSpin() {}
   void update(const model::Hamiltonian& model);
-  void solve(SR_Params& srparams);
+  void solve(SB_Params& srparams);
   //int init(const lattice::Lattice& lattice) override;
   //int finalize(const lattice::LatticeGraph& graph);
   //void update(const input::Parameters& inputs);
@@ -109,8 +109,8 @@ private:
   //Model rotor_model_;
   unsigned num_sites_;
   unsigned num_bonds_;
-  std::vector<sr_site> sites_; 
-  std::vector<sr_bond> bonds_; 
+  std::vector<sb_site> sites_; 
+  std::vector<sb_bond> bonds_; 
 
   // clusters
   unsigned site_dim_;
@@ -150,15 +150,15 @@ private:
   //Eigen::SparseMatrix<double> work_;
   //ComplexMatrix psi_work2_;
   */
-  void make_clusters(const SR_Params& srparams);
-  void init_matrix_elems(const SR_Params& srparams);
-  void set_bond_couplings(const SR_Params& srparams);
-  void set_site_couplings(const SR_Params& srparams, 
+  void make_clusters(const SB_Params& srparams);
+  void init_matrix_elems(const SB_Params& srparams);
+  void set_bond_couplings(const SB_Params& srparams);
+  void set_site_couplings(const SB_Params& srparams, 
     const cmpl_siteparms_t& site_order_params);
   void set_site_fields(void);
   void update_lm_params(void);
   void update_site_order_params(void);
-  void update_bond_order_params(SR_Params& srparams);
+  void update_bond_order_params(SB_Params& srparams);
   int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);
   double solve_for_mu(void);
   void solve_clusters(void);

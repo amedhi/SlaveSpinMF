@@ -2,15 +2,15 @@
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-29 13:18:35
+* @Last Modified time: 2018-10-05 13:29:19
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
-#include "srparams.h"
+#include "sb_params.h"
 
 namespace srmf {
 
 //-------------------------SR_Bonds------------------------
-sr_bond::sr_bond(const unsigned& type, const unsigned& src, const unsigned& src_dim,
+sb_bond::sb_bond(const unsigned& type, const unsigned& src, const unsigned& src_dim,
   const unsigned& tgt, const unsigned& tgt_dim, const Vector3d& vector,
   const bool& SO_coupled)
   : type_{type}, src_{src}, tgt_{tgt}, vector_{vector}, SO_coupled_{SO_coupled}
@@ -29,7 +29,7 @@ sr_bond::sr_bond(const unsigned& type, const unsigned& src, const unsigned& src_
   boson_renormed_couplings_.clear();
 }
 
-void sr_bond::add_term_cc(const cmplArray2D& mat, const model::spin& s) 
+void sb_bond::add_term_cc(const cmplArray2D& mat, const model::spin& s) 
 { 
   term_couplings_.push_back(mat); 
   term_spins_.push_back(s);
@@ -43,7 +43,7 @@ void sr_bond::add_term_cc(const cmplArray2D& mat, const model::spin& s)
   boson_renormed_couplings_.push_back(cmplArray2D::Zero(m,n));
 }
 
-void sr_bond::set_spinon_renormalization(void)
+void sb_bond::set_spinon_renormalization(void)
 {
   if(SO_coupled_) {
     for (int i=0; i<term_couplings_.size(); ++i) {
@@ -63,15 +63,15 @@ void sr_bond::set_spinon_renormalization(void)
 }
 
 
-//-------------------------SR_Params------------------------
-SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph& graph,
+//-------------------------SB_Params------------------------
+SB_Params::SB_Params(const input::Parameters& inputs,const lattice::LatticeGraph& graph,
   const model::Hamiltonian& model)
 {
   SO_coupling_ = model.is_spinorbit_coupled();
-  //std::cout << "----SR_Params::SR_Params----\n";
+  //std::cout << "----SB_Params::SB_Params----\n";
   // sites in the unit cell
   num_sites_ = graph.lattice().num_basis_sites();
-  sr_site::idx_list state_indices;
+  sb_site::idx_list state_indices;
   sites_.clear();
   for (unsigned i=0; i<num_sites_; ++i) {
     unsigned type = graph.site_type(i);
@@ -137,7 +137,7 @@ SR_Params::SR_Params(const input::Parameters& inputs,const lattice::LatticeGraph
   num_bonds_ = bonds_.size();
 }
 
-void SR_Params::init_mf_params(void)
+void SB_Params::init_mf_params(void)
 {
   for (unsigned i=0; i<num_sites_; ++i) {
     sites_[i].lm_params().setZero();

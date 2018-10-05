@@ -26,17 +26,17 @@ using real_siteparms_t = std::vector<realArray1D>;
 using cmpl_siteparms_t = std::vector<cmplArray1D>;
 using cmpl_bondparms_t = std::vector<cmplArray2D>;
 
-class sr_site
+class sb_site
 {
 public:
   using idx_list = std::vector<unsigned>;
-  sr_site() : type_{0}, dim_{0} 
+  sb_site() : type_{0}, dim_{0} 
   {
     state_indices_.clear();
     connected_bonds_.clear();
     inout_types_.clear();
   } 
-  sr_site(const unsigned& type, const unsigned& dim, const idx_list& state_indices, 
+  sb_site(const unsigned& type, const unsigned& dim, const idx_list& state_indices, 
     const bool& SO_coupled)
     : type_{type}, dim_{dim}, state_indices_{state_indices}
   {
@@ -77,11 +77,11 @@ private:
   realArray1D qp_weights_;
 };
 
-class sr_bond
+class sb_bond
 {
 public:
   using idx_list = std::vector<unsigned>;
-  sr_bond(const unsigned& type, const unsigned& src, const unsigned& src_dim,
+  sb_bond(const unsigned& type, const unsigned& src, const unsigned& src_dim,
     const unsigned& tgt, const unsigned& tgt_dim, const Vector3d& vector,
     const bool& SO_coupled);
   void add_term_cc(const cmplArray2D& mat, const model::spin& s);
@@ -130,25 +130,25 @@ private:
   bool incoming_{false};
 };
 
-class SR_Params 
+class SB_Params 
 {
 public:
-  //using bond = sr_bond;
-  //using site = sr_site;
+  //using bond = sb_bond;
+  //using site = sb_site;
   using links = std::vector<site_link>;
-  SR_Params(const input::Parameters& inputs, const lattice::LatticeGraph& graph,
+  SB_Params(const input::Parameters& inputs, const lattice::LatticeGraph& graph,
     const model::Hamiltonian& model);
-  ~SR_Params() {}
+  ~SB_Params() {}
   //int init(const lattice::Lattice& lattice) override;
   void init_mf_params(void);
   const unsigned& num_sites(void) const { return num_sites_; }
   const unsigned& num_bonds(void) const { return num_bonds_; }
-  const sr_site& site(const unsigned& i) const { return sites_[i]; }
-  sr_site& site(const unsigned& i) { return sites_[i]; }
-  const sr_bond& bond(const unsigned& i) const { return bonds_[i]; }
-  sr_bond& bond(const unsigned& i) { return bonds_[i]; }
-  const std::vector<sr_site>& sites(void) const { return sites_; }
-  const std::vector<sr_bond>& bonds(void) const { return bonds_; }
+  const sb_site& site(const unsigned& i) const { return sites_[i]; }
+  sb_site& site(const unsigned& i) { return sites_[i]; }
+  const sb_bond& bond(const unsigned& i) const { return bonds_[i]; }
+  sb_bond& bond(const unsigned& i) { return bonds_[i]; }
+  const std::vector<sb_site>& sites(void) const { return sites_; }
+  const std::vector<sb_bond>& bonds(void) const { return bonds_; }
 
   //const std::vector<links>& site_links(void) const { return site_links_; }
   //cmplArray2D& sp_bond_ke(const int& i) { return sp_bond_ke_[i]; }
@@ -163,8 +163,8 @@ private:
   bool SO_coupling_{false};
   unsigned num_sites_{0}; // no of sites per unitcell
   unsigned num_bonds_{0}; // no of bonds connected to all sites in unitcell
-  std::vector<sr_site> sites_; // list of all sites in unitcell
-  std::vector<sr_bond> bonds_; // list of all bonds
+  std::vector<sb_site> sites_; // list of all sites in unitcell
+  std::vector<sb_bond> bonds_; // list of all bonds
   //std::vector<links> site_links_; // bonds connecting every site
   //cmplArray1D bond_tchi_;
   //std::vector<cmplArray2D> sp_bond_ke_;

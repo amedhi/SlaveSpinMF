@@ -14,8 +14,8 @@
 #include "../lattice/graph.h"
 //#include "../lattice/blochbasis.h"
 #include "../model/model.h"
-#include "srparams.h"
-#include "rotor.h"
+#include "sb_params.h"
+#include "slavespin.h"
 #include "spinon.h"
 
 namespace srmf {
@@ -35,9 +35,9 @@ private:
   lattice::LatticeGraph graph_;
   basis::BlochBasis blochbasis_;
   model::Hamiltonian model_;
-  SR_Params sr_parms_;
-  Spinon spinon_;
-  Rotor rotor_;
+  SB_Params sr_parms_;
+  Spinon spinon_model_;
+  SlaveSpin boson_model_;
   //unsigned num_kpoints_{1};
   //unsigned kblock_dim_{1};
   //mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up_;
