@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-10-05 12:09:13
+* @Last Modified time: 2018-10-25 22:37:19
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -29,7 +29,6 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
 
   // boson model parameters  
   double U = model.get_parameter_value("U");
-  U_half_ = 0.5 * U;
 
   // storages
   // Lagrange multipliers
@@ -110,8 +109,11 @@ void SlaveSpin::update(const model::Hamiltonian& model)
 void SlaveSpin::solve(SB_Params& srparams) 
 {
   // set constrained density
+  //realArray1D tmp(4);
+  //tmp(0)=0.121894; tmp(1)=0.87810; tmp(2)=0.121894; tmp(3)=0.87810;
   for (int i=0; i<num_sites_; ++i) {
     spinon_density_[i] = srparams.site(i).spinon_density();
+    //spinon_density_[i] = tmp;
   }
   // gauge factors
   for (int site=0; site<num_sites_; ++site) {
@@ -143,6 +145,12 @@ void SlaveSpin::solve(SB_Params& srparams)
     }
     // solve for new LM-parameters to satisfy the 'slave-spin constraint'
     update_lm_params();
+    /*for (int site=0; site<num_sites_; ++site) {
+      std::cout<<"lambda["<<site<<"] = "<< lm_params_[site].transpose()<<"\n";
+    }
+    getchar();
+    */
+
     // update cluster hamiltonians for new LM-parameters
     for (auto& cluster : clusters_) {
       cluster.update_hamiltonian(lm_params_);
@@ -240,11 +248,16 @@ int SlaveSpin::constraint_equation(const std::vector<double>& x, std::vector<dou
       //std::cout << "lambda = " << lm_params_[site][alpha] << "\n";
     }
   }
+  //getchar();
   // calculate <Sz> for the new parameters
   for (auto& cluster : clusters_) {
       cluster.update_hamiltonian(lm_params_);
       cluster.solve_hamiltonian();
       cluster.get_avg_Sz(Sz_avg_);
+      cluster.groundstate_dLambda(); 
+      // groundstate derivative
+      //std::cout << "dX/dLambda =\n"<< cluster.groundstate_dLambda() << "\n";
+      //getchar();
   }
   // LHS of the constraint equation: fx = (<Sz> + 1/2) - n_f
   i=0;
@@ -274,6 +287,7 @@ void SlaveSpin::update_lm_params(void)
       ++i; 
     }
   }
+  //getchar();
 }
 
 void SlaveSpin::update_site_order_params(void)
@@ -466,14 +480,8 @@ void Cluster::update_hamiltonian(const real_siteparms_t& gauge_factors,
   for (i=0; i<basis_dim_; ++i) {
     hmatrix_(i,i) = interaction_elems_(i) + lagrange_elems_(i);
   }
-  //getchar();
-  //ComplexMatrix mat(basis_dim_,basis_dim_);
-  //mat = hmatrix_ + hmatrix_.adjoint();
-  //hmatrix_ = mat;
-  //for (i=0; i<basis_dim_; ++i) {
-  //  hmatrix_(i,i) = interaction_elems_(i) + lagrange_elems_(i);
-  //}
   //std::cout<<"H (site-coupling-update) =\n" << hmatrix_ << "\n"; getchar();
+  //getchar();
 }
 
 // update for new 'lm parameters'
@@ -501,7 +509,105 @@ void Cluster::solve_hamiltonian(void) const
 {
   eigen_solver_.compute(hmatrix_);
   groundstate_ = eigen_solver_.eigenvectors().col(0);
+  //std::cout << "Eigenvalues = " << eigen_solver_.eigenvalues().transpose() << "\n";
+  //std::cout << "Eigenvector = " << groundstate_.transpose() << "\n";
+  //getchar();
 }
+
+int Cluster::lambda_equation(const RealVector& lambda, RealVector& f_lambda, 
+  RealMatrix& df_lambda, const bool& need_derivative) 
+{
+  return 0;
+}
+
+int Cluster::rosenbrock_f(const RealVector& x, RealVector& fx, 
+  RealMatrix& dfx, const bool& need_derivative) 
+{
+  double a = 1.0;
+  double b = 10.0;
+  fx(0) = a*(1.0-x(0));
+  fx(1) = b*(x(1)-x(0)*x(0));
+  if (!need_derivative) return 0;
+  dfx(0,0) = -a;
+  dfx(0,1) = 0.0;
+  dfx(1,0) = -2.0*b*x(0);
+  dfx(1,1) = b;
+  return 0;
+}
+
+const ComplexMatrix& Cluster::groundstate_dLambda(void) 
+{
+  /*RealVector x0(2);
+  root_solver_.solve([this](const RealVector& x, RealVector& fx, 
+    RealMatrix& J, const bool& need_derivative) 
+    {return lambda_equation(x, fx, J, need_derivative);}, x0);
+  */
+  root_solver_.init(2);
+  RealVector x0(2);
+  x0(0) = -10.0; x0(1) = -5.0;
+  root_solver_.solve([this](const RealVector& x, RealVector& fx, 
+    RealMatrix& J, const bool& need_derivative) 
+    {return rosenbrock_f(x,fx,J,need_derivative);}, x0);
+  std::cout << "---Testing rosenbrock_f----------\n";
+  exit(0);
+
+
+
+  // See D.V. Murthy and R.T. Haftka, on "Eigenvector Derivative".
+
+  // Derivative of H-matrix wrt 'lambda'-s: are diagonal matrix 
+  SlaveSpinBasis::idx_t i, j;
+  double Sz;
+  for (i=0; i<basis_dim_; ++i) {
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
+      // column 'alpha' stores the diagonal elements of dH/d\lambda_alpha
+      H_dLambda_(i,alpha) = Sz + 0.5;
+    }
+  }
+
+  cmplVector Cvec(basis_dim_);
+  cmplVector xvec(basis_dim_);
+  for (auto& alpha : spin_orbitals_) {
+    for (int j=1; j<basis_dim_; ++j) {
+      // dH * groundstate
+      for (int i=0; i<basis_dim_; ++i) {
+        xvec(i) = H_dLambda_(i,alpha) * groundstate_(i);
+      }
+      auto xc = eigen_solver_.eigenvectors().col(j).transpose().conjugate() 
+              * xvec;
+      Cvec(j) = xc(0,0)/(eigen_solver_.eigenvalues()(0)-eigen_solver_.eigenvalues()(j));
+    }
+    Cvec(0) = 0.0;
+    cmplVector dX = cmplVector::Zero(basis_dim_);
+    for (int i=1; i<basis_dim_; ++i) {
+      dX += Cvec(i) * eigen_solver_.eigenvectors().col(i);
+    }
+    // column 'alpha' stores the groundstate derivative wrt \lambda_\alpha
+    groundstate_dLambda_.col(alpha) = dX;
+  }
+
+  //std::cout << "Cvec = "<< Cvec.transpose() << "\n";
+  //std::cout << "DX =\n"<< groundstate_dLambda_ << "\n";
+
+  // d<S^z_i>/d\lambda_j
+  for (auto& alpha : spin_orbitals_) {
+    for (auto& beta : spin_orbitals_) {
+      double sum = 0.0;
+      for (i=0; i<basis_dim_; ++i) {
+        std::tie(Sz,j) = basis_.apply_Sz(site_,alpha,i);
+        sum += 2.0*Sz*std::real(std::conj(groundstate_(i))*groundstate_dLambda_(i,beta));
+      }
+      std::cout << "J["<<alpha<<","<<beta<<"] = "<< sum << "\n";
+    }
+  }
+  std::cout << "\n\n";
+  getchar();
+
+  return groundstate_dLambda_;
+}
+
+
 
 void Cluster::get_avg_Sz(real_siteparms_t& Sz_avg) const
 {
@@ -516,6 +622,7 @@ void Cluster::get_avg_Sz(real_siteparms_t& Sz_avg) const
   }
   //std::cout << "<Sz>["<<site_<<"] = "<< Sz_avg[site_].transpose() << "\n";
 }
+
 
 void Cluster::get_avg_Splus(real_siteparms_t& Splus_avg) const
 {
@@ -550,6 +657,7 @@ void Cluster::get_avg_Oplus(const real_siteparms_t& gauge_factors,
       if (j != basis_.null_idx()) {
         auto c_j = groundstate_(j);
         Oplus_avg[site_][alpha] += mat_elem*std::conj(c_j)*c_i;
+        //std::cout << "mat_elem = "<< mat_elem << "\n";
         //std::cout << "cj*ci["<<alpha<<"] = "<< std::conj(c_j)*c_i << "\n";
       }
     }

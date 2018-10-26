@@ -62,6 +62,8 @@ public:
     lagrange_elems_.resize(basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
     groundstate_.resize(basis_dim_);
+    H_dLambda_.resize(basis_dim_,spin_orbitals_.size());
+    groundstate_dLambda_.resize(basis_dim_,spin_orbitals_.size());
   }
   ~Cluster() {}
   void init_hamiltonian(const double& U, const real_siteparms_t& gauge_factors, 
@@ -72,6 +74,7 @@ public:
   //void get_groundstate(ComplexVector& eigvec) const;
   void solve_hamiltonian(void) const;
   const ComplexVector& groundstate(void) const { return groundstate_; }
+  const ComplexMatrix& groundstate_dLambda(void); 
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
   void get_avg_Oplus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
@@ -81,12 +84,20 @@ private:
   unsigned basis_dim_{0};
   std::vector<unsigned> spin_orbitals_; 
   SlaveSpinBasis basis_;
+  root::RootSolver root_solver_;
 
   RealVector interaction_elems_; 
   RealVector lagrange_elems_; 
   ComplexMatrix hmatrix_;
+  ComplexMatrix H_dLambda_;
+  ComplexMatrix groundstate_dLambda_;
   mutable ComplexVector groundstate_;
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> eigen_solver_;
+
+  int lambda_equation(const RealVector& lambda, RealVector& f_lambda, 
+    RealMatrix& df_lambda, const bool& need_derivative);
+  int rosenbrock_f(const RealVector& x, RealVector& fx, 
+    RealMatrix& dfx, const bool& need_derivative);
 };
 
 
@@ -126,7 +137,6 @@ private:
   root::gsl_solver solver_;
 
   // site & bond parameters
-  double U_half_{0.0};
   real_siteparms_t lm_params_;
   real_siteparms_t qp_weights_;
   real_siteparms_t gauge_factors_;

@@ -37,6 +37,8 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
   //dim_ = graph.lattice().num_basis_orbitals();
   quadratic_block_up_.resize(kblock_dim_,kblock_dim_);
   pairing_block_.resize(kblock_dim_,kblock_dim_);
+  orbital_en_.resize(kblock_dim_);
+  orbital_en_shifted_.resize(kblock_dim_);
   work.resize(kblock_dim_,kblock_dim_);
   build_unitcell_terms(graph);
   set_particle_num(inputs);
@@ -63,6 +65,16 @@ void Spinon::update(const input::Parameters& inputs)
 {
   Model::update_parameters(inputs);
   update_terms();
+  orbital_en_.setZero();
+
+  for (const auto& term : usite_terms_) {
+    //std::cout << " --------- here --------\n";
+    if (term.qn_operator().spin_up()) {
+      orbital_en_ = term.coeff_matrix().diagonal().real();
+      //std::cout << "e0 =" << orbital_en_.transpose() << "\n"; getchar();
+    }
+  }
+  orbital_en_shifted_ = orbital_en_;
 }
 
 void Spinon::solve(const lattice::LatticeGraph& graph, SB_Params& srparams)
@@ -413,26 +425,35 @@ void Spinon::construct_kspace_block(const SB_Params& srparams, const Vector3d& k
   }
   // add hermitian conjugate part
   quadratic_block_up_ = work + work.adjoint();
+
+
+  //orbital_en_shifted_(0) = 0.4421;
+  //orbital_en_shifted_(1) = -0.4421;
+
   // site terms 
-  //for (const auto& term : uc_siteterms_) {
   for (const auto& term : usite_terms_) {
     //std::cout << " --------- here --------\n";
     if (term.qn_operator().spin_up()) {
       quadratic_block_up_ += term.coeff_matrix();
+      //for (int i=0; i<kblock_dim_; ++i) quadratic_block_up_(i,i) += orbital_en_shifted_(i);
       //std::cout << " sterm =" << term.coeff_matrix() << "\n"; getchar();
     }
   }
   // LM parameters/chemical potential
   // site density
+  //realArray1D e(2);
+  //e(0) = 3.73115;
+  //e(1) = -3.73115;
+  /*
   for (int i=0; i<srparams.num_sites(); ++i) {
     unsigned site_dim = srparams.site(i).dim();
     realArray1D lm_params = srparams.site(i).lm_params(); 
     for (unsigned m=0; m<site_dim; ++m) {
       auto n = srparams.site(i).state_indices()[m];
-      quadratic_block_up_(n,n) += -lm_params(m);
-      //std::cout << "lamba["<<n<<"] = " << lm_params[m] << "\n"; 
+      quadratic_block_up_(n,n) += -lm_params(m); // + e(m);
+      //std::cout << "lamba["<<n<<"] = " << lm_params[m] << "\n"; getchar();
     }
-  }
+  }*/
 
   //quadratic_block_up_ += work1.adjoint();
   //pairing_block_ = work2;

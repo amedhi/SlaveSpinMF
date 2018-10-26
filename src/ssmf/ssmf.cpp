@@ -12,6 +12,7 @@
 
 namespace srmf {
 
+
 SRMF::SRMF(const input::Parameters& inputs) 
   : graph_(inputs) 
   //, blochbasis_(graph_)
@@ -20,6 +21,39 @@ SRMF::SRMF(const input::Parameters& inputs)
   , spinon_model_(inputs,model_,graph_,sr_parms_)
   , boson_model_(inputs,model_,graph_,sr_parms_)
 {
+  // For solving for LM parameter equation
+  fx_dim_ = graph_.lattice().num_basis_orbitals();
+  x_vec_.resize(fx_dim_);
+  fx_vec_.resize(fx_dim_);
+  solver_.allocate(fx_dim_);
+}
+
+int gsl_problem_eqn1(const gsl_vector* x, void* parms, gsl_vector* f)
+{
+  SRMF * pThis = ((class SRMF *) parms);
+  for (int i=0; i<pThis->fx_dim_; ++i) {
+    pThis->x_vec_[i] = gsl_vector_get(x,i);
+  }
+  int status = pThis->spinon_energy_eqn(pThis->x_vec_, pThis->fx_vec_);
+  for (int i=0; i<pThis->fx_dim_; ++i) {
+    gsl_vector_set(f, i, pThis->fx_vec_[i]);
+  }
+  if (status ==0 ) return GSL_SUCCESS;
+  else return GSL_FAILURE;
+}
+
+int SRMF::spinon_energy_eqn(const std::vector<double>& x, std::vector<double>& fx)
+{
+  spinon_model_.set_shifted_en(x);
+  selconsistent_solve();
+  auto lambda = sr_parms_.site(0).lm_params();
+  std::cout<<"x(0) = "<< x[0] << " x(1) ="<<x[1]<<"\n";
+  std::cout<<"lambda = "<< lambda.transpose()<<"\n"; getchar();
+  for (int i=0; i<fx_dim_; ++i) {
+    fx[i] = x[i] - lambda[i] - spinon_model_.orbital_en()[i];
+    std::cout << "fx["<<i<<"] = "<< fx[i] << "\n";
+  }
+  return 0;
 }
 
 int SRMF::run(const input::Parameters& inputs) 
@@ -28,21 +62,41 @@ int SRMF::run(const input::Parameters& inputs)
   boson_model_.update(spinon_model_);
 
   //sr_parms_.
-  cmpl_bondparms_t boson_ke(sr_parms_.num_bonds());
-  cmpl_bondparms_t spinon_ke(sr_parms_.num_bonds());
-  cmpl_bondparms_t diff_boson_ke(sr_parms_.num_bonds());
-  cmpl_bondparms_t diff_spinon_ke(sr_parms_.num_bonds());
-  realArray1D boson_ke_norm(sr_parms_.num_bonds());
-  realArray1D spinon_ke_norm(sr_parms_.num_bonds());
+  boson_ke_.resize(sr_parms_.num_bonds());
+  spinon_ke_.resize(sr_parms_.num_bonds());
+  diff_boson_ke_.resize(sr_parms_.num_bonds());
+  diff_spinon_ke_.resize(sr_parms_.num_bonds());
+  boson_ke_norm_.resize(sr_parms_.num_bonds());
+  spinon_ke_norm_.resize(sr_parms_.num_bonds());
 
   sr_parms_.init_mf_params();
   for (int i=0; i<sr_parms_.num_bonds(); ++i) {
     //sr_parms_.bond(i).set_spinon_ke();
     //sr_parms_.bond(i).set_boson_ke();
-    spinon_ke[i] = sr_parms_.bond(i).spinon_ke();
-    boson_ke[i] = sr_parms_.bond(i).boson_ke();
+    spinon_ke_[i] = sr_parms_.bond(i).spinon_ke();
+    boson_ke_[i] = sr_parms_.bond(i).boson_ke();
   }
 
+  // find spinon shifted local energies for U=0;
+  /*
+  double U = spinon_model_.get_parameter_value("U");
+  if (std::abs(U)<1.0E-12) {
+    for (int i=0; i<fx_dim_; ++i) {
+      x_vec_[i] = spinon_model_.orbital_en()[i];
+    }
+    solver_.find_root(this, &gsl_problem_eqn1, x_vec_, lm_ftol_);
+    spinon_model_.set_shifted_en(x_vec_);
+  }
+  std::cout << "shifted_e0 =" << x_vec_[0] << "\n";
+  */
+
+  // solve 
+  selconsistent_solve();
+  return 0;
+}
+
+int SRMF::selconsistent_solve(void) 
+{
   int max_sb_iter = 10;
   bool converged = false;
   for (int iter=0; iter<max_sb_iter; ++iter) {
@@ -50,13 +104,13 @@ int SRMF::run(const input::Parameters& inputs)
     boson_model_.solve(sr_parms_);
     // check convergence
     for (int i=0; i<sr_parms_.num_bonds(); ++i) {
-      diff_spinon_ke[i] = spinon_ke[i] - sr_parms_.bond(i).spinon_ke();
-      diff_boson_ke[i] = boson_ke[i] - sr_parms_.bond(i).boson_ke();
-      spinon_ke_norm[i] = diff_spinon_ke[i].abs2().maxCoeff();
-      boson_ke_norm[i] = diff_boson_ke[i].abs2().maxCoeff();
+      diff_spinon_ke_[i] = spinon_ke_[i] - sr_parms_.bond(i).spinon_ke();
+      diff_boson_ke_[i] = boson_ke_[i] - sr_parms_.bond(i).boson_ke();
+      spinon_ke_norm_[i] = diff_spinon_ke_[i].abs2().maxCoeff();
+      boson_ke_norm_[i] = diff_boson_ke_[i].abs2().maxCoeff();
     }
-    double sp_norm = spinon_ke_norm.maxCoeff();
-    double sb_norm = boson_ke_norm.maxCoeff();
+    double sp_norm = spinon_ke_norm_.maxCoeff();
+    double sb_norm = boson_ke_norm_.maxCoeff();
 
     //std::cout<<"ssmf iter="<<iter+1<<", norm=("<<sp_norm<<","<<sb_norm<<")\n";
     if (sp_norm<1.0E-6 && sb_norm<1.0E-6) {
@@ -66,8 +120,8 @@ int SRMF::run(const input::Parameters& inputs)
 
     // continue
     for (int i=0; i<sr_parms_.num_bonds(); ++i) {
-      spinon_ke[i] = sr_parms_.bond(i).spinon_ke();
-      boson_ke[i] = sr_parms_.bond(i).boson_ke();
+      spinon_ke_[i] = sr_parms_.bond(i).spinon_ke();
+      boson_ke_[i] = sr_parms_.bond(i).boson_ke();
     }
   }
   //if (converged) std::cout<<"ssmf converged!\n";
@@ -76,9 +130,8 @@ int SRMF::run(const input::Parameters& inputs)
   for (int i=0; i<sr_parms_.num_sites(); ++i) {
     //std::cout<<"Z["<<i<<"] = "<< sr_parms_.site(i).qp_weights().transpose()<<"\n";
     std::cout<<sr_parms_.site(i).qp_weights().transpose()<<"\n";
+    std::cout<<sr_parms_.site(i).lm_params().transpose()<<"\n";
   }
-
-
   return 0;
 }
 

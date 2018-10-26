@@ -20,6 +20,7 @@ using RealVector = Eigen::VectorXd;
 using RealMatrix = Eigen::MatrixXd;
 using ComplexVector = Eigen::VectorXcd;
 using ComplexMatrix = Eigen::MatrixXcd;
+using cmplVector = Eigen::VectorXcd;
 using realArray1D = Eigen::ArrayXd; 
 using cmplArray1D = Eigen::ArrayXcd; 
 using cmplArray2D = Eigen::Array<std::complex<double>,Eigen::Dynamic,Eigen::Dynamic>;

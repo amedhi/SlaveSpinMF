@@ -38,7 +38,7 @@ model = "TBI_HUBBARD"
 t = 1.0
 tsp = 0.5
 e0 = 1.0
-U = 10
+U = 0
 
 #---------------------------------------------
 # Variational wavefunction

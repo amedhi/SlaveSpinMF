@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-09-28 23:05:09
+* @Last Modified time: 2018-10-26 08:07:34
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"
@@ -42,6 +42,7 @@ int gsl_solver::find_root(void* params, int (*func) (const gsl_vector* x, void* 
   int status = GSL_CONTINUE;
   int iter = 0;
   while (status==GSL_CONTINUE && iter < 50) {
+    //std::cout << "gsl iter = " << iter+1 << "\n";
     status = gsl_multiroot_fsolver_iterate(solver_.get());
     status = gsl_multiroot_test_residual(solver_.get()->f, eps_ftol);
     ++iter;
@@ -55,6 +56,14 @@ int gsl_solver::find_root(void* params, int (*func) (const gsl_vector* x, void* 
   //gsl_multiroot_fsolver_free(solver_.get());
   //gsl_vector_free(xvec_.get());
   return status;
+}
+
+
+void RootSolver::line_search(const RealVector& x_old, const RealVector& fx_old, 
+  const double& fnorm, const RealVector& grad_f, const RealVector &pvec, 
+  const RealVector& x, const RealVector& fx)
+{
+  
 }
 
 
