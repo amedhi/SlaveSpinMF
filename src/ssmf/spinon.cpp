@@ -441,19 +441,20 @@ void Spinon::construct_kspace_block(const SB_Params& srparams, const Vector3d& k
   }
   // LM parameters/chemical potential
   // site density
-  //realArray1D e(2);
-  //e(0) = 3.73115;
-  //e(1) = -3.73115;
   /*
+  realArray1D e(2);
+  e(0) = 3.73115;
+  e(1) = -3.73115;
   for (int i=0; i<srparams.num_sites(); ++i) {
     unsigned site_dim = srparams.site(i).dim();
     realArray1D lm_params = srparams.site(i).lm_params(); 
     for (unsigned m=0; m<site_dim; ++m) {
       auto n = srparams.site(i).state_indices()[m];
-      quadratic_block_up_(n,n) += -lm_params(m); // + e(m);
+      quadratic_block_up_(n,n) += -lm_params(m) + e(m);
       //std::cout << "lamba["<<n<<"] = " << lm_params[m] << "\n"; getchar();
     }
-  }*/
+  }
+  */
 
   //quadratic_block_up_ += work1.adjoint();
   //pairing_block_ = work2;

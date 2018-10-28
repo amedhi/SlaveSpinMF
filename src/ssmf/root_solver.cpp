@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-10-26 08:07:34
+* @Last Modified time: 2018-10-26 10:32:00
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"
@@ -58,13 +58,6 @@ int gsl_solver::find_root(void* params, int (*func) (const gsl_vector* x, void* 
   return status;
 }
 
-
-void RootSolver::line_search(const RealVector& x_old, const RealVector& fx_old, 
-  const double& fnorm, const RealVector& grad_f, const RealVector &pvec, 
-  const RealVector& x, const RealVector& fx)
-{
-  
-}
 
 
 //void gsl_solver::find_root(const std::vector<double>& x_init)

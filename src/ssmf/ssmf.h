@@ -40,7 +40,7 @@ private:
   Spinon spinon_model_;
 
   // gsl solver
-  double lm_ftol_{1.0E-8};
+  //double lm_ftol_{1.0E-8};
   unsigned fx_dim_;
   std::vector<double> x_vec_;
   std::vector<double> fx_vec_;

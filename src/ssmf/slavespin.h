@@ -56,19 +56,27 @@ public:
     const std::vector<unsigned>& spin_orbitals) 
   : type_{type}, site_{site}, spin_orbitals_{spin_orbitals}
   {
+    total_spinorbitals_ = spin_orbitals_.size();
     basis_.construct(1, spin_orbitals_.size());
     basis_dim_ = basis_.dim();
+    lm_params_.resize(1);
+    lm_params_[0].resize(spin_orbitals_.size());
+    spinon_density_.resize(1);
+    spinon_density_[0].resize(spin_orbitals_.size());
     interaction_elems_.resize(basis_dim_);
     lagrange_elems_.resize(basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
     groundstate_.resize(basis_dim_);
-    H_dLambda_.resize(basis_dim_,spin_orbitals_.size());
-    groundstate_dLambda_.resize(basis_dim_,spin_orbitals_.size());
+    H_dLambda_.resize(basis_dim_,total_spinorbitals_);
+    groundstate_dLambda_.resize(basis_dim_,total_spinorbitals_);
+    root_solver_.init(total_spinorbitals_);
   }
   ~Cluster() {}
   void init_hamiltonian(const double& U, const real_siteparms_t& gauge_factors, 
     const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& site_fields);
   void update_parameters(const double& U);
+  void set_spinon_density(const real_siteparms_t& spinon_density);
+  void solve_lm_params(real_siteparms_t& lm_params);
   void update_hamiltonian(const real_siteparms_t& new_lm_params);
   void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
@@ -82,10 +90,13 @@ private:
   cluster_t type_{cluster_t::SITE};
   unsigned site_{0};
   unsigned basis_dim_{0};
+  unsigned total_spinorbitals_{0};
   std::vector<unsigned> spin_orbitals_; 
   SlaveSpinBasis basis_;
   root::RootSolver root_solver_;
 
+  real_siteparms_t lm_params_;
+  real_siteparms_t spinon_density_;
   RealVector interaction_elems_; 
   RealVector lagrange_elems_; 
   ComplexMatrix hmatrix_;
