@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-10-28 23:42:58
+* @Last Modified time: 2018-11-09 17:04:17
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -34,6 +34,8 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   // Lagrange multipliers
   lm_params_.resize(num_sites_);
   for (auto& elem : lm_params_) elem = realArray1D::Ones(site_dim_);
+  //lm_params_noint_.resize(num_sites_);
+  //for (auto& elem : lm_params_noint_) elem = realArray1D::Zero(site_dim_);
   // gauge factors, c for the operator O+ = (S- + cS+)
   gauge_factors_.resize(num_sites_);
   for (auto& elem : gauge_factors_) elem = realArray1D::Ones(site_dim_);
@@ -100,9 +102,9 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
 
 void SlaveSpin::update(const model::Hamiltonian& model)
 {
-  double U = model.get_parameter_value("U");
+  U_ = model.get_parameter_value("U");
   for (auto& cluster : clusters_) {
-    cluster.update_parameters(U);
+    cluster.update_parameters(U_);
   }
 }
 
@@ -128,14 +130,49 @@ void SlaveSpin::solve(SB_Params& srparams)
       //std::cout << "c["<<site<<"]["<<alpha<<"] = "<<gauge_factors_[site][alpha]<<"\n";
     }
   }
-
   // renormalized bond couplings
   set_bond_couplings(srparams);
 
+  self_consistent_solve(srparams);
+  // QP weights
+  for (int site=0; site<num_sites_; ++site) {
+    qp_weights_[site] = site_order_params_[site].abs2();
+    //std::cout<<"Z["<<site<<"] = "<< qp_weights_[site].transpose()<<"\n";
+  }
+  // update boson parameters
+  for (int i=0; i<num_sites_; ++i) {
+    srparams.site(i).lm_params() = lm_params_[i];
+    srparams.site(i).qp_weights() = qp_weights_[i];
+    //std::cout<<"lambda["<<i<<"] = "<< lm_params_[i].transpose()<<"\n";
+    //std::cout<<"Z["<<i<<"] = "<< qp_weights_[i].transpose()<<"\n";
+  }
+  update_bond_order_params(srparams);
+
+  /*
+  // Solve for 'lambda' for the corresponding 'non-interacting' problem
+  double U = 0.0;
+  for (auto& cluster : clusters_) {
+    cluster.update_parameters(U);
+  }
+  self_consistent_solve(srparams);
+  for (int i=0; i<num_sites_; ++i) {
+    srparams.site(i).lm_params_noint() = lm_params_[i];
+    std::cout<<"lambda0["<<i<<"] = "<< lm_params_[i].transpose()<<"\n";
+  }
+  // restore interactions 
+  for (auto& cluster : clusters_) {
+    cluster.update_parameters(U_);
+  }
+  //getchar();
+  */
+
+}
+
+void SlaveSpin::self_consistent_solve(const SB_Params& srparams)
+{
   // trial 'qp_weights'
   cmpl_siteparms_t trial_order_params(num_sites_);
   for (auto& elem : trial_order_params) elem = cmplArray1D::Constant(site_dim_,1.0);
-
   cmplArray1D order_params_diff(num_sites_*site_dim_);
 
   int max_iter = 100;
@@ -154,7 +191,6 @@ void SlaveSpin::solve(SB_Params& srparams)
     }
     getchar();
     */
-
     // update cluster hamiltonians for new LM-parameters
     for (auto& cluster : clusters_) {
       cluster.update_hamiltonian(lm_params_);
@@ -185,20 +221,8 @@ void SlaveSpin::solve(SB_Params& srparams)
   if (converged) {
     if(print_progress) std::cout<<"Bosons converged!\n";
   } 
-  // QP weights
-  for (int site=0; site<num_sites_; ++site) {
-    qp_weights_[site] = site_order_params_[site].abs2();
-    //std::cout<<"Z["<<site<<"] = "<< qp_weights_[site].transpose()<<"\n";
-  }
 
-  // update boson parameters
-  for (int i=0; i<num_sites_; ++i) {
-    srparams.site(i).lm_params() = lm_params_[i];
-    srparams.site(i).qp_weights() = qp_weights_[i];
-    //std::cout<<"lambda["<<i<<"] = "<< lm_params_[i].transpose()<<"\n";
-    //std::cout<<"Z["<<i<<"] = "<< qp_weights_[i].transpose()<<"\n";
-  }
-  update_bond_order_params(srparams);
+
 }
 
 void SlaveSpin::update_bond_order_params(SB_Params& srparams) 
@@ -281,9 +305,9 @@ void SlaveSpin::update_lm_params(void)
   for (auto& cluster : clusters_) {
     cluster.solve_lm_params(lm_params_);
   }
-  for (unsigned site=0; site<num_sites_; ++site) {
-    std::cout << "lambda["<<site<<"] = " << lm_params_[site].transpose() << "\n";
-  }
+  //for (unsigned site=0; site<num_sites_; ++site) {
+  //  std::cout << "lambda["<<site<<"] = " << lm_params_[site].transpose() << "\n";
+  //}
   /*
   //solver_.set_problem(&lagrange_eqn, 2, this);
   //std::vector<double> x0(num_sites_*site_dim_, 1.0); 

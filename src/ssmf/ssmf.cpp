@@ -100,7 +100,7 @@ int SRMF::selconsistent_solve(void)
   int max_sb_iter = 10;
   bool converged = false;
   for (int iter=0; iter<max_sb_iter; ++iter) {
-    spinon_model_.solve(graph_, sr_parms_);
+    spinon_model_.solve(graph_,sr_parms_);
     boson_model_.solve(sr_parms_);
     // check convergence
     for (int i=0; i<sr_parms_.num_bonds(); ++i) {

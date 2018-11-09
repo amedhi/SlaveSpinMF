@@ -49,6 +49,7 @@ public:
     spinon_density_.resize(spin_orbitals_.size());
     boson_density_.resize(spin_orbitals_.size());
     lm_params_.resize(spin_orbitals_.size());
+    lm_params_noint_.resize(spin_orbitals_.size());
   }
   void clear(void) { connected_bonds_.clear(); inout_types_.clear(); }
   const unsigned& type(void) const { return type_; }
@@ -62,6 +63,8 @@ public:
   realArray1D& spinon_density(void) { return spinon_density_; }
   realArray1D& lm_params(void) { return lm_params_; }
   const realArray1D& lm_params(void) const { return lm_params_; }
+  realArray1D& lm_params_noint(void) { return lm_params_noint_; }
+  const realArray1D& lm_params_noint(void) const { return lm_params_noint_; }
   realArray1D& qp_weights(void) { return qp_weights_; }
   const realArray1D& qp_weights(void) const { return qp_weights_; }
 private:
@@ -74,6 +77,7 @@ private:
   realArray1D spinon_density_;
   realArray1D boson_density_;
   realArray1D lm_params_;
+  realArray1D lm_params_noint_;
   realArray1D qp_weights_;
 };
 

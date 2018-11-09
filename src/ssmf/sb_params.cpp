@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-10-05 13:29:19
+* @Last Modified time: 2018-10-31 13:36:21
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "sb_params.h"
@@ -141,6 +141,7 @@ void SB_Params::init_mf_params(void)
 {
   for (unsigned i=0; i<num_sites_; ++i) {
     sites_[i].lm_params().setZero();
+    sites_[i].lm_params_noint().setZero();
     sites_[i].qp_weights().setOnes();
   }
   for (unsigned i=0; i<num_bonds_; ++i) {

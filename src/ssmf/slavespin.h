@@ -133,6 +133,7 @@ private:
   unsigned num_bonds_;
   std::vector<sb_site> sites_; 
   std::vector<sb_bond> bonds_; 
+  double U_;
 
   // clusters
   unsigned site_dim_;
@@ -149,6 +150,7 @@ private:
 
   // site & bond parameters
   real_siteparms_t lm_params_;
+  //real_siteparms_t lm_params_noint_;
   real_siteparms_t qp_weights_;
   real_siteparms_t gauge_factors_;
   real_siteparms_t spinon_density_;
@@ -171,6 +173,7 @@ private:
   //Eigen::SparseMatrix<double> work_;
   //ComplexMatrix psi_work2_;
   */
+  void self_consistent_solve(const SB_Params& srparams);
   void make_clusters(const SB_Params& srparams);
   void init_matrix_elems(const SB_Params& srparams);
   void set_bond_couplings(const SB_Params& srparams);
