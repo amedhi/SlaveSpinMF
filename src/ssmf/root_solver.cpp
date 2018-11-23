@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-10-26 10:32:00
+* @Last Modified time: 2018-11-17 23:33:46
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"

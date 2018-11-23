@@ -53,6 +53,7 @@ public:
   void update_parameters(const input::Parameters& inputs);
   void update_parameter(const std::string& pname, const double& val); 
   virtual void update_terms(void);
+  virtual const realArray1D& orbital_en(void) const { return orbital_en_; };
   //void change_parameter_value(const std::string& pname, const double& pval);
   double get_parameter_value(const std::string& pname) const;
   unsigned add_constant(const std::string& cname, const double& val) 
@@ -131,6 +132,7 @@ private:
   std::vector<HamiltonianTerm> disorder_terms_;
   siteterm_iterator dterm_begin_;
   siteterm_iterator dterm_end_;
+  realArray1D orbital_en_;
 
   //std::ostringstream info_str_;
   //std::ostringstream signature_str_;

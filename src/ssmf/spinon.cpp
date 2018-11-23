@@ -37,7 +37,7 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
   //dim_ = graph.lattice().num_basis_orbitals();
   quadratic_block_up_.resize(kblock_dim_,kblock_dim_);
   pairing_block_.resize(kblock_dim_,kblock_dim_);
-  orbital_en_.resize(kblock_dim_);
+  orbital_en_.resize(spin_multiply_ * kblock_dim_);
   orbital_en_shifted_.resize(kblock_dim_);
   work.resize(kblock_dim_,kblock_dim_);
   build_unitcell_terms(graph);
@@ -66,11 +66,17 @@ void Spinon::update(const input::Parameters& inputs)
   Model::update_parameters(inputs);
   update_terms();
   orbital_en_.setZero();
-
   for (const auto& term : usite_terms_) {
     //std::cout << " --------- here --------\n";
     if (term.qn_operator().spin_up()) {
-      orbital_en_ = term.coeff_matrix().diagonal().real();
+      auto e0 = term.coeff_matrix().diagonal().real();
+      if (spin_multiply_==2) {
+        for (int i=0; i<kblock_dim_; ++i) {
+          orbital_en_(i) = e0(i);
+          orbital_en_(kblock_dim_+i) = e0(i);
+        }
+      }
+      else orbital_en_ = e0;
       //std::cout << "e0 =" << orbital_en_.transpose() << "\n"; getchar();
     }
   }

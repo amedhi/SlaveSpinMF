@@ -61,13 +61,14 @@ public:
   void solve(const lattice::LatticeGraph& graph, SB_Params& srparams);
   void update(const input::Parameters& inputs);
   void update_terms(void) override;
-  const realArray1D& orbital_en(void) const { return orbital_en_; }
+  //const realArray1D& orbital_en(void) const { return orbital_en_; }
   void set_shifted_en(const std::vector<double>& shifted_e0) 
     { for (int i=0; i<kblock_dim_; ++i) orbital_en_shifted_[i]=shifted_e0[i]; }
   void update_site_parameter(const std::string& pname, const double& pvalue);
   void construct_kspace_block(const SB_Params& srparams, const Vector3d& kvec);
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
+  const realArray1D& orbital_en(void) const override { return orbital_en_; }
 private:
   using Model = model::Hamiltonian;
   std::vector<UnitcellTerm> usite_terms_;

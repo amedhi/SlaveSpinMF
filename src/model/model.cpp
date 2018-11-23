@@ -124,6 +124,7 @@ int Hamiltonian::init(const lattice::Lattice& lattice)
   st_end_ = site_terms_.cend();
   dterm_begin_ = disorder_terms_.cbegin();
   dterm_end_ = disorder_terms_.cend();
+  orbital_en_ = realArray1D::Zero(1);
   return 0;
 }
 

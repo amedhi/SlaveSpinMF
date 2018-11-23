@@ -48,6 +48,28 @@ private:
   double value_{0.0};
 };
 
+class ModelParams
+{
+public:
+  ModelParams() {}
+  ~ModelParams() {}
+  void update_e0(const realArray1D& e0) { e0_=e0; }
+  void update_U(const double& U) { U_=U; }
+  void update_U1(const double& U) { U1_=U; hunde_coupling_=true; }
+  void update_hunde_J(const double& J) { hunde_J_=J; hunde_coupling_=true; }
+  const realArray1D& get_e0(void) const { return e0_; }
+  const double& get_U(void) const { return U_; }
+  const double& get_U1(void) const { return U1_; }
+  const double& get_hunde_J(void) const { return hunde_J_; }
+  bool have_hunde_coupling(void) const { return hunde_coupling_; }
+private:
+  bool hunde_coupling_{false};
+  double U_{0.0};
+  double U1_{0.0}; // inter-orbital
+  double hunde_J_{0.0};
+  realArray1D e0_; // orbital energy
+};
+
 class Cluster 
 {
 public:
@@ -65,6 +87,7 @@ public:
     spinon_density_[0].resize(spin_orbitals_.size());
     interaction_elems_.resize(basis_dim_);
     lagrange_elems_.resize(basis_dim_);
+    //orbital_en_elems_.resize(basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
     groundstate_.resize(basis_dim_);
     H_dLambda_.resize(basis_dim_,total_spinorbitals_);
@@ -72,11 +95,11 @@ public:
     root_solver_.init(total_spinorbitals_);
   }
   ~Cluster() {}
-  void init_hamiltonian(const double& U, const real_siteparms_t& gauge_factors, 
-    const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& site_fields);
-  void update_parameters(const double& U);
+  void init_hamiltonian(const ModelParams& p, const real_siteparms_t& gauge_factors, 
+    const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& renorm_site_fields);
   void set_spinon_density(const real_siteparms_t& spinon_density);
   void solve_lm_params(real_siteparms_t& lm_params);
+  void update_hamiltonian(const ModelParams& p);
   void update_hamiltonian(const real_siteparms_t& new_lm_params);
   void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
@@ -86,6 +109,7 @@ public:
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
   void get_avg_Oplus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
+  void get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& Opm_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
   unsigned site_{0};
@@ -99,6 +123,8 @@ private:
   real_siteparms_t spinon_density_;
   RealVector interaction_elems_; 
   RealVector lagrange_elems_; 
+  //RealVector orbital_en_elems_; 
+  //std::vector<MatrixElem> orbital_en_elems_;
   ComplexMatrix hmatrix_;
   ComplexMatrix H_dLambda_;
   ComplexMatrix groundstate_dLambda_;
@@ -133,6 +159,7 @@ private:
   unsigned num_bonds_;
   std::vector<sb_site> sites_; 
   std::vector<sb_bond> bonds_; 
+  ModelParams modelparams_;
   double U_;
 
   // clusters
@@ -155,6 +182,7 @@ private:
   real_siteparms_t gauge_factors_;
   real_siteparms_t spinon_density_;
   cmpl_siteparms_t site_order_params_;
+  cmpl_siteparms_t site_avg_OplusMinus_;
   cmpl_siteparms_t renorm_site_couplings_;
   cmpl_bondparms_t renorm_bond_couplings_;
 
@@ -183,6 +211,7 @@ private:
   void update_lm_params(void);
   void update_site_order_params(void);
   void update_bond_order_params(SB_Params& srparams);
+  void update_renorm_site_potential(SB_Params& srparams);
   int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);
   double solve_for_mu(void);
   void solve_clusters(void);
