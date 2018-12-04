@@ -108,7 +108,7 @@ public:
   const ComplexMatrix& groundstate_dLambda(void); 
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
-  void get_avg_Oplus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
+  void get_avg_Zplus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
   void get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& Opm_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
@@ -160,7 +160,7 @@ private:
   std::vector<sb_site> sites_; 
   std::vector<sb_bond> bonds_; 
   ModelParams modelparams_;
-  double U_;
+  double delta_{1.0E-4};
 
   // clusters
   unsigned site_dim_;

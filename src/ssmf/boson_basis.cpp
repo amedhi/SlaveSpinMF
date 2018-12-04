@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-04-21 11:41:01
 * @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-10-05 13:37:04
+* @Last Modified time: 2018-11-23 13:44:14
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <cassert>
@@ -143,44 +143,34 @@ SlaveSpinBasis::op_result SlaveSpinBasis::apply_Sminus(const size_t& site,
   }
 }
 
-SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zplus(const size_t& site, 
-  const size_t& alpha, const idx_t& idx) const 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zplus(const double& c,
+  const size_t& site, const size_t& alpha, const idx_t& idx) const
 {
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
   idx_t pos = site * site_dim_ + alpha;
-  // z+ = P+ a^\dag b P-
-  // P+/- = 1/sqrt(1/2 +/- S^z)
+  // Z+ = <P+> a^\dag b <P-> = c a^\dag b
   state_t state = basis_states_[idx];
   if (state.test(pos)) {
     return std::make_pair(0,null_idx_);
   }
   else {
-    // apply P+
-    double matrix_elem = 1.0; // state remains same
     // apply b^\dag a
     state.set(pos); 
-    // apply P-
-    matrix_elem *= 1.0; //state remains same
-    return std::make_pair(1,state_indices_[state.to_ullong()]);
+    return std::make_pair(c,state_indices_[state.to_ullong()]);
   }
 }
 
-SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zminus(const size_t& site, 
-  const size_t& alpha, const idx_t& idx) const 
+SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zminus(const double& c, 
+  const size_t& site, const size_t& alpha, const idx_t& idx) const
 {
   if (idx == null_idx_) return std::make_pair(0,null_idx_);
   idx_t pos = site * site_dim_ + alpha;
-  // z- = P- b^\dag a P+
-  // P+/- = 1/sqrt(1/2 +/- S^z)
+  // Z- = <P-> b^\dag a <P+> = c b^\dag a 
   state_t state = basis_states_[idx];
   if (state.test(pos)) {
-    // apply P-
-    double matrix_elem = 1.0; // state remains same
     // apply a^\dag b
     state.reset(pos); 
-    // apply P+
-    matrix_elem *= 1.0; //state remains same
-    return std::make_pair(1,state_indices_[state.to_ullong()]);
+    return std::make_pair(c,state_indices_[state.to_ullong()]);
   }
   else return std::make_pair(0,null_idx_);
 }

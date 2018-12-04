@@ -41,8 +41,8 @@ public:
   op_result apply_Sminus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   op_result apply_Oplus(const double& c, const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   op_result apply_Ominus(const double& c, const size_t& site, const size_t& alpha, const idx_t& idx) const; 
-  op_result apply_Zplus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
-  op_result apply_Zminus(const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Zplus(const double& c, const size_t& site, const size_t& alpha, const idx_t& idx) const; 
+  op_result apply_Zminus(const double& c, const size_t& site, const size_t& alpha, const idx_t& idx) const; 
   //op_result op_b_dag(const size_t& i, const size_t& alpha, const idx_t& idx) const; 
 private:
   int num_sites_{0};

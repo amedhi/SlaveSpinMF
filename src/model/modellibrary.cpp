@@ -75,8 +75,8 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         expr_vec[0] = "-(e0-4*t)";
         expr_vec[1] = "(e0-4*t)";
         cc = expr_vec;
-        add_siteterm(name="hopping", cc, op::ni_up());
-        add_siteterm(name="hopping", cc, op::ni_dn());
+        add_siteterm(name="ni_up", cc, op::ni_up());
+        add_siteterm(name="ni_dn", cc, op::ni_dn());
 
         // bond operators
         cc.create(2);

@@ -140,6 +140,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SB_Params& srp
         for (unsigned m=0; m<rows; ++m) {
           auto ii = srparams.site(src).state_indices()[m];
           amplitude_vec1 = es_k_up_.eigenvectors().block(ii,nmin,1,nbands);
+          //std::cout << "amplitude_vec1 = " << amplitude_vec1.transpose() << "\n"; getchar();
           for (unsigned n=0; n<cols; ++n) {
             auto jj = srparams.site(tgt).state_indices()[n];
             amplitude_vec2 = es_k_up_.eigenvectors().block(jj,nmin,1,nbands);
@@ -197,6 +198,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, SB_Params& srp
     }
     srparams.bond(i).spinon_ke() = ke_matrix;
     srparams.bond(i).set_spinon_renormalization();
+    //std::cout << "ke_matrix =\n" << ke_matrix << "\n"; getchar();
     // print
     /*std::cout<<"bond-"<<i<<":"<<"\n";
     for (int m=0; m<srparams.bond(i).spinon_ke().rows(); ++m) {
@@ -442,9 +444,10 @@ void Spinon::construct_kspace_block(const SB_Params& srparams, const Vector3d& k
     if (term.qn_operator().spin_up()) {
       quadratic_block_up_ += term.coeff_matrix();
       //for (int i=0; i<kblock_dim_; ++i) quadratic_block_up_(i,i) += orbital_en_shifted_(i);
-      //std::cout << " sterm =" << term.coeff_matrix() << "\n"; getchar();
+      //if (v==1) {std::cout << " sterm =" << term.coeff_matrix().diagonal().transpose() << "\n"; getchar();}
     }
   }
+  //std::cout << "e0 =\n" << quadratic_block_up_.diagonal().transpose() << "\n"; 
   // LM parameters/chemical potential
   // site density
   /*
@@ -452,18 +455,17 @@ void Spinon::construct_kspace_block(const SB_Params& srparams, const Vector3d& k
   e(0) = 3.73115;
   e(1) = -3.73115;
   */
-  /*
   for (int i=0; i<srparams.num_sites(); ++i) {
     unsigned site_dim = srparams.site(i).dim();
     realArray1D lm_params = srparams.site(i).lm_params(); 
     realArray1D lm_params_noint = srparams.site(i).lm_params_noint(); 
     for (unsigned m=0; m<site_dim; ++m) {
       auto n = srparams.site(i).state_indices()[m];
-      //quadratic_block_up_(n,n) += e(m)-lm_params(m);
-      quadratic_block_up_(n,n) += -lm_params(m) + lm_params_noint(m);
-      //std::cout << "lamba["<<n<<"] = " << lm_params[m] << "\n"; getchar();
+      quadratic_block_up_(n,n) += -lm_params(m);
+      //std::cout << "lamba["<<n<<"] = " << lm_params[m] << "\n"; 
     }
-  }*/
+  }
+  //std::cout << "e0 =\n" << quadratic_block_up_.diagonal().transpose() << "\n"; getchar();
 
   //quadratic_block_up_ += work1.adjoint();
   //pairing_block_ = work2;
