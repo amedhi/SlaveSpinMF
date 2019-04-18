@@ -21,6 +21,7 @@
 //#include "../model/quantum_op.h"
 #include "../model/model.h"
 #include "sb_params.h"
+#include "mf_params.h"
 #include "boson_basis.h"
 #include "root_solver.h"
 #include <gsl/gsl_vector.h>
@@ -74,17 +75,19 @@ class Cluster
 {
 public:
   Cluster() {}
-  Cluster(const cluster_t& type, const unsigned& site, 
-    const std::vector<unsigned>& spin_orbitals) 
+  Cluster(const cluster_t& type, const int& site, 
+    const std::vector<int>& spin_orbitals) 
   : type_{type}, site_{site}, spin_orbitals_{spin_orbitals}
   {
+    end_site_id_ = site_+1;
     total_spinorbitals_ = spin_orbitals_.size();
     basis_.construct(1, spin_orbitals_.size());
     basis_dim_ = basis_.dim();
-    lm_params_.resize(1);
-    lm_params_[0].resize(spin_orbitals_.size());
-    spinon_density_.resize(1);
-    spinon_density_[0].resize(spin_orbitals_.size());
+    //std::cout << total_spinorbitals_ << " " << basis_dim_ << "\n";
+    lm_params_.resize(end_site_id_);
+    for (auto& elem : lm_params_) elem.resize(spin_orbitals_.size());
+    spinon_density_.resize(end_site_id_);
+    for (auto& elem : spinon_density_) elem.resize(spin_orbitals_.size());
     interaction_elems_.resize(basis_dim_);
     lagrange_elems_.resize(basis_dim_);
     //orbital_en_elems_.resize(basis_dim_);
@@ -104,6 +107,7 @@ public:
   void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
   void solve_hamiltonian(void) const;
+  const ComplexMatrix& hamiltonian_matrix(void) const { return hmatrix_; }
   const ComplexVector& groundstate(void) const { return groundstate_; }
   const ComplexMatrix& groundstate_dLambda(void); 
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
@@ -112,10 +116,11 @@ public:
   void get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& Opm_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
-  unsigned site_{0};
+  int site_{0};
+  int end_site_id_{0};
   unsigned basis_dim_{0};
   unsigned total_spinorbitals_{0};
-  std::vector<unsigned> spin_orbitals_; 
+  std::vector<int> spin_orbitals_; 
   SlaveSpinBasis basis_;
   root::RootSolver root_solver_;
 
@@ -143,10 +148,10 @@ class SlaveSpin
 public:
   //SlaveSpin() {}
   SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& model, 
-    const lattice::LatticeGraph& graph, const SB_Params& srparams);
+    const lattice::LatticeGraph& graph, const MF_Params& mf_params);
   ~SlaveSpin() {}
   void update(const model::Hamiltonian& model);
-  void solve(SB_Params& srparams);
+  void solve(MF_Params& mf_params);
   //int init(const lattice::Lattice& lattice) override;
   //int finalize(const lattice::LatticeGraph& graph);
   //void update(const input::Parameters& inputs);
@@ -157,14 +162,14 @@ private:
   //Model rotor_model_;
   unsigned num_sites_;
   unsigned num_bonds_;
-  std::vector<sb_site> sites_; 
-  std::vector<sb_bond> bonds_; 
+  //std::vector<sb_site> sites_; 
+  //std::vector<sb_bond> bonds_; 
   ModelParams modelparams_;
   double delta_{1.0E-4};
 
   // clusters
-  unsigned site_dim_;
-  std::vector<unsigned> spin_orbitals_; // for a single site
+  int site_dim_;
+  std::vector<int> spin_orbitals_; // for a single site
   cluster_t cluster_type_;
   std::vector<Cluster> clusters_;
 
@@ -201,17 +206,17 @@ private:
   //Eigen::SparseMatrix<double> work_;
   //ComplexMatrix psi_work2_;
   */
-  void self_consistent_solve(const SB_Params& srparams);
-  void make_clusters(const SB_Params& srparams);
-  void init_matrix_elems(const SB_Params& srparams);
-  void set_bond_couplings(const SB_Params& srparams);
-  void set_site_couplings(const SB_Params& srparams, 
+  void self_consistent_solve(const MF_Params& mf_params);
+  void make_clusters(const MF_Params& mf_params);
+  void init_matrix_elems(const MF_Params& mf_params);
+  void set_bond_couplings(const MF_Params& mf_params);
+  void set_site_couplings(const MF_Params& mf_params, 
     const cmpl_siteparms_t& site_order_params);
   void set_site_fields(void);
   void update_lm_params(void);
   void update_site_order_params(void);
-  void update_bond_order_params(SB_Params& srparams);
-  void update_renorm_site_potential(SB_Params& srparams);
+  void update_bond_order_params(MF_Params& mf_params);
+  void update_renorm_site_potential(MF_Params& mf_params);
   int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);
   double solve_for_mu(void);
   void solve_clusters(void);

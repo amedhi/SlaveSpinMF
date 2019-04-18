@@ -28,6 +28,7 @@ SRCS+= model/hamiltonian_term.cpp
 SRCS+= model/model.cpp
 SRCS+= model/modellibrary.cpp
 SRCS+= ssmf/sb_params.cpp
+SRCS+= ssmf/mf_params.cpp
 SRCS+= ssmf/boson_basis.cpp
 SRCS+= ssmf/root_solver.cpp
 SRCS+= ssmf/slavespin.cpp
@@ -51,6 +52,7 @@ HDRS=    scheduler/mpi_comm.h \
 	 model/hamiltonian_term.h \
 	 model/model.h \
 	 srmf/sb_params.h \
+	 srmf/mf_params.h \
 	 srmf/boson_basis.h \
 	 srmf/root_solver.h \
 	 srmf/slavespin.h \

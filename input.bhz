@@ -37,9 +37,8 @@ bc2 = "periodic"
 model = "TBI_HUBBARD"
 t = 1.00
 tsp = 0.5
-
 e0 = 1.0
-U = 21.15
+U = 0
 
 #---------------------------------------------
 # Variational wavefunction

@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * Author: Amal Medhi
 * @Date:   2018-04-29 21:46:50
-* @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-11-22 12:30:17
+* @Last Modified by:   Amal Medhi, amedhi@mbpro
+* @Last Modified time: 2019-03-07 12:50:11
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "sb_params.h"
@@ -97,6 +97,7 @@ SB_Params::SB_Params(const input::Parameters& inputs,const lattice::LatticeGraph
       auto s = graph.source(ei);
       auto t = graph.target(ei);
       //std::cout << "i="<<i<<", s="<<s<<", t="<<t<<"\n";
+      //getchar()
 
       // src site
       unsigned src = graph.site_uid(s);
@@ -113,7 +114,7 @@ SB_Params::SB_Params(const input::Parameters& inputs,const lattice::LatticeGraph
       //for (unsigned j=0; j<q; ++j) 
       //  tgt_state_indices[j] = graph.lattice().basis_index_number(p,j);
 
-      //std::cout << "m="<<m<<", n="<<n<<"\n"; getchar();
+      //std::cout << "src="<<src<<", tgt="<<tgt<<"\n"; getchar();
       bonds_.push_back({type,src,src_dim,tgt,tgt_dim,graph.vector(ei),SO_coupling_});
       // Hamiltonian terms for this bonds
       //ComplexMatrix coeff_mat = hamterm.coupling(btype);
@@ -121,6 +122,7 @@ SB_Params::SB_Params(const input::Parameters& inputs,const lattice::LatticeGraph
         if (bterm->qn_operator().is_quadratic()) {
           bonds_.back().add_term_cc(bterm->coupling(type), bterm->qn_operator().sigma());
           //std::cout << "coupling = " << bterm->coupling(type) << "\n";
+          //getchar();
         }
       }
 

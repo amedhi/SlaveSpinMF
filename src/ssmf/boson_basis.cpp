@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-04-21 11:41:01
-* @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-11-23 13:44:14
+* @Last Modified by:   Amal Medhi, amedhi@mbpro
+* @Last Modified time: 2019-03-07 13:58:38
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <cassert>
@@ -150,6 +150,8 @@ SlaveSpinBasis::op_result SlaveSpinBasis::apply_Zplus(const double& c,
   idx_t pos = site * site_dim_ + alpha;
   // Z+ = <P+> a^\dag b <P-> = c a^\dag b
   state_t state = basis_states_[idx];
+  //std::cout << "pos = " << pos << "\n";
+  //std::cout << "state = " << std::bitset<6>(state.to_ulong()) << "\n";
   if (state.test(pos)) {
     return std::make_pair(0,null_idx_);
   }

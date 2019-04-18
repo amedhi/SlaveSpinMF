@@ -19,7 +19,8 @@
 #include "../lattice/blochbasis.h"
 #include "../model/quantum_op.h"
 #include "../model/model.h"
-#include "sb_params.h"
+//#include "sb_params.h"
+#include "mf_params.h"
 //#include "./blochbasis.h"
 
 constexpr std::complex<double> ii(void) { return std::complex<double>{0.0,static_cast<double>(1.0)}; }
@@ -34,9 +35,10 @@ public:
   void build_bondterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
   void build_siteterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
   void eval_coupling_constant(const model::ModelParams& cvals, const model::ModelParams& pvals);
+  void update_bondterm_cc(const int& term_id, const MF_Params& mf_params);
   const unsigned& num_out_bonds(void) const { return num_out_bonds_; } 
-  const Vector3d& bond_vector(const unsigned& i) const { return bond_vectors_[i]; }
-  const ComplexMatrix& coeff_matrix(const unsigned& i=0) const { return coeff_matrices_[i]; }
+  const Vector3d& bond_vector(const int& i) const { return bond_vectors_[i]; }
+  const ComplexMatrix& coeff_matrix(const int& i=0) const { return coeff_matrices_[i]; }
   //const double& coupling(const unsigned& site_type) const; 
   const model::op::quantum_op& qn_operator(void) const { return op_; }
 private:
@@ -54,18 +56,18 @@ class Spinon : public model::Hamiltonian
 public:
   Spinon() {}
   Spinon(const input::Parameters& inputs, const model::Hamiltonian& model, 
-    const lattice::LatticeGraph& graph, const SB_Params& srparams);
+    const lattice::LatticeGraph& graph, const MF_Params& mf_params);
   ~Spinon() {}
   int init(const lattice::Lattice& lattice) override;
   int finalize(const lattice::LatticeGraph& graph);
-  void solve(const lattice::LatticeGraph& graph, SB_Params& srparams);
+  void solve(const lattice::LatticeGraph& graph, MF_Params& mf_params);
   void update(const input::Parameters& inputs);
   void update_terms(void) override;
   //const realArray1D& orbital_en(void) const { return orbital_en_; }
   void set_shifted_en(const std::vector<double>& shifted_e0) 
     { for (int i=0; i<kblock_dim_; ++i) orbital_en_shifted_[i]=shifted_e0[i]; }
   void update_site_parameter(const std::string& pname, const double& pvalue);
-  void construct_kspace_block(const SB_Params& srparams, const Vector3d& kvec);
+  void construct_kspace_block(const MF_Params& mf_params, const Vector3d& kvec);
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
   const realArray1D& orbital_en(void) const override { return orbital_en_; }
@@ -109,8 +111,8 @@ private:
   void build_unitcell_terms(const lattice::LatticeGraph& graph);
   void update_unitcell_terms(void);
   void set_particle_num(const input::Parameters& inputs);
-  void construct_groundstate(const SB_Params& srparams);
-  void compute_averages(const lattice::LatticeGraph& graph, SB_Params& srparams);
+  void construct_groundstate(const MF_Params& mf_params);
+  void compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_params);
 };
 
 

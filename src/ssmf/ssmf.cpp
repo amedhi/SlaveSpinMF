@@ -17,9 +17,10 @@ SRMF::SRMF(const input::Parameters& inputs)
   : graph_(inputs) 
   //, blochbasis_(graph_)
   , model_(inputs, graph_.lattice())
-  , sr_parms_(inputs, graph_,model_)
-  , spinon_model_(inputs,model_,graph_,sr_parms_)
-  , boson_model_(inputs,model_,graph_,sr_parms_)
+  //, sr_parms_(inputs, graph_,model_)
+  , mf_params_(inputs, graph_,model_)
+  , spinon_model_(inputs,model_,graph_,mf_params_)
+  , boson_model_(inputs,model_,graph_,mf_params_)
 {
   // For solving for LM parameter equation
   fx_dim_ = graph_.lattice().num_basis_orbitals();
@@ -46,7 +47,7 @@ int SRMF::spinon_energy_eqn(const std::vector<double>& x, std::vector<double>& f
 {
   spinon_model_.set_shifted_en(x);
   selconsistent_solve();
-  auto lambda = sr_parms_.site(0).lm_params();
+  auto lambda = mf_params_.site(0).lm_params();
   std::cout<<"x(0) = "<< x[0] << " x(1) ="<<x[1]<<"\n";
   std::cout<<"lambda = "<< lambda.transpose()<<"\n"; getchar();
   for (int i=0; i<fx_dim_; ++i) {
@@ -61,20 +62,27 @@ int SRMF::run(const input::Parameters& inputs)
   spinon_model_.update(inputs);
   boson_model_.update(spinon_model_);
 
-  //sr_parms_.
-  boson_ke_.resize(sr_parms_.num_bonds());
-  spinon_ke_.resize(sr_parms_.num_bonds());
-  diff_boson_ke_.resize(sr_parms_.num_bonds());
-  diff_spinon_ke_.resize(sr_parms_.num_bonds());
-  boson_ke_norm_.resize(sr_parms_.num_bonds());
-  spinon_ke_norm_.resize(sr_parms_.num_bonds());
+  //mf_params_.
+  boson_ke_.resize(mf_params_.num_bonds());
+  spinon_ke_.resize(mf_params_.num_bonds());
+  diff_boson_ke_.resize(mf_params_.num_bonds());
+  diff_spinon_ke_.resize(mf_params_.num_bonds());
+  boson_ke_norm_.resize(mf_params_.num_bonds());
+  spinon_ke_norm_.resize(mf_params_.num_bonds());
 
-  sr_parms_.init_mf_params();
-  for (int i=0; i<sr_parms_.num_bonds(); ++i) {
-    //sr_parms_.bond(i).set_spinon_ke();
-    //sr_parms_.bond(i).set_boson_ke();
-    spinon_ke_[i] = sr_parms_.bond(i).spinon_ke();
-    boson_ke_[i] = sr_parms_.bond(i).boson_ke();
+  for (int i=0; i<mf_params_.num_bonds(); ++i) {
+    int rows = mf_params_.bond(i).spinon_ke(0).rows();
+    int cols = mf_params_.bond(i).spinon_ke(0).cols();
+    boson_ke_[i].resize(rows, cols);
+    spinon_ke_[i].resize(rows, cols);
+    diff_boson_ke_[i].resize(rows, cols);
+    diff_spinon_ke_[i].resize(rows, cols);
+  }
+
+  mf_params_.init_params();
+  for (int i=0; i<mf_params_.num_bonds(); ++i) {
+    spinon_ke_[i] = mf_params_.bond(i).spinon_ke(0);
+    boson_ke_[i] = mf_params_.bond(i).boson_ke(0);
   }
 
   // find spinon shifted local energies for U=0;
@@ -89,7 +97,6 @@ int SRMF::run(const input::Parameters& inputs)
   }
   std::cout << "shifted_e0 =" << x_vec_[0] << "\n";
   */
-
   // solve 
   selconsistent_solve();
   return 0;
@@ -100,12 +107,12 @@ int SRMF::selconsistent_solve(void)
   int max_sb_iter = 10;
   bool converged = false;
   for (int iter=0; iter<max_sb_iter; ++iter) {
-    spinon_model_.solve(graph_,sr_parms_);
-    boson_model_.solve(sr_parms_);
+    spinon_model_.solve(graph_,mf_params_);
+    boson_model_.solve(mf_params_);
     // check convergence
-    for (int i=0; i<sr_parms_.num_bonds(); ++i) {
-      diff_spinon_ke_[i] = spinon_ke_[i] - sr_parms_.bond(i).spinon_ke();
-      diff_boson_ke_[i] = boson_ke_[i] - sr_parms_.bond(i).boson_ke();
+    for (int i=0; i<mf_params_.num_bonds(); ++i) {
+      diff_spinon_ke_[i] = spinon_ke_[i] - mf_params_.bond(i).spinon_ke(0);
+      diff_boson_ke_[i] = boson_ke_[i] - mf_params_.bond(i).boson_ke(0);
       spinon_ke_norm_[i] = diff_spinon_ke_[i].abs2().maxCoeff();
       boson_ke_norm_[i] = diff_boson_ke_[i].abs2().maxCoeff();
     }
@@ -119,18 +126,18 @@ int SRMF::selconsistent_solve(void)
     }
 
     // continue
-    for (int i=0; i<sr_parms_.num_bonds(); ++i) {
-      spinon_ke_[i] = sr_parms_.bond(i).spinon_ke();
-      boson_ke_[i] = sr_parms_.bond(i).boson_ke();
+    for (int i=0; i<mf_params_.num_bonds(); ++i) {
+      spinon_ke_[i] = mf_params_.bond(i).spinon_ke(0);
+      boson_ke_[i] = mf_params_.bond(i).boson_ke(0);
     }
   }
   //if (converged) std::cout<<"ssmf converged!\n";
 
   std::cout<<spinon_model_.get_parameter_value("U")<<"  ";
-  for (int i=0; i<sr_parms_.num_sites(); ++i) {
+  for (int i=0; i<mf_params_.num_sites(); ++i) {
     //std::cout<<"Z["<<i<<"] = "<< sr_parms_.site(i).qp_weights().transpose()<<"\n";
-    std::cout<<sr_parms_.site(i).qp_weights().transpose()<<"\n";
-    std::cout<<sr_parms_.site(i).lm_params().transpose()<<"\n";
+    std::cout<<mf_params_.site(i).qp_weights().transpose()<<"\n";
+    std::cout<<mf_params_.site(i).lm_params().transpose()<<"\n";
   }
   return 0;
 }

@@ -14,7 +14,8 @@
 #include "../lattice/graph.h"
 //#include "../lattice/blochbasis.h"
 #include "../model/model.h"
-#include "sb_params.h"
+//#include "sb_params.h"
+#include "mf_params.h"
 #include "slavespin.h"
 #include "spinon.h"
 
@@ -36,8 +37,9 @@ private:
   lattice::LatticeGraph graph_;
   basis::BlochBasis blochbasis_;
   model::Hamiltonian model_;
-  SB_Params sr_parms_;
+  MF_Params mf_params_;
   Spinon spinon_model_;
+  SlaveSpin boson_model_;
 
   // gsl solver
   //double lm_ftol_{1.0E-8};
@@ -45,7 +47,6 @@ private:
   std::vector<double> x_vec_;
   std::vector<double> fx_vec_;
   root::gsl_solver solver_;
-  SlaveSpin boson_model_;
   //unsigned num_kpoints_{1};
   //unsigned kblock_dim_{1};
   //mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up_;
