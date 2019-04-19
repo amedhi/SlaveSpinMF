@@ -23,7 +23,11 @@
 namespace model {
 
 enum class model_id {
-  UNDEFINED, HUBBARD, TJ, DISORDERED_TJ, TBI_HUBBARD
+  UNDEFINED, HUBBARD, TJ, DISORDERED_TJ, TBI_HUBBARD, PYROCHLORE
+};
+
+enum class model_id2 {
+  UNDEFINED, HUBBARD, TJ, BHZ, KM, PYROCHLORE
 };
 
 class Hamiltonian 
@@ -55,6 +59,8 @@ public:
   virtual void update_terms(void);
   virtual const realArray1D& orbital_en(void) const { return orbital_en_; };
   //void change_parameter_value(const std::string& pname, const double& pval);
+  const model_id& id(void) const { return mid; }
+  const model_id2& id2(void) const { return id2_; }
   double get_parameter_value(const std::string& pname) const;
   unsigned add_constant(const std::string& cname, const double& val) 
     { constants_.insert({cname, val}); return constants_.size(); }
@@ -103,6 +109,7 @@ public:
   //const BondTerm& bondterm(const unsigned& i) const { return bondterms_[i]; };
 private:
   model_id mid {model_id::UNDEFINED};
+  model_id2 id2_{model_id2::UNDEFINED};
   std::string model_name;
   //BasisDescriptor basis_;
   std::map<unsigned, unsigned> sitetypes_map_;

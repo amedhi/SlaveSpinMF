@@ -62,6 +62,8 @@ int Spinon::finalize(const lattice::LatticeGraph& graph)
 
 void Spinon::update(const input::Parameters& inputs)
 {
+  //std::cout << "START>>>>>>>>>>\n";
+  //std::cout << "<<<<<<<<<<<<END\n";
   Model::update_parameters(inputs);
   update_terms();
   orbital_en_.setZero();
@@ -108,23 +110,25 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
   }
   if (have_TP_symmetry_) {
     for (int i=0; i<kshells_up_.size(); ++i) {
-      unsigned k = kshells_up_[i].k;
+      int k = kshells_up_[i].k;
       Vector3d kvec = blochbasis_.kvector(k);
       construct_kspace_block(mf_params, kvec);
       es_k_up_.compute(quadratic_spinup_block());
 
       // site density
-      unsigned nmin = kshells_up_[i].nmin;
-      unsigned nmax = kshells_up_[i].nmax;
-      unsigned nbands = nmax-nmin+1;
+      int nmin = kshells_up_[i].nmin;
+      int nmax = kshells_up_[i].nmax;
+      int nbands = nmax-nmin+1;
+      amplitude_vec1.resize(nbands);
+      amplitude_vec2.resize(nbands);
       Eigen::VectorXcd eigvec_wt(nbands);
       for (int j=0; j<mf_params.num_sites(); ++j) {
-        unsigned site_dim = mf_params.site(j).dim();
+        int site_dim = mf_params.site(j).dim();
         realArray1D n_avg(spin_multiply_*site_dim); 
-        for (unsigned m=0; m<site_dim; ++m) {
+        for (int m=0; m<site_dim; ++m) {
           auto ii = mf_params.site(j).state_indices()[m];
           double norm = 0.0;
-          for (unsigned band=nmin; band<=nmax; ++band) {
+          for (int band=nmin; band<=nmax; ++band) {
             norm += std::norm(es_k_up_.eigenvectors().row(ii)[band]);
           }
           n_avg(m) = norm;
@@ -132,25 +136,41 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
         mf_params.site(j).spinon_density() += n_avg;
       }
 
+      // spin-flip term 
+      if (SO_coupling_) {
+        for (int j=0; j<mf_params.num_sites(); ++j) {
+          int site_dim = mf_params.site(j).dim();
+          cmplArray2D flip_ampl(spin_multiply_*site_dim,spin_multiply_*site_dim);
+          for (int m=0; m<site_dim; ++m) {
+            auto ii = mf_params.site(j).state_indices()[m];
+            amplitude_vec1 = es_k_up_.eigenvectors().block(ii,nmin,1,nbands);
+            for (int n=0; n<site_dim; ++n) {
+              auto jj = mf_params.site(j).state_indices()[n];
+              amplitude_vec2 = es_k_up_.eigenvectors().block(jj,nmin,1,nbands);
+              flip_ampl(m,n) = amplitude_vec1.dot(amplitude_vec2);
+            }
+          }
+          //mf_params.site(j).spin_flip_ampl() += flip_ampl;
+        }
+      }
+
       // bond averages
-      amplitude_vec1.resize(nbands);
-      amplitude_vec2.resize(nbands);
       for (int j=0; j<mf_params.num_bonds(); ++j) {
         Vector3d delta = mf_params.bond(j).vector();
         std::complex<double> exp_kdotr = std::exp(ii()*kvec.dot(delta));
-        unsigned src = mf_params.bond(j).src();
-        unsigned tgt = mf_params.bond(j).tgt();
-        unsigned rows = mf_params.site(src).dim();
-        unsigned cols = mf_params.site(tgt).dim();
+        int src = mf_params.bond(j).src();
+        int tgt = mf_params.bond(j).tgt();
+        int rows = mf_params.site(src).dim();
+        int cols = mf_params.site(tgt).dim();
         //sr_bond bond(mf_params.bonds()[j]);
         //std::cout << "bond: src - tgt = "<<j<<": "<<src<<"-"<<tgt<< "\n";
         cmplArray2D ke_matrix=cmplArray2D::Zero(spin_multiply_*rows, spin_multiply_*cols);
-        for (unsigned m=0; m<rows; ++m) {
+        for (int m=0; m<rows; ++m) {
           auto ii = mf_params.site(src).state_indices()[m];
           amplitude_vec1 = es_k_up_.eigenvectors().block(ii,nmin,1,nbands);
           //std::cout << "m, ii = " << m << ", " << ii << "\n";
           //std::cout << "amplitude_vec1 = " << amplitude_vec1.transpose() << "\n"; getchar();
-          for (unsigned n=0; n<cols; ++n) {
+          for (int n=0; n<cols; ++n) {
             auto jj = mf_params.site(tgt).state_indices()[n];
             amplitude_vec2 = es_k_up_.eigenvectors().block(jj,nmin,1,nbands);
             //std::cout << "n, jj = " << n << ", " << jj << "\n";
@@ -188,13 +208,21 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     }
     mf_params.site(i).spinon_density() = n_avg;
     // print
-    /*
-    std::cout<<"site-"<<i<<":"<<"\n";
+    /*std::cout<<"site-"<<i<<":"<<"\n";
     for (int m=0; m<mf_params.site(i).dim(); ++m) {
       std::cout << "<n_up>["<<m<<"] = " << mf_params.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
     */
+  }
+  //getchar();
+
+  // final spin-flip amplitudes
+  if (SO_coupling_) {
+    for (int i=0; i<mf_params.num_sites(); ++i) {
+      //cmplArray2D flip_ampl = mf_params.site(i).spin_flip_ampl()/num_kpoints_;
+      //mf_params.site(i).spin_flip_ampl() = flip_ampl;
+    }
   }
 
   // final KE average 
@@ -263,8 +291,15 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
     std::cout << "e0 = " << e0 << "\n"; getchar();
     */
     // check for degeneracy 
+    int num_fill_particles;
+    if (SO_coupling_) {
+      num_fill_particles = num_upspins_+num_dnspins_;
+    }
+    else {
+      num_fill_particles = num_upspins_;
+    }
     double degeneracy_tol = 1.0E-12;
-    int top_filled_level = num_upspins_-1;
+    int top_filled_level = num_fill_particles-1;
     fermi_energy_ = ek[idx[top_filled_level]];
     int num_degen_states = 1;
     int num_valence_particle = 1;
@@ -294,7 +329,7 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
     std::vector<int> shell_nmax(num_kpoints_);
     for (auto& elem : shell_nmax) elem = -1; // invalid default value
     int k, n;
-    for (int i=0; i<num_upspins_; ++i) {
+    for (int i=0; i<num_fill_particles; ++i) {
       int state = idx[i]; 
       std::tie(k,n) = qn_list[state];
       if (shell_nmax[k] < n) shell_nmax[k] = n;
@@ -409,7 +444,6 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
   //work2 = Matrix::Zero(dim_,dim_);
   // bond terms
   //for (const auto& term : uc_bondterms_) {
-  int term_id=0;
   for (auto& term : ubond_terms_) {
     if (term.qn_operator().is_quadratic() && term.qn_operator().spin_up()) {
       //term.update_bondterm_cc(term_id++, mf_params);
@@ -654,18 +688,41 @@ void UnitcellTerm::build_siteterm(const model::HamiltonianTerm& hamterm,
     // expression
     strMatrix expr_mat = hamterm.coupling_expr(stype);
     ComplexMatrix coeff_mat = hamterm.coupling(stype);
-    if ((expr_mat.rows()!=1) && (expr_mat.cols()!=graph.site_dim(i))) {
+    int rows = graph.site_dim(i);
+    int cols = graph.site_dim(i);
+    if (expr_mat.cols()!=cols) {
       throw std::runtime_error("Dimension mismatch in the 'siteterm'");
     }
-    for (int j=0; j<graph.site_dim(i); ++j) {
-      unsigned n = graph.lattice().basis_index_number(i, j);
-      coeff_matrices_[0](n,n) = coeff_mat(0,j);
-      std::string cc_expr(expr_mat(0,j));
-      boost::trim(cc_expr);
-      if (cc_expr.size()>0) {
-        expr_matrices_[0](n,n) += "+("+cc_expr+")";
+    // diagonal site term
+    if (expr_mat.rows()==1) {
+      for (int j=0; j<cols; ++j) {
+        int n = graph.lattice().basis_index_number(i,j);
+        coeff_matrices_[0](n,n) = coeff_mat(0,j);
+        std::string cc_expr(expr_mat(0,j));
+        boost::trim(cc_expr);
+        if (cc_expr.size()>0) {
+          expr_matrices_[0](n,n) += "+("+cc_expr+")";
+        }
+        //n++;
       }
-      n++;
+    }
+    else {
+      // off-diagonal site term
+      if (expr_mat.rows()!=rows) {
+        throw std::runtime_error("Dimension mismatch in the 'siteterm'");
+      }
+      for (int m=0; m<rows; ++m) {
+        for (int n=0; n<cols; ++n) {
+          int p = graph.lattice().basis_index_number(i,m);
+          int q = graph.lattice().basis_index_number(i,n);
+          std::string cc_expr(expr_mat(m,n));
+          if (cc_expr.size()>0) {
+            expr_matrices_[0](p,q) += "+("+cc_expr+")";
+          }
+          // values
+          coeff_matrices_[0](p,q) += coeff_mat(m,n);
+        }
+      }
     }
   }
   bond_vectors_[0] = Vector3d(0.0,0.0,0.0);

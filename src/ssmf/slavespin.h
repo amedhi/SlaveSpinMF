@@ -31,6 +31,8 @@
 namespace srmf {
 
 enum cluster_t {SITE, BOND, CELL};
+enum theory_t {Z2, U1};
+enum model_id {HUBBARD, BHZ, PYROCHLORE};
 
 class MatrixElem
 {
@@ -54,20 +56,26 @@ class ModelParams
 public:
   ModelParams() {}
   ~ModelParams() {}
+  void set_id(const model_id& id) { id_=id; }
   void update_e0(const realArray1D& e0) { e0_=e0; }
   void update_U(const double& U) { U_=U; }
   void update_U1(const double& U) { U1_=U; hunde_coupling_=true; }
-  void update_hunde_J(const double& J) { hunde_J_=J; hunde_coupling_=true; }
+  void update_J(const double& J) { hunde_J_=J; hunde_coupling_=true; }
+  void update_lambda(const double& lambda) { SO_lambda_=lambda; }
+  const model_id& id(void) const { return id_; }
   const realArray1D& get_e0(void) const { return e0_; }
   const double& get_U(void) const { return U_; }
   const double& get_U1(void) const { return U1_; }
-  const double& get_hunde_J(void) const { return hunde_J_; }
+  const double& get_J(void) const { return hunde_J_; }
+  const double& get_lambda(void) const { return SO_lambda_; }
   bool have_hunde_coupling(void) const { return hunde_coupling_; }
 private:
+  model_id id_;
   bool hunde_coupling_{false};
   double U_{0.0};
   double U1_{0.0}; // inter-orbital
   double hunde_J_{0.0};
+  double SO_lambda_{0.0};
   realArray1D e0_; // orbital energy
 };
 
@@ -75,9 +83,9 @@ class Cluster
 {
 public:
   Cluster() {}
-  Cluster(const cluster_t& type, const int& site, 
-    const std::vector<int>& spin_orbitals) 
-  : type_{type}, site_{site}, spin_orbitals_{spin_orbitals}
+  Cluster(const cluster_t& type, const theory_t& theory, 
+    const int& site, const std::vector<int>& spin_orbitals) 
+  : type_{type}, theory_{theory}, site_{site}, spin_orbitals_{spin_orbitals}
   {
     end_site_id_ = site_+1;
     total_spinorbitals_ = spin_orbitals_.size();
@@ -116,6 +124,7 @@ public:
   void get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& Opm_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
+  theory_t theory_{theory_t::Z2};
   int site_{0};
   int end_site_id_{0};
   unsigned basis_dim_{0};
@@ -157,6 +166,7 @@ public:
   //void update(const input::Parameters& inputs);
   friend int gsl_problem_equation(const gsl_vector* x, void* parms, gsl_vector* f);
 private:
+  theory_t theory_{theory_t::Z2};
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
   //Model rotor_model_;

@@ -10,8 +10,9 @@ mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
 
 #---------------------------------------------
-# Slave-rotor parameters
+# Slave-spin parameters
 #---------------------------------------------
+theory = "Z2" # "U1"
 tol = 1.0E-8
 #maxiter = 500
 #maxiter_rotor = 500
@@ -35,11 +36,12 @@ bc3 = "periodic"
 #---------------------------------------------
 # Model:
 #---------------------------------------------
-#model = "tJ"
-model = "TBI_HUBBARD"
+#model = "TBI_HUBBARD"
+model = "PYROCHLORE"
 t = 1.00
-lambda = 1.0
-U = 0
+lambda = 20.0
+U = 4.0
+J = 2.0
 
 #---------------------------------------------
 # Variational wavefunction
