@@ -36,6 +36,7 @@ public:
   void build_siteterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
   void eval_coupling_constant(const model::ModelParams& cvals, const model::ModelParams& pvals);
   void update_bondterm_cc(const int& term_id, const MF_Params& mf_params);
+  void update_siteterm_cc(const MF_Params& mf_params);
   const unsigned& num_out_bonds(void) const { return num_out_bonds_; } 
   const Vector3d& bond_vector(const int& i) const { return bond_vectors_[i]; }
   const ComplexMatrix& coeff_matrix(const int& i=0) const { return coeff_matrices_[i]; }

@@ -99,6 +99,7 @@ public:
     interaction_elems_.resize(basis_dim_);
     lagrange_elems_.resize(basis_dim_);
     //orbital_en_elems_.resize(basis_dim_);
+    soc_mat_.resize(basis_dim_,basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
     groundstate_.resize(basis_dim_);
     H_dLambda_.resize(basis_dim_,total_spinorbitals_);
@@ -110,7 +111,8 @@ public:
     const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& renorm_site_fields);
   void set_spinon_density(const real_siteparms_t& spinon_density);
   void solve_lm_params(real_siteparms_t& lm_params);
-  void update_hamiltonian(const ModelParams& p);
+  void update_soc_matrix(const MF_Params& mfp, const real_siteparms_t& gauge_factors);
+  void update_interaction_matrix(const ModelParams& p);
   void update_hamiltonian(const real_siteparms_t& new_lm_params);
   void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
@@ -120,7 +122,8 @@ public:
   const ComplexMatrix& groundstate_dLambda(void); 
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
-  void get_avg_Zplus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
+  void get_avg_Zminus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
+  void get_avg_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
   void get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& Opm_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
@@ -138,7 +141,8 @@ private:
   RealVector interaction_elems_; 
   RealVector lagrange_elems_; 
   //RealVector orbital_en_elems_; 
-  //std::vector<MatrixElem> orbital_en_elems_;
+
+  ComplexMatrix soc_mat_;
   ComplexMatrix hmatrix_;
   ComplexMatrix H_dLambda_;
   ComplexMatrix groundstate_dLambda_;
@@ -225,6 +229,7 @@ private:
   void set_site_fields(void);
   void update_lm_params(void);
   void update_site_order_params(void);
+  void set_renormalized_soc(MF_Params& mf_params);
   void update_bond_order_params(MF_Params& mf_params);
   void update_renorm_site_potential(MF_Params& mf_params);
   int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);

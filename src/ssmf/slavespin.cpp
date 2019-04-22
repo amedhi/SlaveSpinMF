@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-04-19 14:40:16
+* @Last Modified time: 2019-04-22 14:19:33
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -25,6 +25,13 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   // Assuming all sites have same 'site_dim'.
   spin_orbitals_ = mf_params.site(0).spin_orbitals(); // including 'UP' & 'DN' spins
   site_dim_ = spin_orbitals_.size(); 
+  /*
+    'spin_orbitals' Note:  If NO SOC, the assumption is that
+    the first half of the spin-orbitals correspond to UP-spins 
+    and the second half correspond to DOWN-spins.
+    If SOC, then the spin-orbitals will follow the same ordering
+    as in the site basis in the given Hamiltonian.
+  */
 
   // storages
   // Lagrange multipliers
@@ -113,7 +120,9 @@ void SlaveSpin::update(const model::Hamiltonian& model)
       break;
     default: break;
   }
-  for (auto& cluster : clusters_) cluster.update_hamiltonian(modelparams_);
+  for (auto& cluster : clusters_) {
+    cluster.update_interaction_matrix(modelparams_);
+  }
 }
 
 void SlaveSpin::solve(MF_Params& mf_params) 
@@ -131,7 +140,7 @@ void SlaveSpin::solve(MF_Params& mf_params)
     for (auto alpha : spin_orbitals_) {
       double nf = spinon_density_[site][alpha];
       if (theory_==theory_t::Z2) {
-        gauge_factors_[site][alpha] = 1.0/std::sqrt(nf*(1.0-nf))-1.0;
+        gauge_factors_[site][alpha] = 1.0/std::sqrt((delta_+nf)*(1.0-nf+delta_))-1.0;
       }
       else {// U1 Theory
         gauge_factors_[site][alpha] = 1.0/std::sqrt((nf+delta_)*(1.0-nf+delta_)); 
@@ -141,10 +150,19 @@ void SlaveSpin::solve(MF_Params& mf_params)
     }
   }
 
+  // set SOC couplings
+  if (modelparams_.id()==PYROCHLORE) {
+    for (auto& cluster : clusters_) {
+      cluster.update_soc_matrix(mf_params, gauge_factors_);
+    }
+  }
+
   // renormalized bond couplings
   set_bond_couplings(mf_params);
 
+  // --------Self Consistent solution-------
   self_consistent_solve(mf_params);
+
   // QP weights
   for (int site=0; site<num_sites_; ++site) {
     qp_weights_[site] = site_order_params_[site].abs2();
@@ -157,6 +175,9 @@ void SlaveSpin::solve(MF_Params& mf_params)
     mf_params.site(i).qp_weights() = qp_weights_[i];
     //std::cout<<"lambda["<<i<<"] = "<< lm_params_[i].transpose()<<"\n";
     //std::cout<<"Z["<<i<<"] = "<< qp_weights_[i].transpose()<<"\n";
+  }
+  if (modelparams_.id()==PYROCHLORE) {
+    set_renormalized_soc(mf_params);
   }
   update_bond_order_params(mf_params);
   update_renorm_site_potential(mf_params);
@@ -290,6 +311,26 @@ void SlaveSpin::set_site_couplings(const MF_Params& mf_params,
   }
 }
 
+void SlaveSpin::set_renormalized_soc(MF_Params& mf_params)
+{
+  if (cluster_type_==cluster_t::SITE) {
+    cmplArray2D flip_ampl(site_dim_,site_dim_);
+    for (int i=0; i<mf_params.num_sites(); ++i) {
+      for (int m=0; m<site_dim_; ++m) {
+        for (int n=0; n<site_dim_; ++n) {
+          flip_ampl(m,n) = site_order_params_[i](m) * std::conj(site_order_params_[i](n));
+        }
+      }
+      mf_params.site(i).boson_flip_ampl() = flip_ampl;
+      //std::cout << "flip_ampl["<<i<<"] =\n" << flip_ampl << "\n";
+      //getchar();
+      mf_params.site(i).set_boson_renormalization();
+    }
+  }
+  else {
+  }
+}
+
 void SlaveSpin::update_bond_order_params(MF_Params& mf_params) 
 {
   // Renormalizing field on each site due to hopping terms from the 'bath'
@@ -318,29 +359,36 @@ void SlaveSpin::update_bond_order_params(MF_Params& mf_params)
 
 void SlaveSpin::update_renorm_site_potential(MF_Params& mf_params) 
 {
-  cmplArray2D ee = cmplArray2D::Zero(site_dim_,site_dim_);
-  for (int i=0; i<mf_params.num_bonds(); ++i) {
-    ee += mf_params.bond(i).spinon_renormed_cc(0) * 
-          mf_params.bond(i).boson_ke(0);
-  }
-  //std::cout << ee << "\n\n"; getchar();
-
-  auto ebar = 4.0*ee.rowwise().sum().real();
-  // gauge factors
-  realArray1D mu(site_dim_);
-  for (int site=0; site<num_sites_; ++site) {
-    for (auto alpha : spin_orbitals_) {
-      double nf = spinon_density_[site][alpha];
-      double eta = (2.0*nf-1)/(4.0*nf*(1.0-nf));
-      mu[alpha] = 2*ebar[alpha]*eta;
-      //std::cout << "mu["<<site<<"]["<<alpha<<"] = "<<mu[alpha]<<"\n";
-      //std::cout << "lambda["<<site<<"]["<<alpha<<"] = "<<lm_params_[site][alpha]<<"\n";
+  if (theory_==Z2) {
+    for (int site=0; site<num_sites_; ++site) {
+      mf_params.site(site).lm_params() = lm_params_[site];
     }
-    //std::cout << "nf["<<site<<"] = "<<spinon_density_[site].transpose() <<"\n";
-    //std::cout << "lambda["<<site<<"] = "<<srparams.site(site).lm_params().transpose() <<"\n";
-    //std::cout << "mu_gen["<<site<<"] = "<<mu.transpose() <<"\n";
-    mf_params.site(site).lm_params() = (lm_params_[site]-mu);
-    //std::cout << "lambda["<<site<<"] = "<<srparams.site(site).lm_params().transpose() <<"\n";
+  }
+  else { // U1 Theory
+    cmplArray2D ee = cmplArray2D::Zero(site_dim_,site_dim_);
+    for (int i=0; i<mf_params.num_bonds(); ++i) {
+      ee += mf_params.bond(i).spinon_renormed_cc(0) * 
+            mf_params.bond(i).boson_ke(0);
+    }
+    //std::cout << ee << "\n\n"; getchar();
+
+    auto ebar = 4.0*ee.rowwise().sum().real();
+    // gauge factors
+    realArray1D mu(site_dim_);
+    for (int site=0; site<num_sites_; ++site) {
+      for (auto alpha : spin_orbitals_) {
+        double nf = spinon_density_[site][alpha];
+        double eta = (2.0*nf-1)/(4.0*nf*(1.0-nf));
+        mu[alpha] = 2*ebar[alpha]*eta;
+        //std::cout << "mu["<<site<<"]["<<alpha<<"] = "<<mu[alpha]<<"\n";
+        //std::cout << "lambda["<<site<<"]["<<alpha<<"] = "<<lm_params_[site][alpha]<<"\n";
+      }
+      //std::cout << "nf["<<site<<"] = "<<spinon_density_[site].transpose() <<"\n";
+      //std::cout << "lambda["<<site<<"] = "<<srparams.site(site).lm_params().transpose() <<"\n";
+      //std::cout << "mu_gen["<<site<<"] = "<<mu.transpose() <<"\n";
+      mf_params.site(site).lm_params() = (lm_params_[site]-mu);
+      //std::cout << "lambda["<<site<<"] = "<<srparams.site(site).lm_params().transpose() <<"\n";
+    }
   }
   //getchar();
   /*
@@ -431,9 +479,17 @@ void SlaveSpin::update_lm_params(void)
 void SlaveSpin::update_site_order_params(void)
 {
   // calculate <O+> 
-  for (auto& cluster : clusters_) {
+  if (theory_==Z2) {
+    for (auto& cluster : clusters_) {
       cluster.solve_hamiltonian();
-      cluster.get_avg_Zplus(gauge_factors_,site_order_params_);
+      cluster.get_avg_Ominus(gauge_factors_,site_order_params_);
+    }
+  }
+  else { // U1 Theory
+    for (auto& cluster : clusters_) {
+      cluster.solve_hamiltonian();
+      cluster.get_avg_Zminus(gauge_factors_,site_order_params_);
+    }
   }
   /*
   for (unsigned site=0; site<num_sites_; ++site) {
@@ -461,132 +517,131 @@ void SlaveSpin::make_clusters(const MF_Params& mf_params)
   }
 }
 
-void Cluster::init_hamiltonian(const ModelParams& p, const real_siteparms_t& gauge_factors, const real_siteparms_t& lm_params, const cmpl_siteparms_t& site_fields)
+void Cluster::init_hamiltonian(const ModelParams& p, const real_siteparms_t& gauge_factors, 
+  const real_siteparms_t& lm_params, const cmpl_siteparms_t& site_fields)
 {
-  // assuming "SITE" cluster
-  if (type_ != cluster_t::SITE) {
-    throw std::range_error("Cluster::init_hamiltonian: case not implemented\n");
+  if (type_!=cluster_t::SITE) {
+    throw std::range_error("Cluster::init_hamiltonian: defined only for 'SITE' cluster\n");
   }
-  int site_id = 0;
-
-  // reset
+  interaction_elems_.setZero();
+  lagrange_elems_.setZero();
+  soc_mat_.setZero();
   hmatrix_.setZero();
-  SlaveSpinBasis::idx_t i, j;
-
-  // Hopping term (in main Hamiltonian)
-  double mat_elem;
-  if (theory_==theory_t::Z2) {
-    for (j=0; j<basis_dim_; ++j) {
-      for (auto& alpha : spin_orbitals_) {
-        double c = gauge_factors[site_][alpha];
-        std::tie(mat_elem,i) = basis_.apply_Oplus(c,site_id,alpha,j);
-        if (i != basis_.null_idx()) {
-          auto term = mat_elem * site_fields[site_][alpha];
-          hmatrix_(i,j) += term;
-          hmatrix_(j,i) += std::conj(term);
-          //std::cout << "H["<<i<<","<<j<<"]=" << term << "\n"; getchar();
-        }
-      }
-    }
-  }
-  else {// U1 Theory
-    for (j=0; j<basis_dim_; ++j) {
-      for (auto& alpha : spin_orbitals_) {
-        double c = gauge_factors[site_][alpha];
-        std::tie(mat_elem,i) = basis_.apply_Zplus(c,site_id,alpha,j);
-        if (i != basis_.null_idx()) {
-          auto term = mat_elem * site_fields[site_][alpha];
-          hmatrix_(i,j) += term;
-          hmatrix_(j,i) += std::conj(term);
-          //std::cout << "H["<<i<<","<<j<<"]=" << term << "\n"; getchar();
-        }
-      }
-    }
-  }
-
-  if (p.id()==PYROCHLORE) {
-    // Spin-Orbit coupling term
-    if (theory_==theory_t::Z2) {
-      for (j=0; j<basis_dim_; ++j) {
-        for (auto& alpha : spin_orbitals_) {
-          double c = gauge_factors[site_][alpha];
-          std::tie(mat_elem,i) = basis_.apply_Oplus(c,site_id,alpha,j);
-            if (i != basis_.null_idx()) {
-            //auto term = mat_elem * site_fields[site_][alpha];
-            //hmatrix_(i,j) += term;
-            //hmatrix_(j,i) += std::conj(term);
-            //std::cout << "H["<<i<<","<<j<<"]=" << term << "\n"; getchar();
-          }
-        }
-      }
-    }
-    else { // U1 Theory
-      for (j=0; j<basis_dim_; ++j) {
-        for (auto& alpha : spin_orbitals_) {
-          double c = gauge_factors[site_][alpha];
-          std::tie(mat_elem,i) = basis_.apply_Zplus(c,site_id,alpha,j);
-            if (i != basis_.null_idx()) {
-            //auto term = mat_elem * site_fields[site_][alpha];
-            //hmatrix_(i,j) += term;
-            //hmatrix_(j,i) += std::conj(term);
-            //std::cout << "H["<<i<<","<<j<<"]=" << term << "\n"; getchar();
-          }
-        }
-      }
-    }
-  }
-
-  // interaction matrix elements
-  double U_half = 0.5*p.get_U();
-  double Sz;
-  for (i=0; i<basis_dim_; ++i) {
-    double total_Sz = 0.0;
-    for (auto& alpha : spin_orbitals_) {
-      std::tie(Sz,j) = basis_.apply_Sz(site_id,alpha,i);
-      total_Sz += Sz;
-    }
-    interaction_elems_(i) = U_half*total_Sz*total_Sz;
-    //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
-  }
-
-  // LM parameter term
-  for (i=0; i<basis_dim_; ++i) {
-    double sum = 0.0;
-    for (auto& alpha : spin_orbitals_) {
-      std::tie(Sz,j) = basis_.apply_Sz(site_id,alpha,i);
-      sum += (Sz+0.5) * lm_params[site_][alpha];
-    }
-    //std::cout << "lambda=" << sum << "\n";
-    lagrange_elems_(i) = sum;
-  }
-
-  // final matrix 
-  for (i=0; i<basis_dim_; ++i) {
-    hmatrix_(i,i) = interaction_elems_(i)+lagrange_elems_(i);
-  }
-  //std::cout << "cluster_mat =\n" << hmatrix_ << "\n";
-  std::cout << "----Stopping at Cluster::init_hamiltonian\n";
-  exit(0);
 }
 
 // update 'interaction terms'
-void Cluster::update_hamiltonian(const ModelParams& p)
+void Cluster::update_interaction_matrix(const ModelParams& p)
 {
   int site_id = 0;
-  // interaction matrix elements
-  double U_half = 0.5*p.get_U();
-  double Sz;
   SlaveSpinBasis::idx_t i, j;
-  for (i=0; i<basis_dim_; ++i) {
-    double total_Sz = 0.0;
-    for (auto& alpha : spin_orbitals_) {
-      std::tie(Sz,j) = basis_.apply_Sz(site_id,alpha,i);
-      total_Sz += Sz;
+  // interaction matrix elements
+  if (p.id()==HUBBARD || p.id()==BHZ) {
+    double U_half = 0.5*p.get_U();
+    double Sz;
+    for (i=0; i<basis_dim_; ++i) {
+      double total_Sz = 0.0;
+      for (auto& alpha : spin_orbitals_) {
+        std::tie(Sz,j) = basis_.apply_Sz(site_id,alpha,i);
+        total_Sz += Sz;
+      }
+      interaction_elems_(i) = U_half*total_Sz*total_Sz;
+      //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
     }
-    interaction_elems_(i) = U_half*total_Sz*total_Sz;
-    //std::cout << "total_Sz=" << total_Sz  << "\n";
-    //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
   }
+  else if (p.id()==PYROCHLORE) {
+    // |basis> = |0U, 0D, 1U, 1D, 2U, 2D>
+    double U = p.get_U();
+    double J = p.get_J();
+    double Uprime = U - 2.0*J; 
+    double Sz_up, Sz_dn;
+    for (i=0; i<basis_dim_; ++i) {
+      // U term
+      double sum = 0.0;
+      for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
+        std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
+        std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
+        sum += Sz_up*Sz_dn;
+      }
+      interaction_elems_(i) = U*sum;
+      //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
+
+      // Uprime term
+      sum = 0.0;
+      for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
+        std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
+        for (int n=0; n<spin_orbitals_.size()-1; n+=2) {
+          if (m == n) continue;
+          std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,n+1,i);
+          sum += Sz_up*Sz_dn;
+        }
+      }
+      interaction_elems_(i) += Uprime*sum;
+
+      // U-J term
+      sum = 0.0;
+      double Sz2_up, Sz2_dn;
+      for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
+        std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
+        std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
+        for (int n=0; n<m; n+=2) {
+          std::tie(Sz2_up,j) = basis_.apply_Sz(site_id,n,i);
+          std::tie(Sz2_dn,j) = basis_.apply_Sz(site_id,n+1,i);
+          sum += Sz_up*Sz2_up + Sz_dn*Sz2_dn;
+        }
+      }
+      interaction_elems_(i) += (Uprime-J)*sum;
+    }
+  }
+  else {
+    throw std::range_error("Cluster::init_hamiltonian: undefined model\n");
+  }
+}
+
+void Cluster::update_soc_matrix(const MF_Params& mfp, 
+  const real_siteparms_t& gauge_factors)
+{
+  SlaveSpinBasis::idx_t i,j,k;
+  double mat_elem, mat_elem2;
+  // Spin-Orbit coupling term
+  soc_mat_.setZero();
+  int site_id = 0;
+  if (theory_==theory_t::Z2) {
+    for (j=0; j<basis_dim_; ++j) {
+      for (auto& beta : spin_orbitals_) {
+        double c = gauge_factors[site_][beta];
+        std::tie(mat_elem,k) = basis_.apply_Ominus(c,site_id,beta,j);
+        if (k == basis_.null_idx()) continue;
+        for (auto& alpha : spin_orbitals_) {
+          double c2 = gauge_factors[site_][alpha];
+          std::tie(mat_elem2,i) = basis_.apply_Oplus(c2,site_id,alpha,k);
+          if (i != basis_.null_idx()) {
+            soc_mat_(i,j) += mat_elem*mat_elem2*
+              mfp.site(site_).spinon_renormed_soc()(alpha,beta);
+            // hc term taken care by the loops over 'alpha' & 'beta'
+          }
+        }
+      }
+    }
+  } // end Z2 theory
+  else {// U1 Theory
+    for (j=0; j<basis_dim_; ++j) {
+      for (auto& beta : spin_orbitals_) {
+        double c = gauge_factors[site_][beta];
+        std::tie(mat_elem,k) = basis_.apply_Zminus(c,site_id,beta,j);
+        if (k == basis_.null_idx()) continue;
+        for (auto& alpha : spin_orbitals_) {
+          double c2 = gauge_factors[site_][alpha];
+          std::tie(mat_elem2,i) = basis_.apply_Zplus(c2,site_id,alpha,k);
+          if (i != basis_.null_idx()) {
+            soc_mat_(i,j) += mat_elem*mat_elem2*
+              mfp.site(site_).spinon_renormed_soc()(alpha,beta);
+            // hc term taken care by the loops over 'alpha' & 'beta'
+          }
+        }
+      }
+    }
+  } // end U1 Theory
+  //std::cout << "soc_mat = " << soc_mat_ << "\n";
   //getchar();
 }
 
@@ -599,26 +654,45 @@ void Cluster::update_hamiltonian(const real_siteparms_t& gauge_factors,
   SlaveSpinBasis::idx_t i, j;
   double mat_elem;
   hmatrix_.setZero();
-  for (j=0; j<basis_dim_; ++j) {
-    for (auto& alpha : spin_orbitals_) {
-      double c = gauge_factors[site_][alpha];
-      std::tie(mat_elem,i) = basis_.apply_Zplus(c,site_id,alpha,j);
-      if (i != basis_.null_idx()) {
-        auto term = mat_elem * new_site_couplings[site_][alpha];
-        hmatrix_(i,j) += term;
-        hmatrix_(j,i) += std::conj(term);
+  if (theory_==theory_t::Z2) {
+    // Hopping term (in main Hamiltonian)
+    for (j=0; j<basis_dim_; ++j) {
+      for (auto& alpha : spin_orbitals_) {
+        double c = gauge_factors[site_][alpha]; // 'site_' here is not mistake
+        std::tie(mat_elem,i) = basis_.apply_Oplus(c,site_id,alpha,j);
+        if (i != basis_.null_idx()) {
+          auto term = mat_elem * new_site_couplings[site_][alpha];
+          hmatrix_(i,j) += term;
+          hmatrix_(j,i) += std::conj(term);
+          //std::cout << "H["<<i<<","<<j<<"]=" << term << "\n"; getchar();
+        }
+      }
+    }
+  }
+  else { // U1 Theory
+    for (j=0; j<basis_dim_; ++j) {
+      for (auto& alpha : spin_orbitals_) {
+        double c = gauge_factors[site_][alpha];
+        std::tie(mat_elem,i) = basis_.apply_Zplus(c,site_id,alpha,j);
+        if (i != basis_.null_idx()) {
+          auto term = mat_elem * new_site_couplings[site_][alpha];
+          hmatrix_(i,j) += term;
+          hmatrix_(j,i) += std::conj(term);
         //std::cout<<"elem("<<i<<","<<j<<") = "<<term<<"\n";
         //hmatrix_(i,j) = std::conj(term);
         //hmatrix_(j,i) += std::conj(term);
         //std::cout << "H["<<i<<","<<j<<"]=" << term << "\n"; getchar();
+        }
       }
     }
   }
+  // add SOC part
+  hmatrix_ += soc_mat_;
   // diagonal elements
   for (i=0; i<basis_dim_; ++i) {
     hmatrix_(i,i) = interaction_elems_(i)+lagrange_elems_(i);
+    //std::cout << "hmatrix("<<i<<","<<i<<") = "<<hmatrix_(i,i)<<"\n"; getchar();
   }
-
 }
 
 // update for new 'lm parameters'
@@ -887,11 +961,11 @@ void Cluster::get_avg_Splus(real_siteparms_t& Splus_avg) const
   //std::cout << "groundstate = "<< groundstate_.transpose() << "\n";
 }
 
-void Cluster::get_avg_Zplus(const real_siteparms_t& gauge_factors, 
-  cmpl_siteparms_t& Oplus_avg) const
+void Cluster::get_avg_Zminus(const real_siteparms_t& gauge_factors, 
+  cmpl_siteparms_t& Zplus_avg) const
 {
   int site_id = 0;
-  Oplus_avg[site_].setZero(); 
+  Zplus_avg[site_].setZero(); 
   SlaveSpinBasis::idx_t i, j;
   double mat_elem;
   for (auto& alpha : spin_orbitals_) {
@@ -901,7 +975,7 @@ void Cluster::get_avg_Zplus(const real_siteparms_t& gauge_factors,
       std::tie(mat_elem,j) = basis_.apply_Zminus(c,site_id,alpha,i);
       if (j != basis_.null_idx()) {
         auto c_j = groundstate_(j);
-        Oplus_avg[site_][alpha] += mat_elem*std::conj(c_j)*c_i;
+        Zplus_avg[site_][alpha] += mat_elem*std::conj(c_j)*c_i;
         /*if (alpha==0) {
           std::cout << mat_elem << "\n";
           std::cout << std::conj(c_j)*c_i << "\n";
@@ -909,25 +983,34 @@ void Cluster::get_avg_Zplus(const real_siteparms_t& gauge_factors,
       }
     }
   }
-
-  /*
-  for (i=0; i<basis_dim_; ++i) {
-    auto c_i = groundstate_(i);
-    for (auto& alpha : spin_orbitals_) {
-      double c = gauge_factors[site_][alpha];
-      std::tie(mat_elem,j) = basis_.apply_Zminus(c,site_,alpha,i);
-      if (j != basis_.null_idx()) {
-        auto c_j = groundstate_(j);
-        Oplus_avg[site_][alpha] += mat_elem*std::conj(c_j)*c_i;
-        //std::cout << "mat_elem = "<< mat_elem << "\n";
-        //std::cout << "cj*ci["<<alpha<<"] = "<< std::conj(c_j)*c_i << "\n";
-      }
-    }
-  }*/
   //std::cout << "groundstate = "<< groundstate_ << "\n";
   //std::cout << "<Zplus>["<<site_<<"] = "<< Oplus_avg[site_].transpose() << "\n";
   //getchar();
 }
+
+void Cluster::get_avg_Ominus(const real_siteparms_t& gauge_factors, 
+  cmpl_siteparms_t& Ominus_avg) const
+{
+  int site_id = 0;
+  Ominus_avg[site_].setZero(); 
+  SlaveSpinBasis::idx_t i, j;
+  double mat_elem;
+  for (auto& alpha : spin_orbitals_) {
+    double c = gauge_factors[site_][alpha];
+    for (i=0; i<basis_dim_; ++i) {
+      auto c_i = groundstate_(i);
+      std::tie(mat_elem,j) = basis_.apply_Ominus(c,site_id,alpha,i);
+      if (j != basis_.null_idx()) {
+        auto c_j = groundstate_(j);
+        Ominus_avg[site_][alpha] += mat_elem*std::conj(c_j)*c_i;
+      }
+    }
+  }
+  //std::cout << "groundstate = "<< groundstate_ << "\n";
+  //std::cout << "<Zplus>["<<site_<<"] = "<< Ominus_avg[site_].transpose() << "\n";
+  //getchar();
+}
+
 
 void Cluster::get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, 
   cmpl_siteparms_t& Opm_avg) const

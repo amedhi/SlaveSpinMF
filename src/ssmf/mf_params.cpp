@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-03-12 12:20:33
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-04-05 11:02:18
+* @Last Modified time: 2019-04-22 12:37:09
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "mf_params.h"
@@ -21,19 +21,52 @@ MF_Site::MF_Site()
 
 MF_Site::MF_Site(const int& type, const int& dim, const idx_list& state_indices, 
     const bool& SO_coupled)
-  : type_{type}, dim_{dim}, state_indices_{state_indices}
+  : type_{type}, dim_{dim}, SO_coupled_{SO_coupled}, state_indices_{state_indices}
 {
   connected_bonds_.clear();
   bond_outgoing_.clear();
   // spin-oribitals
-  if (SO_coupled) spin_orbitals_.resize(dim); 
-  else spin_orbitals_.resize(2*dim); // spin + oribitals;
+
+  int num_spinorb;
+  if (SO_coupled_) num_spinorb = dim_;
+  else num_spinorb = 2*dim_;
+  /*
+    'spin_orbitals' Note:  If NO SOC, the assumption is that
+    the first half of the spin-orbitals correspond to UP-spins 
+    and the second half correspond to DOWN-spins.
+    If SOC, then the spin-orbitals will follow the same ordering
+    as in the site basis in the given Hamiltonian.
+  */
+  spin_orbitals_.resize(num_spinorb); 
   std::iota(spin_orbitals_.begin(),spin_orbitals_.end(),0);
-  spinon_density_.resize(spin_orbitals_.size());
-  boson_density_.resize(spin_orbitals_.size());
-  lm_params_.resize(spin_orbitals_.size());
-  qp_weights_.resize(spin_orbitals_.size());
+  spinon_density_.resize(num_spinorb);
+  boson_density_.resize(num_spinorb);
+  lm_params_.resize(num_spinorb);
+  qp_weights_.resize(num_spinorb);
+  soc_matrix_.resize(num_spinorb,num_spinorb); 
+  spinon_flip_ampl_.resize(num_spinorb,num_spinorb); 
+  boson_flip_ampl_.resize(num_spinorb,num_spinorb); 
+  spinon_renormed_soc_.resize(num_spinorb,num_spinorb); 
+  boson_renormed_soc_.resize(num_spinorb,num_spinorb); 
 }
+
+void MF_Site::set_soc_matrix(const cmplArray2D& soc_mat)
+{
+  soc_matrix_ = soc_mat;
+  spinon_renormed_soc_ = soc_matrix_;
+  boson_renormed_soc_ = soc_matrix_;
+}
+
+void MF_Site::set_spinon_renormalization(void)
+{
+  spinon_renormed_soc_ = soc_matrix_*spinon_flip_ampl_;
+}
+
+void MF_Site::set_boson_renormalization(void)
+{
+  boson_renormed_soc_ = soc_matrix_*boson_flip_ampl_;
+}
+
 
 void MF_Site::add_bond(const int& id, const bool& outgoing)
 {
@@ -172,13 +205,25 @@ MF_Params::MF_Params(const input::Parameters& inputs, const lattice::LatticeGrap
     }
   }
   //std::cout << "num_bondterms = " << num_bondterms_ << "\n";
+  // SOC matrix
+  for (auto sterm=model.siteterms_begin(); sterm!=model.siteterms_end(); ++sterm) {
+    if (sterm->qn_operator().id()==model::op_id::spin_flip) {
+      for (auto& site : sites_) {
+        site.set_soc_matrix(sterm->coupling(site.type()));   
+      } 
+    }
+  }
 }
 
 void MF_Params::init_params(void)
 {
-  for (int i=0; i<num_basis_sites_; ++i) {
-    sites_[i].lm_params().setZero();
-    sites_[i].qp_weights().setOnes();
+  for (auto& site : sites_) {
+    site.lm_params().setZero();
+    site.qp_weights().setOnes();
+    site.spinon_flip_ampl().setOnes();
+    site.boson_flip_ampl().setOnes();
+    site.set_spinon_renormalization();
+    site.set_boson_renormalization();
   }
   for (auto& bond : bonds_) {
   	for (int i=0; i<num_bondterms_; ++i) {

@@ -86,12 +86,20 @@ void Spinon::update(const input::Parameters& inputs)
 
 void Spinon::solve(const lattice::LatticeGraph& graph, MF_Params& mf_params)
 {
+  // renormalized bond couplings
   int term_id=0;
   for (auto& term : ubond_terms_) {
     if (term.qn_operator().is_quadratic() && term.qn_operator().spin_up()) {
       term.update_bondterm_cc(term_id++, mf_params);
     }
   }
+  // renormalized soc couplings
+  for (auto& term : usite_terms_) {
+    if (term.qn_operator().id()==model::op_id::spin_flip) {
+      term.update_siteterm_cc(mf_params);
+    }
+  }
+
   construct_groundstate(mf_params);
   compute_averages(graph,mf_params);
   //std::cout << "START>>>>>>>>>>\n";
@@ -104,6 +112,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
   Eigen::Matrix<std::complex<double>,1,Eigen::Dynamic> amplitude_vec1, amplitude_vec2;
   for (int i=0; i<mf_params.num_sites(); ++i) {
     mf_params.site(i).spinon_density().setZero();
+    mf_params.site(i).spinon_flip_ampl().setZero();
   }
   for (int i=0; i<mf_params.bonds().size(); ++i) {
     mf_params.bond(i).spinon_ke(0).setZero();
@@ -150,7 +159,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
               flip_ampl(m,n) = amplitude_vec1.dot(amplitude_vec2);
             }
           }
-          //mf_params.site(j).spin_flip_ampl() += flip_ampl;
+          mf_params.site(j).spinon_flip_ampl() += flip_ampl;
         }
       }
 
@@ -213,15 +222,22 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
       std::cout << "<n_up>["<<m<<"] = " << mf_params.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
-    */
+    */ 
   }
   //getchar();
 
   // final spin-flip amplitudes
   if (SO_coupling_) {
     for (int i=0; i<mf_params.num_sites(); ++i) {
-      //cmplArray2D flip_ampl = mf_params.site(i).spin_flip_ampl()/num_kpoints_;
-      //mf_params.site(i).spin_flip_ampl() = flip_ampl;
+      cmplArray2D flip_ampl = mf_params.site(i).spinon_flip_ampl()/num_kpoints_;
+      mf_params.site(i).spinon_flip_ampl() = flip_ampl;
+      mf_params.site(i).set_spinon_renormalization();
+      // print
+      /*
+      std::cout<<"site-"<<i<<":"<<"\n";
+      std::cout << "sf ampl = " << mf_params.site(i).spinon_flip_ampl() << "\n";
+      std::cout << "\n";
+      */
     }
   }
 
@@ -536,7 +552,6 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
 
 void UnitcellTerm::update_bondterm_cc(const int& term_id, const MF_Params& mf_params)
 {
-  //std::cout << ">>>>>>>>>>>>>>>>>>\n";
   for (auto& M : coeff_matrices_) M.setZero();
   for (int i=0; i<mf_params.num_bonds(); ++i) {
     int id = mf_params.bond(i).vector_id();
@@ -546,6 +561,7 @@ void UnitcellTerm::update_bondterm_cc(const int& term_id, const MF_Params& mf_pa
     int cols = mf_params.site(tgt).dim();
     auto renorm_cc = mf_params.bond(i).boson_renormed_cc(term_id);
     //renorm_bond_couplings_[i] = mf_params.bond(i).spinon_renormed_cc(0);
+    //std::cout << renorm_cc << "\n" << "\n";
     for (int m=0; m<rows; ++m) {
       auto ii = mf_params.site(src).state_indices()[m];
       for (int n=0; n<cols; ++n) {
@@ -554,7 +570,25 @@ void UnitcellTerm::update_bondterm_cc(const int& term_id, const MF_Params& mf_pa
       }
     }
   }
-  //std::cout << "<<<<<<<<<<<<<\n";
+}
+
+void UnitcellTerm::update_siteterm_cc(const MF_Params& mf_params)
+{
+  for (auto& M : coeff_matrices_) M.setZero();
+  for (int i=0; i<mf_params.num_sites(); ++i) {
+    int rows = mf_params.site(i).dim();
+    int cols = mf_params.site(i).dim();
+    auto renorm_soc = mf_params.site(i).boson_renormed_soc();
+    //renorm_bond_couplings_[i] = mf_params.bond(i).spinon_renormed_cc(0);
+    //std::cout << renorm_cc << "\n" << "\n";
+    for (int m=0; m<rows; ++m) {
+      auto ii = mf_params.site(i).state_indices()[m];
+      for (int n=0; n<cols; ++n) {
+        auto jj = mf_params.site(i).state_indices()[n];
+        coeff_matrices_[0](ii,jj) += renorm_soc(m,n);
+      }
+    }
+  }
 }
 
 

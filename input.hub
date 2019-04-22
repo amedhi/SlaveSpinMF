@@ -12,6 +12,7 @@ print_level = -2 #-2
 #---------------------------------------------
 # Slave-rotor parameters
 #---------------------------------------------
+theory = "Z2" # "U1"
 tol = 1.0E-8
 #maxiter = 500
 #maxiter_rotor = 500

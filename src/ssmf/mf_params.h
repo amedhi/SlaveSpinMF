@@ -33,6 +33,7 @@ public:
   MF_Site();
   MF_Site(const int& type, const int& dim, const idx_list& state_indices, 
     const bool& SO_coupled);
+  void set_soc_matrix(const cmplArray2D& soc_mat); 
   const int& type(void) const { return type_; }
   const int& dim(void) const { return dim_; }
   const std::vector<int> spin_orbitals(void) const { return spin_orbitals_; }
@@ -45,9 +46,20 @@ public:
   const realArray1D& lm_params(void) const { return lm_params_; }
   realArray1D& qp_weights(void) { return qp_weights_; }
   const realArray1D& qp_weights(void) const { return qp_weights_; }
+  const cmplArray2D& spinon_flip_ampl(void) const { return spinon_flip_ampl_; }
+  cmplArray2D& spinon_flip_ampl(void) { return spinon_flip_ampl_; }
+  const cmplArray2D& boson_flip_ampl(void) const { return boson_flip_ampl_; }
+  cmplArray2D& boson_flip_ampl(void) { return boson_flip_ampl_; }
+  void set_spinon_renormalization(void);
+  void set_boson_renormalization(void);
+  const cmplArray2D& spinon_renormed_soc(void) const 
+    { return spinon_renormed_soc_; }
+  const cmplArray2D& boson_renormed_soc(void) const 
+    { return boson_renormed_soc_; }
 private:
   int type_;
   int dim_;
+  bool SO_coupled_;
   std::vector<int> spin_orbitals_;
   idx_list state_indices_;
   idx_list connected_bonds_;
@@ -57,6 +69,11 @@ private:
   realArray1D lm_params_;
   realArray1D lm_params_noint_;
   realArray1D qp_weights_;
+  cmplArray2D soc_matrix_; 
+  cmplArray2D spinon_flip_ampl_; 
+  cmplArray2D boson_flip_ampl_; 
+  cmplArray2D spinon_renormed_soc_; 
+  cmplArray2D boson_renormed_soc_; 
 };
 
 class MF_Bond
