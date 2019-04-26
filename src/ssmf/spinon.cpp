@@ -29,10 +29,15 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
   else spin_multiply_ = 2;
   num_sites_ = graph.num_sites();
   num_bonds_ = graph.num_bonds();
-  num_kpoints_ = blochbasis_.num_kpoints();
+  num_unitcells_ = graph.lattice().num_unitcells();
+  num_kpoints_ = blochbasis_.num_kpoints(); 
+  num_symm_kpoints_ = blochbasis_.num_symm_kpoints(); 
   kblock_dim_ = blochbasis_.subspace_dimension();
-  num_total_states_ = spin_multiply_ * num_kpoints_ * kblock_dim_;
   num_basis_sites_ = graph.lattice().num_basis_sites();
+  num_total_states_ = spin_multiply_ * num_unitcells_ * kblock_dim_;
+  if (num_sites_ != num_unitcells_*num_basis_sites_) {
+    throw std::logic_error("Spinon::Spinon: Incorrect 'lattice'\n");
+  }
   //dim_ = graph.lattice().num_basis_orbitals();
   quadratic_block_up_.resize(kblock_dim_,kblock_dim_);
   pairing_block_.resize(kblock_dim_,kblock_dim_);
@@ -100,7 +105,7 @@ void Spinon::solve(const lattice::LatticeGraph& graph, MF_Params& mf_params)
     }
   }
 
-  construct_groundstate(mf_params);
+  construct_groundstate_v2(mf_params);
   compute_averages(graph,mf_params);
   //std::cout << "START>>>>>>>>>>\n";
   //std::cout << "END>>>>>>>>>>\n";
@@ -217,14 +222,14 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     }
     mf_params.site(i).spinon_density() = n_avg;
     // print
-    /*std::cout<<"site-"<<i<<":"<<"\n";
+    std::cout<<"site-"<<i<<":"<<"\n";
     for (int m=0; m<mf_params.site(i).dim(); ++m) {
       std::cout << "<n_up>["<<m<<"] = " << mf_params.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
-    */ 
+     
   }
-  //getchar();
+  getchar();
 
   // final spin-flip amplitudes
   if (SO_coupling_) {
@@ -332,11 +337,146 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
         num_valence_particle++;
       }
       // warn
+      degeneracy_warning_ = true;
       if (degeneracy_warning_) {
         std::cout << ">> warning: Spinon groundstate degeneracy: " << 2*num_valence_particle <<
           " particles in " << 2*num_degen_states << " states." << "\n";
       }
     }
+    std::cout << "top level = " << top_filled_level << "\n";
+    for (int i=num_fill_particles-10; i<num_fill_particles+10; ++i) {
+      std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << 
+      "   " << qn_list[idx[i]].first << "--" << qn_list[idx[i]].second <<  "\n";
+    }
+    getchar();
+    /* 
+      Filled k-shells. A k-shell is a group of energy levels having same 
+      value of quantum number k.
+    */
+    // find 'nmax' values of filled k-shells
+    std::vector<int> shell_nmax(num_kpoints_);
+    for (auto& elem : shell_nmax) elem = -1; // invalid default value
+    int k, n;
+    for (int i=0; i<num_fill_particles; ++i) {
+      int state = idx[i]; 
+      std::tie(k,n) = qn_list[state];
+      if (shell_nmax[k] < n) shell_nmax[k] = n;
+    }
+    // store the filled k-shells
+    kshells_up_.clear();
+    for (unsigned k=0; k<num_kpoints_; ++k) {
+      int nmax = shell_nmax[k];
+      if (nmax != -1) kshells_up_.push_back({k,0,static_cast<unsigned>(nmax)});
+    }
+    /*
+    for (unsigned k=0; k<kshells_up_.size(); ++k) {
+      std::cout << kshells_up_[k].k << " " << kshells_up_[k].nmin << "  "
+          << kshells_up_[k].nmax << "\n";
+    }
+    */
+  }
+  else {
+    /* 
+      No T.P (Time Reversal * Inversion) symmetry. 
+      Need to consider both UP and DN states.
+    */
+    throw std::range_error("Spinon::construct_groundstate: case not implemented\n");
+  }
+}
+
+void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
+{
+  if (have_TP_symmetry_) {
+    /* Has T.P (Time Reversal * Inversion) symmetry. 
+       So we have e_k(up) = e_k(dn).
+    */
+    std::vector<std::pair<int,int>> qn_list; // list of (k,n)
+    std::vector<double> ek;
+    for (int k=0; k<num_symm_kpoints_; ++k) {
+      Vector3d kvec = blochbasis_.kvector(k);
+      construct_kspace_block(mf_params, kvec);
+      es_k_up_.compute(quadratic_spinup_block(), Eigen::EigenvaluesOnly);
+      ek.insert(ek.end(),es_k_up_.eigenvalues().data(),
+        es_k_up_.eigenvalues().data()+kblock_dim_);
+      //std::cout << kvec.transpose() << " " << es_k_up_.eigenvalues() << "\n"; getchar();
+      for (int n=0; n<kblock_dim_; ++n) {
+        qn_list.push_back({k, n});
+      }
+    }
+    //std::sort(ek.begin(),ek.end());
+    //for (const auto& e : ek) std::cout << e << "\n";
+
+    // Indices in the original ek-array is sorted according to increasing ek
+    std::vector<int> idx(ek.size());
+    std::iota(idx.begin(),idx.end(),0);
+    std::sort(idx.begin(),idx.end(),[&ek](const int& i1, const int& i2) 
+      {return ek[i1]<ek[i2];});
+    /*for (int i=0; i<ek.size(); ++i) {
+      std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << "\n";
+    }*/
+
+    // check for degeneracy 
+    int num_fill_particles;
+    if (SO_coupling_) {
+      num_fill_particles = num_upspins_+num_dnspins_;
+    }
+    else {
+      num_fill_particles = num_upspins_;
+    }
+
+    // fermi energy
+    int np = 0;
+    fermi_energy_ = ek[idx[0]];
+    for (int i=0; i<ek.size(); ++i) {
+      int k = qn_list[idx[i]].first;
+      int iw = static_cast<int>(blochbasis_.kweight(k));
+      np += iw;
+      if (np == num_fill_particles) {
+        fermi_energy_ = 0.5*ek[idx[i]];
+        break;
+      }
+      std::cout << ek[idx[i]] << "\n";
+      std::cout << np << "  " << num_fill_particles << "\n";
+
+      if (np >= num_fill_particles) {
+        fermi_energy_ = 0.5*(ek[idx[i]]+ek[idx[i+1]]);
+        break;
+      }
+    }
+    std::cout << "e_F = " << fermi_energy_ << "\n";
+    getchar();
+
+
+    double degeneracy_tol = 1.0E-12;
+    int top_filled_level = num_fill_particles-1;
+    fermi_energy_ = ek[idx[top_filled_level]];
+    int num_valence_states = 1;
+    int num_valence_particle = 1;
+    // look upward in energy
+    for (int i=top_filled_level+1; i<ek.size(); ++i) {
+      if (std::abs(fermi_energy_-ek[idx[i]])>degeneracy_tol) break;
+      num_valence_states++;
+    }
+    // look downward in energy
+    if (num_valence_states>1) {
+      for (int i=top_filled_level-1; i>=0; --i) {
+        if (std::abs(fermi_energy_ - ek[idx[i]])>degeneracy_tol) break;
+        num_valence_states++;
+        num_valence_particle++;
+      }
+      // warn
+      degeneracy_warning_ = true;
+      if (degeneracy_warning_) {
+        std::cout << ">> warning: Spinon groundstate degeneracy: " << num_valence_particle <<
+          " particles in " << num_valence_states << " states." << "\n";
+      }
+    }
+    std::cout << "top level --> " << top_filled_level << "\n";
+    for (int i=num_fill_particles-10; i<num_fill_particles+10; ++i) {
+      std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << 
+      "   " << qn_list[idx[i]].first << "--" << qn_list[idx[i]].second <<  "\n";
+    }
+    getchar();
     /* 
       Filled k-shells. A k-shell is a group of energy levels having same 
       value of quantum number k.
@@ -509,11 +649,8 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
 
   // site terms 
   for (const auto& term : usite_terms_) {
-    //std::cout << " --------- here --------\n";
     if (term.qn_operator().spin_up()) {
       quadratic_block_up_ += term.coeff_matrix();
-      //for (int i=0; i<kblock_dim_; ++i) quadratic_block_up_(i,i) += orbital_en_shifted_(i);
-      //if (v==1) {std::cout << " sterm =" << term.coeff_matrix().diagonal().transpose() << "\n"; getchar();}
     }
   }
   //std::cout << "e0 =\n" << quadratic_block_up_.diagonal().transpose() << "\n"; 

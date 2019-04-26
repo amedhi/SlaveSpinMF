@@ -6,6 +6,8 @@
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "blochbasis.h"
+#include <fstream>
+#include <sstream>
 
 namespace basis {
 
@@ -44,7 +46,7 @@ int BlochBasis::construct(const lattice::LatticeGraph& graph)
   return 0;
 }
 
-void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
+int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
 {
   Vector3d a1, a2, a3;
   double v;
@@ -110,6 +112,24 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
     }
   }
 
+  if (lattice.id()==lattice::lattice_id::PYROCHLORE_3D) {
+    bool read_from_file=true;
+    if (read_from_file) {
+      std::ostringstream oss;
+      std::string folder = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/MonkhorstPack/";
+      std::string ext = "_sft0.txt";
+      oss<<lattice.size1()<<"x"<<lattice.size2()<<"x"<<lattice.size3();
+      std::string fname = folder+"fcc_kmesh_"+oss.str()+ext;
+      gen_from_file(fname);
+      /*std::cout << fname << "\n";
+      for (int i=0; i<size(); ++i) {
+        std::cout << i << " " << operator[](i).transpose() << "  " << 
+          weights_[i] << "\n";
+      }*/
+    }
+    return 0;
+  }
+
   /*std::cout << "a1 = " << a1.transpose() << "\n"; 
   std::cout << "a2 = " << a2.transpose() << "\n"; 
   std::cout << "a3 = " << a3.transpose() << "\n"; 
@@ -117,6 +137,28 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
   std::cout << "b2 = " << b2.transpose() << "\n"; 
   std::cout << "b3 = " << b3.transpose() << "\n"; 
   getchar();*/
+
+  // Monkhorst-Pack scheme for k-points
+  /*
+  int N1 = lattice.size1();
+  int N2 = lattice.size2();
+  int N3 = lattice.size3();
+  this->clear();
+  for (int n1=1; n1<=N1; n1++) {
+    double x1 = (2.0*n1-N1-1)/(2.0*N1);
+    for (int n2=1; n2<=N2; n2++) {
+      double x2 = (2.0*n2-N2-1)/(2.0*N2);
+      for (int n3=1; n3<=N3; n3++) {
+        double x3 = (2.0*n3-N3-1)/(2.0*N3);
+        this->push_back(x1*b1 + x2*b2 + x3*b3);
+      }
+    }
+  }
+  num_kpoint_ = lattice.num_unitcells();
+  return 0;
+  */
+  //------------NOT USING THE USUAL SCHEME BELOW---------------
+
 
   // antiperiodic boundary condition
   Vector3d antipb_shift(0.0, 0.0, 0.0);
@@ -140,6 +182,10 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
     //translation_vectors.push_back(n);
     n = lattice.get_next_bravindex(n);
   }
+  // weights are all one since all k-points included
+  weights_.resize(num_kpoint_);
+  for (auto& w : weights_) w = 1.0;
+  return 0;
 }
 
 /*
@@ -158,6 +204,38 @@ kpoint BlochBasis::mesh_nb_dir3(const unsigned& k) const
   return operator[](k) + b3/L3_;
 }
 */
+int BlochBasis::gen_from_file(const std::string& fname)
+{
+  std::fstream fs(fname);
+  if (!fs.is_open()) {
+    throw std::runtime_error("BlochBasis::gen_from_file: file open failed");
+  }
+  double word;
+  std::string line;
+  this->clear();
+  weights_.clear();
+  while (std::getline(fs, line)) {
+    // # is a comment character
+    line = line.substr(0,line.find('#'));
+    // skip blank line
+    if (line.size() == 0) continue;
+    std::size_t first = line.find_first_not_of(" \t\n\r");
+    if (first == std::string::npos) continue;
+
+    std::istringstream ss(line);
+    std::vector<double> data_field;
+    while (ss >> word) data_field.push_back(word);
+    if (data_field.size() == 1) continue; // skip first line 
+    if (data_field.size() != 5) {
+      throw std::runtime_error("BlochBasis::gen_from_file: unexpected data format in file");
+    }
+    this->push_back({data_field[1], data_field[2], data_field[3]});
+    weights_.push_back(data_field[4]);
+  }
+  num_symm_kpoint_ = this->size();
+  num_kpoint_ = this->size();
+  return 0;
+}
 
 // In the k-mesh, the NN point along dir-1
 void BlochBasis::gen_mesh_neighbors(const lattice::Lattice& lattice)
@@ -215,7 +293,7 @@ void BlochBasis::gen_mesh_neighbors(const lattice::Lattice& lattice)
   }*/
 }
 
-void BlochBasis::make_subspace_basis(const lattice::LatticeGraph& graph)
+int BlochBasis::make_subspace_basis(const lattice::LatticeGraph& graph)
 {
   int orbitals_per_cell = 0;
   unsigned n = graph.lattice().num_basis_sites();
@@ -268,6 +346,7 @@ void BlochBasis::make_subspace_basis(const lattice::LatticeGraph& graph)
     //std::cout << translation_vectors_[s] << "\n"; getchar();
   }
   */
+  return 0;
 }
 
 

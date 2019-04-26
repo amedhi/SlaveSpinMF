@@ -9,6 +9,7 @@
 #define BLOCHBASIS_H
 #include <iostream>
 #include <vector>
+#include <string>
 #include <set>
 #include <stdexcept>
 #include "../lattice/graph.h"
@@ -29,6 +30,8 @@ public:
   int construct(const lattice::LatticeGraph& graph);
   const unsigned& num_kpoints(void) const { return num_kpoint_; }
   const unsigned& subspace_dimension(void) const { return subspace_dimension_; }
+  const int& num_symm_kpoints(void) const { return num_symm_kpoint_; }
+  const double& kweight(const int& k) const { return weights_[k]; }
   kpoint kvector(const unsigned& k) const { return operator[](k); }
   //kpoint mesh_nb_dir1(const unsigned& k) const;
   //kpoint mesh_nb_dir2(const unsigned& k) const;
@@ -67,6 +70,8 @@ private:
   Vector3d b3;
   unsigned num_kpoint_;
   unsigned subspace_dimension_;
+  int num_symm_kpoint_; // symmetrized kpoints
+  std::vector<double> weights_; // for the symmetrized points
   std::vector<std::vector<int>> nn_list_;
   //std::vector<Vector3d> translation_vectors_;
   std::vector<basis_state> subspace_basis_;
@@ -74,8 +79,9 @@ private:
   unsigned null_idx_;
 
   // helper functions
-  void make_kpoints(const lattice::Lattice& lattice);
-  void make_subspace_basis(const lattice::LatticeGraph& graph);
+  int make_kpoints(const lattice::Lattice& lattice);
+  int make_subspace_basis(const lattice::LatticeGraph& graph);
+  int gen_from_file(const std::string& fname);
   //void make_site_basis(const lattice::Lattice& lattice, const lattice::LatticeGraph& graph);
 };
 

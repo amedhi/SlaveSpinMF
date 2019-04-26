@@ -79,12 +79,14 @@ private:
   basis::BlochBasis blochbasis_;
   bool have_TP_symmetry_{true};
   bool SO_coupling_{false};
-  unsigned spin_multiply_{2};
-  unsigned num_sites_{0};
-  unsigned num_bonds_{0};
-  unsigned num_kpoints_{0};
-  unsigned kblock_dim_{0};
-  unsigned num_basis_sites_{0};
+  int spin_multiply_{2};
+  int num_sites_{0};
+  int num_unitcells_{0};
+  int num_bonds_{0};
+  int num_kpoints_{0};
+  int num_symm_kpoints_{0};
+  int kblock_dim_{0};
+  int num_basis_sites_{0};
   // matrices in kspace representation
   ComplexMatrix quadratic_block_up_;
   ComplexMatrix quadratic_block_dn_;
@@ -113,6 +115,7 @@ private:
   void update_unitcell_terms(void);
   void set_particle_num(const input::Parameters& inputs);
   void construct_groundstate(const MF_Params& mf_params);
+  void construct_groundstate_v2(const MF_Params& mf_params);
   void compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_params);
 };
 

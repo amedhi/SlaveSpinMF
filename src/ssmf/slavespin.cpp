@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-04-22 14:19:33
+* @Last Modified time: 2019-04-22 16:50:32
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -371,7 +371,6 @@ void SlaveSpin::update_renorm_site_potential(MF_Params& mf_params)
             mf_params.bond(i).boson_ke(0);
     }
     //std::cout << ee << "\n\n"; getchar();
-
     auto ebar = 4.0*ee.rowwise().sum().real();
     // gauge factors
     realArray1D mu(site_dim_);

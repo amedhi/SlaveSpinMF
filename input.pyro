@@ -12,7 +12,7 @@ print_level = -2 #-2
 #---------------------------------------------
 # Slave-spin parameters
 #---------------------------------------------
-theory = "Z2" # "U1"
+theory = "Z2" # "Z2/U1"
 tol = 1.0E-8
 #maxiter = 500
 #maxiter_rotor = 500
@@ -40,8 +40,8 @@ bc3 = "periodic"
 model = "PYROCHLORE"
 t = 1.00
 lambda = 20.0
-U = 14.0
-J = 1.0
+U = 0.0
+J = 0.0
 
 #---------------------------------------------
 # Variational wavefunction
