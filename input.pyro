@@ -39,7 +39,7 @@ bc3 = "periodic"
 #model = "TBI_HUBBARD"
 model = "PYROCHLORE"
 t = 1.00
-lambda = 20.0
+lambda = 0.0
 U = 0.0
 J = 0.0
 

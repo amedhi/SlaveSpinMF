@@ -364,9 +364,9 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
     }
     // store the filled k-shells
     kshells_up_.clear();
-    for (unsigned k=0; k<num_kpoints_; ++k) {
+    for (int k=0; k<num_kpoints_; ++k) {
       int nmax = shell_nmax[k];
-      if (nmax != -1) kshells_up_.push_back({k,0,static_cast<unsigned>(nmax)});
+      if (nmax != -1) kshells_up_.push_back({k,0,nmax});
     }
     /*
     for (unsigned k=0; k<kshells_up_.size(); ++k) {
@@ -386,6 +386,15 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
 
 void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
 {
+  // Check 'MethfesselPaxton_func'
+  /*double x=-3.0;
+  for (int n=0; n<600; ++n) {
+    double fx = MethfesselPaxton_func(4,x);
+    std::cout << x << "   " << fx << "\n";
+    x += 0.01;
+  }
+  exit(0);*/
+
   if (have_TP_symmetry_) {
     /* Has T.P (Time Reversal * Inversion) symmetry. 
        So we have e_k(up) = e_k(dn).
@@ -424,31 +433,69 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
       num_fill_particles = num_upspins_;
     }
 
-    // fermi energy
+    // Fermi Energy 
     int np = 0;
     fermi_energy_ = ek[idx[0]];
+    int top_filled_level = 0;
     for (int i=0; i<ek.size(); ++i) {
       int k = qn_list[idx[i]].first;
-      int iw = static_cast<int>(blochbasis_.kweight(k));
+      int iw = std::nearbyint(blochbasis_.kweight(k));
       np += iw;
-      if (np == num_fill_particles) {
-        fermi_energy_ = 0.5*ek[idx[i]];
-        break;
-      }
-      std::cout << ek[idx[i]] << "\n";
-      std::cout << np << "  " << num_fill_particles << "\n";
-
+      std::cout<<i<<" "<<k<<" "<<qn_list[idx[i]].second<<" "<<iw<<" "<<np<<" "<<ek[idx[i]] << "\n";
       if (np >= num_fill_particles) {
-        fermi_energy_ = 0.5*(ek[idx[i]]+ek[idx[i+1]]);
+        std::cout << np << "\n";
+        if (i == ek.size()-1) fermi_energy_ = ek[idx[i]];
+        else fermi_energy_ = 0.5*(ek[idx[i]]+ek[idx[i+1]]);
+        fermi_energy_ = ek[idx[i]];
+        top_filled_level = i;
+      std::cout<<i+1<<"  "<<ek[idx[i+1]] << "\n";
         break;
       }
     }
     std::cout << "e_F = " << fermi_energy_ << "\n";
+
+    // Smearing Parameters
+    int N_order = 4;
+    double W = 0.1*(ek[idx.back()]-ek[idx[0]])/num_unitcells_;
+    double W_inv = 1.0/W;
+
+    // k-points to include in the ground state
+    std::vector<int> shell_nmax(num_kpoints_);
+    for (auto& elem : shell_nmax) elem = -1; // invalid default value
+    std::cout << "W = " << W << "\n";
+    double particle_sum = 0.0;
+    //double num_particles_d = static_cast<double>(num_fill_particles);
+    for (int i=0; i<ek.size(); ++i) {
+      double x = (ek[idx[i]]-fermi_energy_)*W_inv;
+      double smear_wt = MethfesselPaxton_func(N_order,x);
+      std::cout << i << "   " << smear_wt << "\n";
+      int k = qn_list[idx[i]].first;
+      double degeneracy = std::round(blochbasis_.kweight(k));
+      particle_sum += degeneracy * smear_wt;
+      // particle number constraint
+      //if (std::abs(particle_sum-num_particles_d)<1.0E-8) break;
+      // smearing weight cut-off
+      //if (i==top_filled_level) break;
+      //if (std::abs(smear_wt)<1.0E-15) break;
+
+      int n = qn_list[idx[i]].second;
+      if (shell_nmax[k] < n) shell_nmax[k] = n;
+    }
+    std::cout << "particles = " << num_fill_particles 
+              << " =? " << particle_sum << "\n";
+    getchar();
+
+    top_filled_level = num_fill_particles-1;
+    std::cout << "top level --> " << top_filled_level << "\n";
+    for (int i=num_fill_particles-10; i<num_fill_particles+10; ++i) {
+      std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << 
+      "   " << qn_list[idx[i]].first << "--" << qn_list[idx[i]].second <<  "\n";
+    }
     getchar();
 
 
     double degeneracy_tol = 1.0E-12;
-    int top_filled_level = num_fill_particles-1;
+    top_filled_level = num_fill_particles-1;
     fermi_energy_ = ek[idx[top_filled_level]];
     int num_valence_states = 1;
     int num_valence_particle = 1;
@@ -471,20 +518,14 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
           " particles in " << num_valence_states << " states." << "\n";
       }
     }
-    std::cout << "top level --> " << top_filled_level << "\n";
-    for (int i=num_fill_particles-10; i<num_fill_particles+10; ++i) {
-      std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << 
-      "   " << qn_list[idx[i]].first << "--" << qn_list[idx[i]].second <<  "\n";
-    }
-    getchar();
     /* 
       Filled k-shells. A k-shell is a group of energy levels having same 
       value of quantum number k.
     */
     // find 'nmax' values of filled k-shells
-    std::vector<int> shell_nmax(num_kpoints_);
-    for (auto& elem : shell_nmax) elem = -1; // invalid default value
+    //shell_nmax(num_kpoints_);
     int k, n;
+    for (auto& elem : shell_nmax) elem = -1; // invalid default value
     for (int i=0; i<num_fill_particles; ++i) {
       int state = idx[i]; 
       std::tie(k,n) = qn_list[state];
@@ -492,9 +533,9 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     }
     // store the filled k-shells
     kshells_up_.clear();
-    for (unsigned k=0; k<num_kpoints_; ++k) {
+    for (int k=0; k<num_kpoints_; ++k) {
       int nmax = shell_nmax[k];
-      if (nmax != -1) kshells_up_.push_back({k,0,static_cast<unsigned>(nmax)});
+      if (nmax != -1) kshells_up_.push_back({k,0,nmax});
     }
     /*
     for (unsigned k=0; k<kshells_up_.size(); ++k) {
@@ -510,6 +551,39 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     */
     throw std::range_error("Spinon::construct_groundstate: case not implemented\n");
   }
+}
+
+double Spinon::MethfesselPaxton_func(const int& N, const double& x)
+{
+  assert(N>=0);
+  double S_0 = 0.5*(1.0-std::erf(x));
+  // O-th order
+  if (N == 0) return S_0;
+  double A = -0.25;
+  double exp_factor = std::exp(-x*x)/std::sqrt(pi());
+  std::vector<double> Hermite(2*N);
+  Hermite[0] = 1.0;
+  Hermite[1] = 2.0*x;
+  double S_N = A*Hermite[1];
+  // 1-st order
+  if (N ==1) return (S_0 + S_N*exp_factor);
+  // Higher orders
+  for (int n=2; n<2*N; ++n) {
+    Hermite[n] = 2.0*(x*Hermite[n-1] - (n-1)*Hermite[n-2]);
+  }
+  for (int n=2; n<=N; ++n) {
+    A *= -0.25/n;
+    S_N += A*Hermite[2*n-1];
+  }
+  return S_0 + S_N*exp_factor;
+}
+
+double Spinon::MarzariVenderbilt_smear(const double& x)
+{
+  double a = std::sqrt(2.0);
+  double b = 1.0/a;
+  double x2 = (x-b)*(x-b);
+  return std::exp(-x2)*(2.0-a*x)/pi();
 }
 
 void Spinon::set_particle_num(const input::Parameters& inputs)

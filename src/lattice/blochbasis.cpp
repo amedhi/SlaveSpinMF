@@ -112,6 +112,7 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
     }
   }
 
+//#ifdef SYMM_K
   if (lattice.id()==lattice::lattice_id::PYROCHLORE_3D) {
     bool read_from_file=true;
     if (read_from_file) {
@@ -129,6 +130,7 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
     }
     return 0;
   }
+//#endif
 
   /*std::cout << "a1 = " << a1.transpose() << "\n"; 
   std::cout << "a2 = " << a2.transpose() << "\n"; 
@@ -185,6 +187,7 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
   // weights are all one since all k-points included
   weights_.resize(num_kpoint_);
   for (auto& w : weights_) w = 1.0;
+  num_symm_kpoint_ = num_kpoint_;
   return 0;
 }
 

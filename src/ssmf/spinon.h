@@ -107,7 +107,7 @@ private:
   double band_filling_{1.0};
   double fermi_energy_;
   bool degeneracy_warning_{false};
-  struct kshell_t {unsigned k; unsigned nmin; unsigned nmax;};
+  struct kshell_t {int k; int nmin; int nmax; realArray1D smear_wt; };
   std::vector<kshell_t> kshells_up_;
   std::vector<kshell_t> kshells_dn_;
 
@@ -117,6 +117,8 @@ private:
   void construct_groundstate(const MF_Params& mf_params);
   void construct_groundstate_v2(const MF_Params& mf_params);
   void compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_params);
+  double MethfesselPaxton_func(const int& N, const double& x);
+  double MarzariVenderbilt_smear(const double& x);
 };
 
 
