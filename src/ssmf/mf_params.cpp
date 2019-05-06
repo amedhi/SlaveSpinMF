@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-03-12 12:20:33
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-04-22 12:37:09
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2019-05-06 11:18:53
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "mf_params.h"
@@ -76,9 +76,9 @@ void MF_Site::add_bond(const int& id, const bool& outgoing)
 //-------------------------------------------------------------------
 
 //-------------------------------MF Bond-----------------------------
-MF_Bond::MF_Bond(const int& type, const int& src, const int& tgt, 
+MF_Bond::MF_Bond(const int& type, const bool& is_intracell, const int& src, const int& tgt, 
   const int& vector_id, const Vector3d& vector,  const bool& SO_coupled)
-  : type_{type}, src_{src}, tgt_{tgt}, vector_id_{vector_id}, 
+  : type_{type}, is_intracell_{is_intracell}, src_{src}, tgt_{tgt}, vector_id_{vector_id}, 
     vector_{vector}, SO_coupled_{SO_coupled}
 {
   term_couplings_.clear(); // for all 'bond terms'
@@ -165,6 +165,7 @@ MF_Params::MF_Params(const input::Parameters& inputs, const lattice::LatticeGrap
   // store the bonds in a 'unit cell'
   lattice::LatticeGraph::out_edge_iterator ei, ei_end;
   bonds_.clear();
+  bool is_intracell;
   for (int i=0; i<num_basis_sites_; ++i) {
     for (std::tie(ei, ei_end)=graph.out_bonds(i); ei!=ei_end; ++ei) {
       auto type = graph.bond_type(ei);
@@ -179,10 +180,12 @@ MF_Params::MF_Params(const input::Parameters& inputs, const lattice::LatticeGrap
 
       // tgt site
       int tgt = graph.site_uid(t);
+      if (t==tgt) is_intracell = true;
+      else is_intracell = false;
       //int tgt_dim = graph.site_dim(t);
 
       //std::cout << "src="<<src<<", tgt="<<tgt<<"\n"; getchar();
-      bonds_.push_back({type,src,tgt,graph.vector_id(ei),graph.vector(ei),
+      bonds_.push_back({type,is_intracell,src,tgt,graph.vector_id(ei),graph.vector(ei),
       	SO_coupling_});
 
       // store id of the bond connected to the site

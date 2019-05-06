@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * Author: Amal Medhi
 * @Date:   2019-03-12 12:20:33
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-03-12 12:20:33
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2019-05-05 19:43:35
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #ifndef MF_PARAMS_H
@@ -80,13 +80,15 @@ class MF_Bond
 {
 public:
   using idx_list = std::vector<unsigned>;
-  MF_Bond(const int& type, const int& src, const int& tgt, const int& vector_id,
-    const Vector3d& vector, const bool& SO_coupled);
+  MF_Bond(const int& type, const bool& is_intracell, const int& src, 
+    const int& tgt, const int& vector_id, const Vector3d& vector, 
+    const bool& SO_coupled);
   ~MF_Bond() {}
 	void add_term_cc(const cmplArray2D& mat);
   void set_spinon_renormalization(void);
   void set_boson_renormalization(void);
   const int& type(void) const { return type_; }
+  const bool& is_intracell(void) const { return is_intracell_; }
   const int& src(void) const { return src_; }
   const int& tgt(void) const { return tgt_; }
   const int& vector_id(void) const { return vector_id_; }
@@ -99,6 +101,7 @@ public:
   cmplArray2D& boson_ke(const int& i) { return boson_ke_[i]; }
 private:
   int type_;
+  bool is_intracell_;
   int src_;
   int tgt_;
   int vector_id_;

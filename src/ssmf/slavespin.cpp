@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-04-22 16:50:32
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2019-05-05 20:33:28
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -274,6 +274,7 @@ void SlaveSpin::set_bond_couplings(const MF_Params& mf_params)
   assert(2*num_orb == static_cast<int>(site_dim_));
   for (int i=0; i<num_bonds_; ++i) {
     renorm_bond_couplings_[i] = mf_params.bond(i).spinon_renormed_cc(0);
+    // renorm_bond_couplings_[i].setOnes();
     //std::cout << "bond_field["<<i<<"]=\n"<< renorm_bond_couplings_[i] << "\n"; getchar();
   }
 }
@@ -292,16 +293,17 @@ void SlaveSpin::set_site_couplings(const MF_Params& mf_params,
       // partial sum over 'orbital' index of the neighbour site
       auto tchi_phi = renorm_bond_couplings_[id++].rowwise()*site_order_params[t].transpose();
       auto tchi_phi_sum = tchi_phi.rowwise().sum();
-      
+      //std::cout << tchi_phi_sum.transpose() << "\n"; getchar();
+
       // sum over all neighbouring sites
       renorm_site_couplings_[s] += tchi_phi_sum; // * site_order_params[t];
       renorm_site_couplings_[t] += tchi_phi_sum.conjugate(); 
     }
-    /*for (int i=0; i<num_sites_; ++i) {
+    for (int i=0; i<num_sites_; ++i) {
       std::cout << "site field ["<<i<<"] = " << renorm_site_couplings_[i].transpose() << "\n"; 
     }
     getchar();
-    */
+    
   }
   else if (cluster_type_ == cluster_t::BOND) {
   }

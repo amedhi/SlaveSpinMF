@@ -107,6 +107,7 @@ void Spinon::solve(const lattice::LatticeGraph& graph, MF_Params& mf_params)
   }
 
   construct_groundstate_v2(mf_params);
+  //construct_groundstate(mf_params);
   compute_averages(graph,mf_params);
   //std::cout << "START>>>>>>>>>>\n";
   //std::cout << "END>>>>>>>>>>\n";
@@ -164,10 +165,16 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
             for (int n=0; n<site_dim; ++n) {
               auto jj = mf_params.site(j).state_indices()[n];
               amplitude_vec2 = es_k_up_.eigenvectors().block(jj,nmin,1,nbands);
-              flip_ampl(m,n) = amplitude_vec1.dot(amplitude_vec2);
+              //flip_ampl(m,n) = amplitude_vec1.dot(amplitude_vec2);
+              std::complex<double> chi_sum = 0.0;
+              for (int band=nmin; band<=nmax; ++band) {
+                chi_sum += std::conj(amplitude_vec1(band)) * amplitude_vec2(band)
+                         * kshells_up_[i].smear_wt(band);
+              }
+              flip_ampl(m,n) = chi_sum;
             }
           }
-          mf_params.site(j).spinon_flip_ampl() += flip_ampl;
+          mf_params.site(j).spinon_flip_ampl() += symm_wt*flip_ampl;
         }
       }
 
@@ -192,7 +199,13 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
             amplitude_vec2 = es_k_up_.eigenvectors().block(jj,nmin,1,nbands);
             //std::cout << "n, jj = " << n << ", " << jj << "\n";
             //getchar();
-            std::complex<double> chi_sum = amplitude_vec1.dot(amplitude_vec2);
+            //std::complex<double> chi_sum = amplitude_vec1.dot(amplitude_vec2);
+            std::complex<double> chi_sum = 0.0;
+            for (int band=nmin; band<=nmax; ++band) {
+              chi_sum += std::conj(amplitude_vec1(band)) * amplitude_vec2(band)
+                        * kshells_up_[i].smear_wt(band);
+            }
+
             ke_matrix(m,n) = exp_kdotr * chi_sum;
             //std::complex<double> chi_sum(0.0);
             //for (unsigned band=nmin; band<=nmax; ++band) {
@@ -202,7 +215,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
             //ke_matrix(m,n) = chi_sum;
           }
         }
-        mf_params.bond(j).spinon_ke(0) += ke_matrix;
+        mf_params.bond(j).spinon_ke(0) += symm_wt*ke_matrix;
       }
     }
   }
@@ -346,12 +359,6 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
           " particles in " << 2*num_degen_states << " states." << "\n";
       }
     }
-    std::cout << "top level = " << top_filled_level << "\n";
-    for (int i=num_fill_particles-10; i<num_fill_particles+10; ++i) {
-      std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << 
-      "   " << qn_list[idx[i]].first << "--" << qn_list[idx[i]].second <<  "\n";
-    }
-    getchar();
     /* 
       Filled k-shells. A k-shell is a group of energy levels having same 
       value of quantum number k.
@@ -369,7 +376,10 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
     kshells_up_.clear();
     for (int k=0; k<num_kpoints_; ++k) {
       int nmax = shell_nmax[k];
-      if (nmax != -1) kshells_up_.push_back({k,0,nmax});
+      if (nmax != -1) {
+        realArray1D smear_wts = realArray1D::Ones(nmax+1);
+        kshells_up_.push_back({k,0,nmax,smear_wts});
+      }
     }
     /*
     for (unsigned k=0; k<kshells_up_.size(); ++k) {
@@ -544,10 +554,10 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
       int np = 0;
       for (int i=0; i<ek_list_.size(); ++i) {
         std::tie(k,n) = qn_list_[idx_[i]];
+        if (shell_nmax[k] < n) shell_nmax[k] = n;
         int iw = std::nearbyint(blochbasis_.kweight(k));
         np += iw;
         if (np == num_fill_particles_) break;
-        if (shell_nmax[k] < n) shell_nmax[k] = n;
       }
       // store the filled k-shells
       kshells_up_.clear();
@@ -559,6 +569,13 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         }
       }
     }
+    /* 
+    for (unsigned k=0; k<kshells_up_.size(); ++k) {
+      std::cout << kshells_up_[k].k << " " << kshells_up_[k].nmin << "  "
+          << kshells_up_[k].nmax << "\n";
+    }
+    */
+    
     //getchar();
 //----------------------------------------------------
 #ifdef ON
@@ -797,40 +814,13 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
 {
   work.setZero(); 
   pairing_block_.setZero();
-  //work2 = Matrix::Zero(dim_,dim_);
   // bond terms
-  //for (const auto& term : uc_bondterms_) {
   for (auto& term : ubond_terms_) {
     if (term.qn_operator().is_quadratic() && term.qn_operator().spin_up()) {
-      //term.update_bondterm_cc(term_id++, mf_params);
-      for (unsigned i=0; i<term.num_out_bonds(); ++i) {
+      for (int i=0; i<term.num_out_bonds(); ++i) {
         Vector3d delta = term.bond_vector(i);
         //std::cout << ">>HACK: remormalization of spinon parameters OFF\n";
         work += term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
-        /*
-        // renormalization by bosonic order parameter
-        std::cout << ">>>>>>>>>>\n";
-        cmplArray2D boson_bond_avg = mf_params.bond(i).boson_ke();
-        std::cout << term.coeff_matrix(i).rows() << " " << term.coeff_matrix(i).cols() << "\n";
-        if (SO_coupling_) {
-          cmplArray2D term_matrix = term.coeff_matrix(i).array() * boson_bond_avg  
-                                    * std::exp(ii()*kvec.dot(delta));
-        std::cout << "<<<<<<<<<<\n";
-          work += term_matrix.matrix();
-        }
-        else {
-          int m = boson_bond_avg.rows()/2;
-          int n = boson_bond_avg.cols()/2;
-          cmplArray2D term_matrix = term.coeff_matrix(i).array()  
-                                    * boson_bond_avg.block(0,0,m,n)  
-                                    * std::exp(ii()*kvec.dot(delta));
-          work += term_matrix.matrix();
-          //std::cout << "t = " << term.coeff_matrix(i).array() << "\n";
-          //std::cout << "tB = " << term.coeff_matrix(i).array()* boson_bond_avg.block(0,0,m,n) << "\n";
-          //getchar();
-        }
-          */
-        //std::cout << "delta = " << delta.transpose() << "\n"; getchar();
       }
     }
     if (term.qn_operator().is_pairing()) {
@@ -843,24 +833,12 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
   // add hermitian conjugate part
   quadratic_block_up_ = work + work.adjoint();
 
-
-  //orbital_en_shifted_(0) = 0.4421;
-  //orbital_en_shifted_(1) = -0.4421;
-
   // site terms 
   for (const auto& term : usite_terms_) {
     if (term.qn_operator().spin_up()) {
       quadratic_block_up_ += term.coeff_matrix();
     }
   }
-  //std::cout << "e0 =\n" << quadratic_block_up_.diagonal().transpose() << "\n"; 
-  // LM parameters/chemical potential
-  // site density
-  /*
-  realArray1D e(2);
-  e(0) = 3.73115;
-  e(1) = -3.73115;
-  */
   for (int i=0; i<mf_params.num_sites(); ++i) {
     unsigned site_dim = mf_params.site(i).dim();
     realArray1D lm_params = mf_params.site(i).lm_params(); 
@@ -872,20 +850,10 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
     }
   }
   //std::cout << "e0 =\n" << quadratic_block_up_.diagonal().transpose() << "\n"; getchar();
-
-  //quadratic_block_up_ += work1.adjoint();
-  //pairing_block_ = work2;
-  //pairing_block_ += work2.adjoint();
   // site terms
   //std::cout << "k = " << kvec.transpose() << "\n";
   //std::cout << "hk =\n" << quadratic_block_up_ << "\n"; getchar();
 }
-
-/*void Spinon::set_renormed_bondterms(void)
-{
-  for (unsigned i=0; i<ubond_terms_.size(); ++i) 
-    ubond_terms_[i].eval_coupling_constant(Model::parameters(),Model::constants());
-}*/
 
 void UnitcellTerm::update_bondterm_cc(const int& term_id, const MF_Params& mf_params)
 {
@@ -1000,8 +968,8 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
       }
       for (int m=0; m<rows; ++m) {
         for (int n=0; n<cols; ++n) {
-          int p = graph.lattice().basis_index_number(i, m);
-          int q = graph.lattice().basis_index_number(j, n);
+          int p = graph.lattice().basis_index_number(i,m);
+          int q = graph.lattice().basis_index_number(j,n);
           std::string cc_expr(expr_mat(m,n));
           if (cc_expr.size()>0) {
             expr_matrices_[id](p,q) += "+("+cc_expr+")";
