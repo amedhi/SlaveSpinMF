@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
-* @Last Modified by:   Amal Medhi
-* @Last Modified time: 2019-05-05 20:33:28
+* @Last Modified by:   Amal Medhi, amedhi@mbpro
+* @Last Modified time: 2019-05-22 11:26:22
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -285,6 +285,22 @@ void SlaveSpin::set_site_couplings(const MF_Params& mf_params,
   // Renormalizing field on each site due to hopping terms from the 'bath'
   if (cluster_type_==cluster_t::SITE) {
     for (auto& elem : renorm_site_couplings_) elem.setZero();
+    for (int i=0; i<mf_params.num_bonds(); ++i) {
+      auto s = mf_params.bond(i).src();
+      auto t = mf_params.bond(i).tgt();
+
+      // for source site
+      auto tchi = renorm_bond_couplings_[i].matrix();
+      // tchi_phi = Matrix(tchi) * Vector(phi)
+      auto tchi_phi = tchi * site_order_params[t].matrix(); 
+      renorm_site_couplings_[s] += tchi_phi.array(); 
+
+      // for target site
+      auto tchi_t = renorm_bond_couplings_[i].matrix().adjoint();
+      auto tchi_phi_t = tchi_t * site_order_params[s].matrix(); 
+      renorm_site_couplings_[t] += tchi_phi_t.array(); 
+    }
+    /*
     int id = 0;
     for (const auto& bond : mf_params.bonds()) {
       auto s = bond.src();
@@ -299,11 +315,13 @@ void SlaveSpin::set_site_couplings(const MF_Params& mf_params,
       renorm_site_couplings_[s] += tchi_phi_sum; // * site_order_params[t];
       renorm_site_couplings_[t] += tchi_phi_sum.conjugate(); 
     }
+    */
+    /*
     for (int i=0; i<num_sites_; ++i) {
       std::cout << "site field ["<<i<<"] = " << renorm_site_couplings_[i].transpose() << "\n"; 
     }
     getchar();
-    
+    */ 
   }
   else if (cluster_type_ == cluster_t::BOND) {
   }

@@ -280,10 +280,13 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     std::cout<<"bond-"<<i<<":"<<"\n";
     for (int m=0; m<mf_params.bond(i).spinon_ke(0).rows(); ++m) {
       for (int n=0; n<mf_params.bond(i).spinon_ke(0).cols(); ++n) {
-        std::cout << "chi["<<m<<","<<n<<"] = " << mf_params.bond(i).spinon_ke(0)(m,n) << "\n";
+        std::cout << "t   ["<<m<<","<<n<<"] = " << mf_params.bond(i).term_coupling(0)(m,n) << "\n";
+        std::cout << "chi ["<<m<<","<<n<<"] = " << mf_params.bond(i).spinon_ke(0)(m,n) << "\n";
+        std::cout << "tchi["<<m<<","<<n<<"] = " << mf_params.bond(i).spinon_renormed_cc(0)(m,n) << "\n\n";
       }
     }
     std::cout << "\n";
+    getchar();
     */
   }
   //std::cout << "Exiting at Spinon::compute_averages\n"; exit(0);

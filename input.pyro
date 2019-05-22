@@ -40,8 +40,8 @@ bc3 = "periodic"
 model = "PYROCHLORE"
 t = 1.00
 lambda = 20.0
-U = 0.0
-J = 0.0
+U = 15.0
+J = 4.0
 
 #---------------------------------------------
 # Variational wavefunction

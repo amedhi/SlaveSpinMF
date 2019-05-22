@@ -93,6 +93,8 @@ public:
   const int& tgt(void) const { return tgt_; }
   const int& vector_id(void) const { return vector_id_; }
   const Vector3d& vector(void) const { return vector_; }
+  const cmplArray2D& term_coupling(const int& i) const 
+    { return term_couplings_[i]; }
   const cmplArray2D& spinon_renormed_cc(const int& i) const 
     { return spinon_renormed_cc_[i]; }
   const cmplArray2D& boson_renormed_cc(const int& i) const 
