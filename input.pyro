@@ -13,6 +13,7 @@ print_level = -2 #-2
 # Slave-spin parameters
 #---------------------------------------------
 theory = "Z2" # "Z2/U1"
+solve_single_site = "YES"
 tol = 1.0E-8
 #maxiter = 500
 #maxiter_rotor = 500
@@ -26,9 +27,9 @@ min_rotor_charge = -2
 # Lattice:
 #---------------------------------------------
 lattice = "PYROCHLORE_3D" 
-lsize1 = 4
-lsize2 = 4
-lsize3 = 4
+lsize1 = 20
+lsize2 = 20
+lsize3 = 20
 bc1 = "periodic"
 bc2 = "periodic"
 bc3 = "periodic"
@@ -39,9 +40,9 @@ bc3 = "periodic"
 #model = "TBI_HUBBARD"
 model = "PYROCHLORE"
 t = 1.00
-lambda = 20.0
-U = 15.0
-J = 4.0
+lambda = 4.0
+U = 8.0
+J = 2.0
 
 #---------------------------------------------
 # Variational wavefunction

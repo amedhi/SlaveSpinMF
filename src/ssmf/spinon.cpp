@@ -238,14 +238,15 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     }
     mf_params.site(i).spinon_density() = n_avg;
     // print
+    /*
     std::cout<<"site-"<<i<<":"<<"\n";
     for (int m=0; m<mf_params.site(i).dim(); ++m) {
       std::cout << "<n_up>["<<m<<"] = " << mf_params.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
-     
+    */
   }
-  getchar();
+  //getchar();
 
   // final spin-flip amplitudes
   if (SO_coupling_) {
@@ -451,7 +452,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
 
     // Smearing Parameters
     double bandwidth = ek_list_.back()-ek_list_.front();
-    smear_width_ = 0.1*bandwidth/num_unitcells_;
+    smear_width_ = 0.05*bandwidth/num_unitcells_;
     smear_func_order_ = 4;
 
     // for root finding

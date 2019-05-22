@@ -69,10 +69,10 @@ private:
 
   int MAXITER_{50};
   double STPMX_{100.0};
-  double LFUNC_{1.0E-4};
-  double ftol_{1.0E-8};
-  double min_tol_{1.0E-8};
-  double xtol_{1.0E-8};
+  double LFUNC_{1.0E-6};
+  double ftol_{1.0E-9};
+  double min_tol_{1.0E-9};
+  double xtol_{1.0E-9};
   double stpmax_{1.0};
 
   template<class F>

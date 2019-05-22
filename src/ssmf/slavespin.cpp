@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-05-22 11:26:22
+* @Last Modified time: 2019-05-22 17:35:08
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -92,6 +92,9 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   if (theory_name=="Z2") theory_ = theory_t::Z2;
   else if (theory_name=="U1") theory_ = theory_t::U1;
   else throw std::range_error("*error: SlaveSpin: invalid 'theory' name"); 
+  // whether solve only for single site
+  solve_single_site_ = inputs.set_value("solve_single_site", false);
+
   make_clusters(mf_params);
   for (auto& cluster : clusters_) 
     cluster.init_hamiltonian(modelparams_,gauge_factors_,lm_params_,renorm_site_couplings_);
@@ -438,7 +441,7 @@ int SlaveSpin::constraint_equation(const std::vector<double>& x, std::vector<dou
 {
   // read the new LM-parameters
   int i=0;
-  for (unsigned site=0; site<num_sites_; ++site) {
+  for (int site=0; site<num_sites_; ++site) {
     for (auto& alpha: spin_orbitals_) {
       lm_params_[site][alpha] = x[i];
       ++i; 
@@ -458,7 +461,7 @@ int SlaveSpin::constraint_equation(const std::vector<double>& x, std::vector<dou
   }
   // LHS of the constraint equation: fx = (<Sz> + 1/2) - n_f
   i=0;
-  for (unsigned site=0; site<num_sites_; ++site) {
+  for (int site=0; site<num_sites_; ++site) {
     for (auto& alpha: spin_orbitals_) {
       fx[i] = (Sz_avg_[site][alpha]+0.5) - spinon_density_[site][alpha];
       ++i; 
@@ -471,9 +474,18 @@ int SlaveSpin::constraint_equation(const std::vector<double>& x, std::vector<dou
 
 void SlaveSpin::update_lm_params(void)
 {
-  for (auto& cluster : clusters_) {
-    cluster.solve_lm_params(lm_params_);
+  if (solve_single_site_) {
+    clusters_[0].solve_lm_params(lm_params_);
+    for (int i=1; i<clusters_.size(); ++i) {
+      lm_params_[i] = lm_params_[0];
+    }
   }
+  else {
+    for (auto& cluster : clusters_) {
+      cluster.solve_lm_params(lm_params_);
+    }
+  }
+
   //for (unsigned site=0; site<num_sites_; ++site) {
   //  std::cout << "lambda["<<site<<"] = " << lm_params_[site].transpose() << "\n";
   //}
@@ -499,15 +511,33 @@ void SlaveSpin::update_site_order_params(void)
 {
   // calculate <O+> 
   if (theory_==Z2) {
-    for (auto& cluster : clusters_) {
-      cluster.solve_hamiltonian();
-      cluster.get_avg_Ominus(gauge_factors_,site_order_params_);
+    if (solve_single_site_) {
+      clusters_[0].solve_hamiltonian();
+      clusters_[0].get_avg_Ominus(gauge_factors_,site_order_params_);
+      for (int i=1; i<clusters_.size(); ++i) {
+        site_order_params_[i] = site_order_params_[0];
+      }
+    }
+    else {
+      for (auto& cluster : clusters_) {
+        cluster.solve_hamiltonian();
+        cluster.get_avg_Ominus(gauge_factors_,site_order_params_);
+      }
     }
   }
   else { // U1 Theory
-    for (auto& cluster : clusters_) {
-      cluster.solve_hamiltonian();
-      cluster.get_avg_Zminus(gauge_factors_,site_order_params_);
+    if (solve_single_site_) {
+      clusters_[0].solve_hamiltonian();
+      clusters_[0].get_avg_Zminus(gauge_factors_,site_order_params_);
+      for (int i=1; i<clusters_.size(); ++i) {
+        site_order_params_[i] = site_order_params_[0];
+      }
+    }
+    else {
+      for (auto& cluster : clusters_) {
+        cluster.solve_hamiltonian();
+        cluster.get_avg_Zminus(gauge_factors_,site_order_params_);
+      }
     }
   }
   /*

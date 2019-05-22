@@ -154,10 +154,14 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
       for (int n3=1; n3<=N3; n3++) {
         double x3 = (2.0*n3-N3-1)/(2.0*N3);
         this->push_back(x1*b1 + x2*b2 + x3*b3);
+        //std::cout << this->back().transpose() << "\n";
       }
     }
   }
   num_kpoint_ = lattice.num_unitcells();
+  weights_.resize(num_kpoint_);
+  for (auto& w : weights_) w = 1.0;
+  num_symm_kpoint_ = num_kpoint_;
   return 0;
   */
   //------------NOT USING THE USUAL SCHEME BELOW---------------

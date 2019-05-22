@@ -171,11 +171,12 @@ public:
   friend int gsl_problem_equation(const gsl_vector* x, void* parms, gsl_vector* f);
 private:
   theory_t theory_{theory_t::Z2};
+  bool solve_single_site_{false};
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
   //Model rotor_model_;
-  unsigned num_sites_;
-  unsigned num_bonds_;
+  int num_sites_;
+  int num_bonds_;
   //std::vector<sb_site> sites_; 
   //std::vector<sb_bond> bonds_; 
   ModelParams modelparams_;
