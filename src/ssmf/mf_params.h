@@ -1,13 +1,8 @@
 /*---------------------------------------------------------------------------
 * Author: Amal Medhi
 * @Date:   2019-03-12 12:20:33
-<<<<<<< HEAD
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-03-12 12:20:33
-=======
 * @Last Modified by:   Amal Medhi
 * @Last Modified time: 2019-05-05 19:43:35
->>>>>>> multiband_soc
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #ifndef MF_PARAMS_H
@@ -38,10 +33,7 @@ public:
   MF_Site();
   MF_Site(const int& type, const int& dim, const idx_list& state_indices, 
     const bool& SO_coupled);
-<<<<<<< HEAD
-=======
   void set_soc_matrix(const cmplArray2D& soc_mat); 
->>>>>>> multiband_soc
   const int& type(void) const { return type_; }
   const int& dim(void) const { return dim_; }
   const std::vector<int> spin_orbitals(void) const { return spin_orbitals_; }
@@ -54,11 +46,6 @@ public:
   const realArray1D& lm_params(void) const { return lm_params_; }
   realArray1D& qp_weights(void) { return qp_weights_; }
   const realArray1D& qp_weights(void) const { return qp_weights_; }
-<<<<<<< HEAD
-private:
-  int type_;
-  int dim_;
-=======
   const cmplArray2D& spinon_flip_ampl(void) const { return spinon_flip_ampl_; }
   cmplArray2D& spinon_flip_ampl(void) { return spinon_flip_ampl_; }
   const cmplArray2D& boson_flip_ampl(void) const { return boson_flip_ampl_; }
@@ -73,7 +60,6 @@ private:
   int type_;
   int dim_;
   bool SO_coupled_;
->>>>>>> multiband_soc
   std::vector<int> spin_orbitals_;
   idx_list state_indices_;
   idx_list connected_bonds_;
@@ -83,46 +69,32 @@ private:
   realArray1D lm_params_;
   realArray1D lm_params_noint_;
   realArray1D qp_weights_;
-<<<<<<< HEAD
-=======
   cmplArray2D soc_matrix_; 
   cmplArray2D spinon_flip_ampl_; 
   cmplArray2D boson_flip_ampl_; 
   cmplArray2D spinon_renormed_soc_; 
   cmplArray2D boson_renormed_soc_; 
->>>>>>> multiband_soc
 };
 
 class MF_Bond
 {
 public:
   using idx_list = std::vector<unsigned>;
-<<<<<<< HEAD
-  MF_Bond(const int& type, const int& src, const int& tgt, const int& vector_id,
-    const Vector3d& vector, const bool& SO_coupled);
-=======
   MF_Bond(const int& type, const bool& is_intracell, const int& src, 
     const int& tgt, const int& vector_id, const Vector3d& vector, 
     const bool& SO_coupled);
->>>>>>> multiband_soc
   ~MF_Bond() {}
 	void add_term_cc(const cmplArray2D& mat);
   void set_spinon_renormalization(void);
   void set_boson_renormalization(void);
   const int& type(void) const { return type_; }
-<<<<<<< HEAD
-=======
   const bool& is_intracell(void) const { return is_intracell_; }
->>>>>>> multiband_soc
   const int& src(void) const { return src_; }
   const int& tgt(void) const { return tgt_; }
   const int& vector_id(void) const { return vector_id_; }
   const Vector3d& vector(void) const { return vector_; }
-<<<<<<< HEAD
-=======
   const cmplArray2D& term_coupling(const int& i) const 
     { return term_couplings_[i]; }
->>>>>>> multiband_soc
   const cmplArray2D& spinon_renormed_cc(const int& i) const 
     { return spinon_renormed_cc_[i]; }
   const cmplArray2D& boson_renormed_cc(const int& i) const 
@@ -131,10 +103,7 @@ public:
   cmplArray2D& boson_ke(const int& i) { return boson_ke_[i]; }
 private:
   int type_;
-<<<<<<< HEAD
-=======
   bool is_intracell_;
->>>>>>> multiband_soc
   int src_;
   int tgt_;
   int vector_id_;
