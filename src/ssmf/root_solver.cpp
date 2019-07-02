@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
-* @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-11-17 23:33:46
+* @Last Modified by:   Amal Medhi, amedhi@mbpro
+* @Last Modified time: 2019-06-17 11:51:36
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"

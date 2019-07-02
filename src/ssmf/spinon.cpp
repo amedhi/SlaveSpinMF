@@ -129,6 +129,9 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
       int k = kshells_up_[i].k;
       Vector3d kvec = blochbasis_.kvector(k);
       double symm_wt = blochbasis_.kweight(k);
+      //std::cout << "Hack: Spinon:compute_averages\n";
+      //kvec = Vector3d(-0.785, 0.785, 0.785);
+      //std::cout << "symm_wt = " << symm_wt << "\n"; getchar();
       construct_kspace_block(mf_params, kvec);
       es_k_up_.compute(quadratic_spinup_block());
 
@@ -146,11 +149,12 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
           auto ii = mf_params.site(j).state_indices()[m];
           double norm = 0.0;
           for (int band=nmin; band<=nmax; ++band) {
-            norm += std::norm(es_k_up_.eigenvectors().row(ii)[band]) 
+            norm += std::norm(es_k_up_.eigenvectors().row(ii)[band])
                     * kshells_up_[i].smear_wt(band);
           }
           n_avg(m) = norm;
         }
+        //std::cout << n_avg.transpose(); getchar();
         mf_params.site(j).spinon_density() += symm_wt*n_avg;
       }
 
@@ -228,6 +232,17 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
   }
 
   // final site density 
+  /*
+  realArray1D n_sum(mf_params.site(0).dim());
+  n_sum.setZero();
+  for (int i=0; i<mf_params.num_sites(); ++i) {
+    n_sum += mf_params.site(i).spinon_density();
+  }
+  for (int i=0; i<mf_params.num_sites(); ++i) {
+    mf_params.site(i).spinon_density() = n_sum/mf_params.num_sites();
+  }
+  */
+
   for (int i=0; i<mf_params.num_sites(); ++i) {
     //mf_params.site(i).spinon_density() /= num_kpoints_;
     realArray1D n_avg = mf_params.site(i).spinon_density()/num_kpoints_;
@@ -437,9 +452,11 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     std::iota(idx_.begin(),idx_.end(),0);
     std::sort(idx_.begin(),idx_.end(),[this](const int& i1, const int& i2) 
       {return ek_list_[i1]<ek_list_[i2];});
-    /*for (int i=0; i<ek.size(); ++i) {
-      std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << "\n";
-    }*/
+    /*
+    for (int i=0; i<ek_list_.size(); ++i) {
+      std::cout << i << "  " << idx_[i] << "  " << ek_list_[idx_[i]] << "\n";
+    }
+    */
 
     // Check whether metallic
     metallic_ = false;
@@ -452,8 +469,11 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
 
     // Smearing Parameters
     double bandwidth = ek_list_.back()-ek_list_.front();
-    smear_width_ = 0.05*bandwidth/num_unitcells_;
+    smear_width_ = 10.0*bandwidth/num_unitcells_;
     smear_func_order_ = 4;
+    //std::cout << "BW = " << bandwidth << "\n";
+    //std::cout << "W = " << smear_width_ << "\n";
+    //getchar();
 
     // for root finding
     double factor = 2.0;
@@ -468,6 +488,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     fermi_energy_ = ek_list_[idx_[0]];
     for (int i=0; i<ek_list_.size(); ++i) {
       int k = qn_list_[idx_[i]].first;
+      //int n = qn_list_[idx_[i]].second;
       int iw = std::nearbyint(blochbasis_.kweight(k));
       double ek = ek_list_[idx_[i]];
       np += iw;
@@ -487,6 +508,8 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         else {
           metallic_ = true;
           fermi_energy_ = ek;
+          //std::cout << qn_list_[idx_[i+1]].second << "\n";
+          //std::cout << std::abs(ek_list_[idx_[i+1]]-ek); getchar();
           // find fermi energy by solving with smeared levels
           break;
         }
@@ -510,13 +533,13 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         std::cout << " ** warning: fermi energy solve - iteraction exceeded\n";
       }
     }
-    //std::cout << "e_F = " << fermi_energy_ << "\n";
+    //std::cout << "metallic, e_F = "<<metallic_<<"  "<<fermi_energy_<< "\n";
 
     // check
     /*double particle_sum = 0.0;
-    double W_inv = 1.0/smear_width_;
+    double W_INV = 1.0/smear_width_;
     for (int i=0; i<ek_list_.size(); ++i) {
-      double x = (ek_list_[idx_[i]]-fermi_energy_)*W_inv;
+      double x = (ek_list_[idx_[i]]-fermi_energy_)*W_INV;
       double smear_wt = MethfesselPaxton_func(smear_func_order_,x);
       int k = qn_list_[idx_[i]].first;
       double degeneracy = std::round(blochbasis_.kweight(k));
@@ -524,7 +547,9 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     }
     std::cout << "particles = " << num_fill_particles_ 
               << " =? " << particle_sum << "\n";
+    getchar();
     */
+    
 
     // ground state
     double W_inv = 1.0/smear_width_;
@@ -578,9 +603,8 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
       std::cout << kshells_up_[k].k << " " << kshells_up_[k].nmin << "  "
           << kshells_up_[k].nmax << "\n";
     }
+    getchar();
     */
-    
-    //getchar();
 //----------------------------------------------------
 #ifdef ON
 
@@ -735,6 +759,15 @@ double Spinon::MarzariVenderbilt_smear(const double& x)
 
 void Spinon::set_particle_num(const input::Parameters& inputs)
 {
+  if (Model::id()==model::model_id::PYROCHLORE) {
+    num_spins_ = 5*num_sites_;
+    num_dnspins_ = num_spins_/2;
+    num_upspins_ = num_spins_-num_dnspins_;
+    band_filling_ = 2.0*static_cast<double>(num_spins_)/num_total_states_;
+    hole_doping_ = 1.0 - band_filling_;
+    return;
+  }
+
   hole_doping_ = inputs.set_value("hole_doping", 0.0);
   if (std::abs(last_hole_doping_-hole_doping_)<1.0E-15) {
     // no change in hole doping, particle number remails same

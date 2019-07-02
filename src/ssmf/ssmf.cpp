@@ -69,6 +69,7 @@ int SRMF::run(const input::Parameters& inputs)
   diff_spinon_ke_.resize(mf_params_.num_bonds());
   boson_ke_norm_.resize(mf_params_.num_bonds());
   spinon_ke_norm_.resize(mf_params_.num_bonds());
+  qp_weights_norm_.resize(mf_params_.num_sites());
 
   for (int i=0; i<mf_params_.num_bonds(); ++i) {
     int rows = mf_params_.bond(i).spinon_ke(0).rows();
@@ -104,9 +105,9 @@ int SRMF::run(const input::Parameters& inputs)
 
 int SRMF::selconsistent_solve(void) 
 {
-  int max_sb_iter = 10;
+  int max_sr_iter = 100;
   bool converged = false;
-  for (int iter=0; iter<max_sb_iter; ++iter) {
+  for (int iter=0; iter<max_sr_iter; ++iter) {
     spinon_model_.solve(graph_,mf_params_);
     boson_model_.solve(mf_params_);
     // check convergence
@@ -119,8 +120,17 @@ int SRMF::selconsistent_solve(void)
     double sp_norm = spinon_ke_norm_.maxCoeff();
     double sb_norm = boson_ke_norm_.maxCoeff();
 
-    //std::cout<<"ssmf iter="<<iter+1<<", norm=("<<sp_norm<<","<<sb_norm<<")\n";
+    std::cout<<"ssmf iter="<<iter+1<<", norm=("<<sp_norm<<","<<sb_norm<<")\n";
     if (sp_norm<1.0E-6 && sb_norm<1.0E-6) {
+      converged = true;
+      break;
+    }
+    // strop if all QP weights becomes zero
+    for (int i=0; i<mf_params_.num_sites(); ++i) {
+      qp_weights_norm_[i] = mf_params_.site(i).qp_weights().maxCoeff();
+    }
+    double z_norm = qp_weights_norm_.maxCoeff();
+    if (z_norm<1.0E-4) {
       converged = true;
       break;
     }

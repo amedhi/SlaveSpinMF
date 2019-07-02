@@ -172,6 +172,8 @@ public:
 private:
   theory_t theory_{theory_t::Z2};
   bool solve_single_site_{false};
+  bool gauge_factors_set_{false};
+  bool gauge_factors_solved_{false};
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
   //Model rotor_model_;
@@ -193,7 +195,7 @@ private:
   unsigned fx_dim_;
   std::vector<double> x_vec_;
   std::vector<double> fx_vec_;
-  root::gsl_solver solver_;
+  root::gsl_solver gsl_solver_;
 
   // site & bond parameters
   real_siteparms_t lm_params_;
@@ -221,6 +223,8 @@ private:
   //Eigen::SparseMatrix<double> work_;
   //ComplexMatrix psi_work2_;
   */
+  void solve_gauge_factors(const MF_Params& mf_params);
+  realArray1D gauge_factors_func(const MF_Params& mf_params, const int& i);
   void self_consistent_solve(const MF_Params& mf_params);
   void make_clusters(const MF_Params& mf_params);
   void init_matrix_elems(const MF_Params& mf_params);

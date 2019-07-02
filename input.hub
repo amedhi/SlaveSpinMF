@@ -13,6 +13,7 @@ print_level = -2 #-2
 # Slave-rotor parameters
 #---------------------------------------------
 theory = "Z2" # "U1"
+solve_single_site = "YES"
 tol = 1.0E-8
 #maxiter = 500
 #maxiter_rotor = 500
@@ -37,7 +38,7 @@ bc2 = "periodic"
 #model = "tJ"
 model = "HUBBARD"
 t = 1.0
-U = 12.0
+U = 10.0
 
 #---------------------------------------------
 # Variational wavefunction

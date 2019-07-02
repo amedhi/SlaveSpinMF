@@ -117,10 +117,10 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
     bool read_from_file=true;
     if (read_from_file) {
       std::ostringstream oss;
-      std::string folder = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/MonkhorstPack/";
-      std::string ext = "_sft0.txt";
+      std::string folder = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/kmesh/";
+      std::string ext = ".txt";
       oss<<lattice.size1()<<"x"<<lattice.size2()<<"x"<<lattice.size3();
-      std::string fname = folder+"fcc_kmesh_"+oss.str()+ext;
+      std::string fname = folder+"full_kmesh_"+oss.str()+ext;
       gen_from_file(fname);
       num_kpoint_ = lattice.num_unitcells();
       /*std::cout << fname << "\n";
@@ -133,13 +133,17 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
   }
 #endif
 
-  /*std::cout << "a1 = " << a1.transpose() << "\n"; 
+  /*
+  std::cout << "a1 = " << a1.transpose() << "\n"; 
   std::cout << "a2 = " << a2.transpose() << "\n"; 
   std::cout << "a3 = " << a3.transpose() << "\n"; 
   std::cout << "b1 = " << b1.transpose() << "\n"; 
   std::cout << "b2 = " << b2.transpose() << "\n"; 
   std::cout << "b3 = " << b3.transpose() << "\n"; 
-  getchar();*/
+  getchar();
+  */
+
+
 
   // Monkhorst-Pack scheme for k-points
   /*
@@ -184,11 +188,13 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
     x2 = static_cast<double>(m(1)+n(1))/lattice.size2() + antipb_shift(1);
     x3 = static_cast<double>(m(2)+n(2))/lattice.size3() + antipb_shift(2);
     this->push_back(x1*b1 + x2*b2 + x3*b3);
+    //std::cout << this->back().transpose() << "\n";
     //kpoints[i] = x1 * b1 + x2 * b2 + x3 * b3;
-    //std::cout << i << ": " << kpoints[i](0) << " " << kpoints[i](1) << " " << kpoints[i](2) << "\n";
+    //std::cout<<i<<": "<<kpoints[i](0)<<" "<<kpoints[i](1)<< " "<<kpoints[i](2) << "\n";
     //translation_vectors.push_back(n);
     n = lattice.get_next_bravindex(n);
   }
+  //getchar();
   // weights are all one since all k-points included
   weights_.resize(num_kpoint_);
   for (auto& w : weights_) w = 1.0;

@@ -63,6 +63,7 @@ private:
   cmpl_bondparms_t diff_spinon_ke_;
   realArray1D boson_ke_norm_;
   realArray1D spinon_ke_norm_;
+  realArray1D qp_weights_norm_;
 
   //int compute_chern_number(void);
   //int compute_band_gap(void);
