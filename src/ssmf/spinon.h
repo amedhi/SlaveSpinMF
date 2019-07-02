@@ -36,6 +36,7 @@ public:
   void build_siteterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
   void eval_coupling_constant(const model::ModelParams& cvals, const model::ModelParams& pvals);
   void update_bondterm_cc(const int& term_id, const MF_Params& mf_params);
+  void update_siteterm_cc(const MF_Params& mf_params);
   const unsigned& num_out_bonds(void) const { return num_out_bonds_; } 
   const Vector3d& bond_vector(const int& i) const { return bond_vectors_[i]; }
   const ComplexMatrix& coeff_matrix(const int& i=0) const { return coeff_matrices_[i]; }
@@ -78,12 +79,14 @@ private:
   basis::BlochBasis blochbasis_;
   bool have_TP_symmetry_{true};
   bool SO_coupling_{false};
-  unsigned spin_multiply_{2};
-  unsigned num_sites_{0};
-  unsigned num_bonds_{0};
-  unsigned num_kpoints_{0};
-  unsigned kblock_dim_{0};
-  unsigned num_basis_sites_{0};
+  int spin_multiply_{2};
+  int num_sites_{0};
+  int num_unitcells_{0};
+  int num_bonds_{0};
+  int num_kpoints_{0};
+  int num_symm_kpoints_{0};
+  int kblock_dim_{0};
+  int num_basis_sites_{0};
   // matrices in kspace representation
   ComplexMatrix quadratic_block_up_;
   ComplexMatrix quadratic_block_dn_;
@@ -95,16 +98,24 @@ private:
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_dn_;
 
   // ground state (Fermi-Sea) representations
-  unsigned num_total_states_{0};
-  unsigned num_spins_{0};
-  unsigned num_upspins_{0};
-  unsigned num_dnspins_{0};
+  int num_total_states_{0};
+  int num_spins_{0};
+  int num_upspins_{0};
+  int num_dnspins_{0};
+  bool metallic_{false};
   double hole_doping_{0.0};
   double last_hole_doping_{10.39}; // unlikely input
   double band_filling_{1.0};
+  // fermi level
+  int num_fill_particles_{0};
+  int smear_func_order_{4};
   double fermi_energy_;
+  double smear_width_;
   bool degeneracy_warning_{false};
-  struct kshell_t {unsigned k; unsigned nmin; unsigned nmax;};
+  std::vector<std::pair<int,int>> qn_list_; // list of (k,n)
+  std::vector<double> ek_list_;
+  std::vector<int> idx_;
+  struct kshell_t {int k; int nmin; int nmax; realArray1D smear_wt; };
   std::vector<kshell_t> kshells_up_;
   std::vector<kshell_t> kshells_dn_;
 
@@ -112,7 +123,11 @@ private:
   void update_unitcell_terms(void);
   void set_particle_num(const input::Parameters& inputs);
   void construct_groundstate(const MF_Params& mf_params);
+  void construct_groundstate_v2(const MF_Params& mf_params);
   void compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_params);
+  double MethfesselPaxton_func(const int& N, const double& x);
+  double MarzariVenderbilt_smear(const double& x);
+  double particle_constraint_eqn(const double& mu);
 };
 
 

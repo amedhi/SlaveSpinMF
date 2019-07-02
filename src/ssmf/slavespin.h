@@ -31,6 +31,8 @@
 namespace srmf {
 
 enum cluster_t {SITE, BOND, CELL};
+enum theory_t {Z2, U1};
+enum model_id {HUBBARD, BHZ, PYROCHLORE};
 
 class MatrixElem
 {
@@ -54,20 +56,26 @@ class ModelParams
 public:
   ModelParams() {}
   ~ModelParams() {}
+  void set_id(const model_id& id) { id_=id; }
   void update_e0(const realArray1D& e0) { e0_=e0; }
   void update_U(const double& U) { U_=U; }
   void update_U1(const double& U) { U1_=U; hunde_coupling_=true; }
-  void update_hunde_J(const double& J) { hunde_J_=J; hunde_coupling_=true; }
+  void update_J(const double& J) { hunde_J_=J; hunde_coupling_=true; }
+  void update_lambda(const double& lambda) { SO_lambda_=lambda; }
+  const model_id& id(void) const { return id_; }
   const realArray1D& get_e0(void) const { return e0_; }
   const double& get_U(void) const { return U_; }
   const double& get_U1(void) const { return U1_; }
-  const double& get_hunde_J(void) const { return hunde_J_; }
+  const double& get_J(void) const { return hunde_J_; }
+  const double& get_lambda(void) const { return SO_lambda_; }
   bool have_hunde_coupling(void) const { return hunde_coupling_; }
 private:
+  model_id id_;
   bool hunde_coupling_{false};
   double U_{0.0};
   double U1_{0.0}; // inter-orbital
   double hunde_J_{0.0};
+  double SO_lambda_{0.0};
   realArray1D e0_; // orbital energy
 };
 
@@ -75,9 +83,9 @@ class Cluster
 {
 public:
   Cluster() {}
-  Cluster(const cluster_t& type, const int& site, 
-    const std::vector<int>& spin_orbitals) 
-  : type_{type}, site_{site}, spin_orbitals_{spin_orbitals}
+  Cluster(const cluster_t& type, const theory_t& theory, 
+    const int& site, const std::vector<int>& spin_orbitals) 
+  : type_{type}, theory_{theory}, site_{site}, spin_orbitals_{spin_orbitals}
   {
     end_site_id_ = site_+1;
     total_spinorbitals_ = spin_orbitals_.size();
@@ -91,6 +99,7 @@ public:
     interaction_elems_.resize(basis_dim_);
     lagrange_elems_.resize(basis_dim_);
     //orbital_en_elems_.resize(basis_dim_);
+    soc_mat_.resize(basis_dim_,basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
     groundstate_.resize(basis_dim_);
     H_dLambda_.resize(basis_dim_,total_spinorbitals_);
@@ -102,7 +111,8 @@ public:
     const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& renorm_site_fields);
   void set_spinon_density(const real_siteparms_t& spinon_density);
   void solve_lm_params(real_siteparms_t& lm_params);
-  void update_hamiltonian(const ModelParams& p);
+  void update_soc_matrix(const MF_Params& mfp, const real_siteparms_t& gauge_factors);
+  void update_interaction_matrix(const ModelParams& p);
   void update_hamiltonian(const real_siteparms_t& new_lm_params);
   void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
   //void get_groundstate(ComplexVector& eigvec) const;
@@ -112,10 +122,12 @@ public:
   const ComplexMatrix& groundstate_dLambda(void); 
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
-  void get_avg_Zplus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
+  void get_avg_Zminus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
+  void get_avg_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
   void get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& Opm_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
+  theory_t theory_{theory_t::Z2};
   int site_{0};
   int end_site_id_{0};
   unsigned basis_dim_{0};
@@ -129,7 +141,8 @@ private:
   RealVector interaction_elems_; 
   RealVector lagrange_elems_; 
   //RealVector orbital_en_elems_; 
-  //std::vector<MatrixElem> orbital_en_elems_;
+
+  ComplexMatrix soc_mat_;
   ComplexMatrix hmatrix_;
   ComplexMatrix H_dLambda_;
   ComplexMatrix groundstate_dLambda_;
@@ -157,11 +170,15 @@ public:
   //void update(const input::Parameters& inputs);
   friend int gsl_problem_equation(const gsl_vector* x, void* parms, gsl_vector* f);
 private:
+  theory_t theory_{theory_t::Z2};
+  bool solve_single_site_{false};
+  bool gauge_factors_set_{false};
+  bool gauge_factors_solved_{false};
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
   //Model rotor_model_;
-  unsigned num_sites_;
-  unsigned num_bonds_;
+  int num_sites_;
+  int num_bonds_;
   //std::vector<sb_site> sites_; 
   //std::vector<sb_bond> bonds_; 
   ModelParams modelparams_;
@@ -178,7 +195,7 @@ private:
   unsigned fx_dim_;
   std::vector<double> x_vec_;
   std::vector<double> fx_vec_;
-  root::gsl_solver solver_;
+  root::gsl_solver gsl_solver_;
 
   // site & bond parameters
   real_siteparms_t lm_params_;
@@ -206,6 +223,8 @@ private:
   //Eigen::SparseMatrix<double> work_;
   //ComplexMatrix psi_work2_;
   */
+  void solve_gauge_factors(const MF_Params& mf_params);
+  realArray1D gauge_factors_func(const MF_Params& mf_params, const int& i);
   void self_consistent_solve(const MF_Params& mf_params);
   void make_clusters(const MF_Params& mf_params);
   void init_matrix_elems(const MF_Params& mf_params);
@@ -215,6 +234,7 @@ private:
   void set_site_fields(void);
   void update_lm_params(void);
   void update_site_order_params(void);
+  void set_renormalized_soc(MF_Params& mf_params);
   void update_bond_order_params(MF_Params& mf_params);
   void update_renorm_site_potential(MF_Params& mf_params);
   int constraint_equation(const std::vector<double>& x, std::vector<double>& fx);

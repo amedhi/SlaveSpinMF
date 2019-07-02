@@ -40,6 +40,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
   if (model_name == "HUBBARD") {
     mid = model_id::HUBBARD;
+    id2_ = model_id2::HUBBARD;
     set_TP_symmetry(true);
     // model parameters
     add_parameter(name="t", defval=1.0, inputs);
@@ -51,6 +52,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
   else if (model_name == "TJ") {
     mid = model_id::TJ;
+    id2_ = model_id2::TJ;
     int nowarn;
     if (inputs.set_value("no_double_occupancy",true,nowarn))
       set_no_dbloccupancy();
@@ -66,6 +68,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     mid = model_id::TBI_HUBBARD;
     switch (lattice.id()) {
       case lattice::lattice_id::SQUARE_2BAND:
+        id2_ = model_id2::BHZ;
         set_TP_symmetry(true);
         add_parameter(name="e0", defval=1.0, inputs);
         add_parameter(name="t", defval=1.0, inputs);
@@ -116,6 +119,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         break;
 
       case lattice::lattice_id::HONEYCOMB:
+        id2_ = model_id2::KM;
         /*
         add_parameter(name="t", defval=1.0, inputs);
         add_parameter(name="lambda", defval=1.0, inputs);
@@ -175,10 +179,13 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         break;
 
       case lattice::lattice_id::PYROCHLORE_3D:
+        id2_ = model_id2::PYROCHLORE;
         set_spinorbit_coupling(true);
         set_TP_symmetry(true);
         add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="lambda", defval=1.0, inputs);
+        add_parameter(name="lambda", defval=0.0, inputs);
+        add_parameter(name="U", defval=0.0, inputs);
+        add_parameter(name="J", defval=0.0, inputs);
 
         // site term
         expr_vec.resize(6);
@@ -218,7 +225,6 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         add_bondterm(name="hopping", cc, op::upspin_hop());
 
         // Huubard U
-        add_parameter(name="U", defval=0.0, inputs);
         add_siteterm(name="hubbard", cc="U", op::hubbard_int());
         break;
 
@@ -226,6 +232,63 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         throw std::range_error("*error: modellibrary: model not defined for the lattice"); 
     }
   }
+
+  else if (model_name == "PYROCHLORE") {
+    mid = model_id::PYROCHLORE;
+    id2_ = model_id2::PYROCHLORE;
+    switch (lattice.id()) {
+      case lattice::lattice_id::PYROCHLORE_3D:
+        set_spinorbit_coupling(true);
+        set_TP_symmetry(true);
+        add_parameter(name="t", defval=1.0, inputs);
+        add_parameter(name="lambda", defval=0.0, inputs);
+        add_parameter(name="U", defval=0.0, inputs);
+        add_parameter(name="J", defval=0.0, inputs);
+
+        // SOC term in product basis (not diagonal)
+        path = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/product_basis/";
+        cc.create(4);
+        expr_mat.resize(6,6);
+        expr_mat.getfromtxt(path+"soc_matrix.txt");
+        cc.add_type(0,expr_mat);
+        cc.add_type(1,expr_mat);
+        cc.add_type(2,expr_mat);
+        cc.add_type(3,expr_mat);
+        add_siteterm(name="spin_flip", cc, op::spin_flip());
+
+        // bond operators
+        path = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/product_basis/";
+        cc.create(9);
+        expr_mat.resize(6,6);
+        expr_mat.getfromtxt(path+"hopping_intracell_01.txt");
+        cc.add_type(0, expr_mat);
+        expr_mat.getfromtxt(path+"hopping_intracell_02.txt");
+        cc.add_type(1, expr_mat);
+        expr_mat.getfromtxt(path+"hopping_intracell_03.txt");
+        cc.add_type(2, expr_mat);
+        expr_mat.getfromtxt(path+"hopping_intracell_12.txt");
+        cc.add_type(3, expr_mat);
+        expr_mat.getfromtxt(path+"hopping_intracell_13.txt");
+        cc.add_type(4, expr_mat);
+        expr_mat.getfromtxt(path+"hopping_intracell_23.txt");
+        cc.add_type(5, expr_mat);
+
+        expr_mat.getfromtxt(path+"hopping_intercell_10.txt");
+        cc.add_type(6, expr_mat);
+        expr_mat.getfromtxt(path+"hopping_intercell_20.txt");
+        cc.add_type(7, expr_mat);
+        expr_mat.getfromtxt(path+"hopping_intercell_30.txt");
+        cc.add_type(8, expr_mat);
+        add_bondterm(name="hopping", cc, op::upspin_hop());
+
+        // Huubard U
+        add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+        break;
+      default:
+        throw std::range_error("*error: modellibrary: model not defined for the lattice"); 
+    }
+  }
+
 
 
   /*------------- undefined model--------------*/

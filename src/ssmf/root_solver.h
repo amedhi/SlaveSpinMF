@@ -67,12 +67,12 @@ private:
   double fnorm_;
   double fnorm_old_;
 
-  int MAXITER_{50};
+  int MAXITER_{100};
   double STPMX_{100.0};
-  double LFUNC_{1.0E-4};
-  double ftol_{1.0E-8};
-  double min_tol_{1.0E-8};
-  double xtol_{1.0E-8};
+  double LFUNC_{1.0E-6};
+  double ftol_{1.0E-9};
+  double min_tol_{1.0E-9};
+  double xtol_{1.0E-9};
   double stpmax_{1.0};
 
   template<class F>
@@ -136,6 +136,7 @@ int RootSolver::solve(F func, RealVector& x0)
     }
   }
   std::cout << "** RootSolver::solve: iteration exceeded\n";
+  //getchar();
   return 1;
 }
 

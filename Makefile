@@ -42,7 +42,7 @@ HDRS=    scheduler/mpi_comm.h \
          scheduler/optionparser.h scheduler/cmdargs.h \
          scheduler/inputparams.h scheduler/worker.h scheduler/task.h \
          scheduler/scheduler.h \
-         utils/complex_expression.h \
+         expression/complex_expression.h \
          utils/utils.h \
          lattice/constants.h lattice/lattice.h lattice/graph.h \
 	 lattice/matrix.h \
