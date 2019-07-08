@@ -33,6 +33,7 @@ public:
   const int& num_symm_kpoints(void) const { return num_symm_kpoint_; }
   const double& kweight(const int& k) const { return weights_[k]; }
   kpoint kvector(const unsigned& k) const { return operator[](k); }
+  const std::vector<kpoint>& symm_path_k(void) const { return symm_path_k_; }
   //kpoint mesh_nb_dir1(const unsigned& k) const;
   //kpoint mesh_nb_dir2(const unsigned& k) const;
   //kpoint mesh_nb_dir3(const unsigned& k) const;
@@ -77,6 +78,8 @@ private:
   std::vector<basis_state> subspace_basis_;
   std::vector<unsigned> representative_state_idx_;
   unsigned null_idx_;
+
+  std::vector<kpoint> symm_path_k_;
 
   // helper functions
   int make_kpoints(const lattice::Lattice& lattice);

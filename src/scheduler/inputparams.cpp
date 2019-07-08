@@ -10,6 +10,11 @@
 // File: inputparams.cc
 
 #include <fstream>
+#include <ctime>
+#include <unistd.h> 
+#include <pwd.h>
+#include <iomanip>
+#include <sstream>
 #include <cctype>
 #include <cmath>
 #include <vector>
@@ -29,6 +34,8 @@ JobInput::JobInput(const scheduler::CommandArg& cmdarg): n_params(0), n_tasks(0)
   }
   else {
     try {
+      // job_id
+      task_params_.job_idstring_ = set_id_string(cmdarg);
       // command options
       task_params_.have_option_quiet_ = cmdarg.have_option(scheduler::quiet);
       task_params_.have_option_test_ = cmdarg.have_option(scheduler::test);
@@ -51,6 +58,8 @@ JobInput::JobInput(const scheduler::CommandArg& cmdarg): n_params(0), n_tasks(0)
 bool JobInput::read_inputs(const scheduler::CommandArg& cmdarg)
 {
   try {
+    // job_id
+    task_params_.job_idstring_ = set_id_string(cmdarg);
     // command options
     task_params_.have_option_quiet_ = cmdarg.have_option(scheduler::quiet);
     //std::cout << task_params_.have_option_quiet_ << "\n"; getchar();
@@ -66,6 +75,28 @@ bool JobInput::read_inputs(const scheduler::CommandArg& cmdarg)
     n_tasks = n_params = 0;
   }
   return valid_;
+}
+
+std::string JobInput::set_id_string(const scheduler::CommandArg& cmdarg) 
+{
+  std::stringstream ss;
+  ss << "job_";
+  // pid
+  ss << getpid() << "_" << cmdarg.prog_name() << "_";
+  // time
+  auto tp = std::chrono::system_clock::now();
+  std::time_t t = std::chrono::system_clock::to_time_t(tp);
+  ss << std::put_time(std::localtime(&t), "%Y%m%d%H%M%S") << "_";
+  // username
+  uid_t uid = geteuid();
+  struct passwd *pw = getpwuid(uid);
+  if (pw) ss << std::string(pw->pw_name);
+  else ss << "user";
+  // hostname
+  char host[80];
+  if (gethostname(host,80)==0) ss << "@"+std::string(host);
+  else ss << "@host";
+  return ss.str();
 }
 
 unsigned int JobInput::parse(const std::string& inputfile)

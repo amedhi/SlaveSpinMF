@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-06-19 22:59:00
+* @Last Modified time: 2019-07-07 16:41:10
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -81,6 +81,9 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
       modelparams_.update_U(model.get_parameter_value("U"));
       modelparams_.update_J(model.get_parameter_value("J"));
       modelparams_.update_lambda(model.get_parameter_value("lambda"));
+      if (inputs.set_value("J_is_relative", false)) {
+        modelparams_.set_J_relative(true);
+      }
       break;
     default: 
       throw std::range_error("*error: SlaveSpin: 'model' not implemented"); 
@@ -94,6 +97,12 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   else throw std::range_error("*error: SlaveSpin: invalid 'theory' name"); 
   // whether solve only for single site
   solve_single_site_ = inputs.set_value("solve_single_site", false);
+
+  // fixing gauge by 'hand'
+  int status;
+  fixed_gauge_ = inputs.set_value("fixed_gauge", 1.0, status);
+  if (status ==0 ) set_fixed_gauge_ = true;
+  else set_fixed_gauge_ = false;
 
   make_clusters(mf_params);
   for (auto& cluster : clusters_) 
@@ -145,7 +154,13 @@ void SlaveSpin::solve(MF_Params& mf_params)
         double nf = spinon_density_[site][alpha];
         if (theory_==theory_t::Z2) {
           //delta_ = 0.0;
-          gauge_factors_[site][alpha]=1.0/std::sqrt((delta_+nf)*(1.0-nf+delta_))-1.0;
+          if (set_fixed_gauge_) {
+            gauge_factors_[site][alpha]=fixed_gauge_;
+          }
+          else {
+            gauge_factors_[site][alpha]=1.0/std::sqrt((delta_+nf)*(1.0-nf+delta_))-1.0;
+          }
+
         }
         else {// U1 Theory
           gauge_factors_[site][alpha]=1.0/std::sqrt((nf+delta_)*(1.0-nf+delta_)); 
@@ -188,6 +203,7 @@ void SlaveSpin::solve(MF_Params& mf_params)
     //std::cout<<"lambda["<<i<<"] = "<< lm_params_[i].transpose()<<"\n";
     //std::cout<<"Z["<<i<<"] = "<< qp_weights_[i].transpose()<<"\n";
   }
+  //std::cout << "SlaveSpin: HACK at L193\n";
   if (modelparams_.id()==PYROCHLORE) {
     set_renormalized_soc(mf_params);
   }
@@ -362,7 +378,7 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
     if (print_progress) {
       std::cout << "boson iter = " << iter+1 << ", norm = " << norm << "\n";
     }
-    if (norm<1.0E-6) {
+    if (norm<1.0E-8) {
       converged = true;
       break;
     } 
@@ -718,7 +734,10 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
     // |basis> = |0U, 0D, 1U, 1D, 2U, 2D>
     double U = p.get_U();
     double J = p.get_J();
-    //double J = 0.1*U;
+    if (p.J_is_relative()) J *= U;
+    if (2.0*J > U) {
+      throw std::range_error("Cluster::update_interaction_matrix: out-of-range value of 'J'\n");
+    }
     double Uprime = U - 2.0*J; 
     double U_one_body = -0.5*(14.0*U - 37.0*J);
     double Sz, Sz_up, Sz_dn;

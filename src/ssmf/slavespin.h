@@ -62,6 +62,7 @@ public:
   void update_U1(const double& U) { U1_=U; hunde_coupling_=true; }
   void update_J(const double& J) { hunde_J_=J; hunde_coupling_=true; }
   void update_lambda(const double& lambda) { SO_lambda_=lambda; }
+  void set_J_relative(const bool& yesno) { J_is_relative_=yesno; }
   const model_id& id(void) const { return id_; }
   const realArray1D& get_e0(void) const { return e0_; }
   const double& get_U(void) const { return U_; }
@@ -69,9 +70,11 @@ public:
   const double& get_J(void) const { return hunde_J_; }
   const double& get_lambda(void) const { return SO_lambda_; }
   bool have_hunde_coupling(void) const { return hunde_coupling_; }
+  bool J_is_relative(void) const { return J_is_relative_; }
 private:
   model_id id_;
   bool hunde_coupling_{false};
+  bool J_is_relative_{false};
   double U_{0.0};
   double U1_{0.0}; // inter-orbital
   double hunde_J_{0.0};
@@ -174,6 +177,8 @@ private:
   bool solve_single_site_{false};
   bool gauge_factors_set_{false};
   bool gauge_factors_solved_{false};
+  bool set_fixed_gauge_{true};
+  double fixed_gauge_{1.0};
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
   //Model rotor_model_;

@@ -209,30 +209,30 @@ void Hamiltonian::get_term_names(std::vector<std::string>& term_names) const
 
 void Hamiltonian::set_info_string(const lattice::Lattice& L) 
 {
-  std::ostringstream info_ostream;
-  info_ostream.clear();
-  info_ostream << "# Lattice: " << L.name() << " (";
-  info_ostream << "Size="<<L.size1()<<"x"<<L.size2()<<"x"<< L.size3()<<", ";
-  info_ostream << "Sites/unitcell="<<L.num_basis_sites()<<", ";
-  info_ostream << "Boundary="<<static_cast<int>(L.bc1_periodicity()) << "-"; 
-  info_ostream << static_cast<int>(L.bc2_periodicity()) << "-";
-  info_ostream << static_cast<int>(L.bc3_periodicity()) << ")\n";
-  info_ostream << "# No of sites = " << L.num_sites() << "\n";
-  info_ostream << "# Model: " << model_name << "\n";
-  info_ostream.precision(6);
-  info_ostream.setf(std::ios_base::fixed);
+  std::ostringstream info_strm;
+  info_strm.clear();
+  info_strm << "# Lattice: " << L.name() << " (";
+  info_strm << "Size = "<<L.size1()<<"x"<<L.size2()<<"x"<< L.size3()<<", ";
+  info_strm << "Sites/unitcell = "<<L.num_basis_sites()<<", ";
+  info_strm << "Boundary = "<<static_cast<int>(L.bc1_periodicity()) << "-"; 
+  info_strm << static_cast<int>(L.bc2_periodicity()) << "-";
+  info_strm << static_cast<int>(L.bc3_periodicity()) << ")\n";
+  info_strm << "# No of sites = " << L.num_sites() << "\n";
+  info_strm << "# Model: " << model_name << "\n";
+  info_strm.precision(6);
+  info_strm.setf(std::ios_base::fixed);
   for (const auto& p : parms_) 
-    info_ostream << "# " << p.first << " = " << p.second << "\n";
-  info_str_ = info_ostream.str();
+    info_strm << "# " << p.first << " = " << p.second << "\n";
+  info_str_ = info_strm.str();
   // signature string
-  std::ostringstream signature_ostream;
-  signature_ostream << "L" << static_cast<int>(L.id()) << "_"; 
-  signature_ostream << L.size1() << "x" << L.size2() << "x" << L.size3();
-  signature_ostream << "_" << model_name;
-  signature_ostream.precision(3);
-  signature_ostream.setf(std::ios_base::fixed);
-  for (const auto& p : parms_) signature_ostream << "_" << p.first << p.second;
-  signature_str_ = signature_ostream.str();
+  std::ostringstream signature_strm;
+  signature_strm << "L" << static_cast<int>(L.id()) << "_"; 
+  signature_strm << L.size1() << "x" << L.size2() << "x" << L.size3();
+  signature_strm << "_" << model_name;
+  signature_strm.precision(3);
+  signature_strm.setf(std::ios_base::fixed);
+  for (const auto& p : parms_) signature_strm << "_" << p.first << p.second;
+  signature_str_ = signature_strm.str();
 }
 
 

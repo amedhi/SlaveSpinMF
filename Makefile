@@ -12,11 +12,6 @@ SRCS+= scheduler/taskparams.cpp
 SRCS+= scheduler/worker.cpp 
 SRCS+= scheduler/master_scheduler.cpp
 SRCS+= scheduler/scheduler.cpp
-#SRCS+= xml/pugixml.cpp 
-#SRCS+= expression/expression.cpp 
-#SRCS+= expression/tokens.cpp 
-#SRCS+= expression/functions.cpp
-#SRCS+= expression/objects.cpp
 SRCS+= expression/complex_expression.cpp
 SRCS+= utils/utils.cpp 
 SRCS+= lattice/lattice.cpp
@@ -27,6 +22,7 @@ SRCS+= model/strmatrix.cpp
 SRCS+= model/hamiltonian_term.cpp
 SRCS+= model/model.cpp
 SRCS+= model/modellibrary.cpp
+SRCS+= ssmf/datafile.cpp
 SRCS+= ssmf/sb_params.cpp
 SRCS+= ssmf/mf_params.cpp
 SRCS+= ssmf/boson_basis.cpp
@@ -47,17 +43,16 @@ HDRS=    scheduler/mpi_comm.h \
          lattice/constants.h lattice/lattice.h lattice/graph.h \
 	 lattice/matrix.h \
 	 lattice/blochbasis.h \
-	 montecarlo/simulator.h \
          model/strmatrix.h model/modelparams.h  model/quantum_op.h \
 	 model/hamiltonian_term.h \
 	 model/model.h \
-	 srmf/sb_params.h \
-	 srmf/mf_params.h \
-	 srmf/boson_basis.h \
-	 srmf/root_solver.h \
-	 srmf/slavespin.h \
-	 srmf/spinon.h \
-	 srmf/ssmf.h 
+	 ssmf/datafile.h \
+	 ssmf/mf_params.h \
+	 ssmf/boson_basis.h \
+	 ssmf/root_solver.h \
+	 ssmf/slavespin.h \
+	 ssmf/spinon.h \
+	 ssmf/ssmf.h 
 #         expression/expression.h expression/shunting_yard.h \
          expression/tokens.h expression/functions.h expression/objects.h \
          expression/pack.h \

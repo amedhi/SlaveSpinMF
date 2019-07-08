@@ -18,6 +18,8 @@
 #include "mf_params.h"
 #include "slavespin.h"
 #include "spinon.h"
+#include "datafile.h"
+#include <boost/filesystem.hpp>
 
 namespace srmf {
 
@@ -40,22 +42,22 @@ private:
   MF_Params mf_params_;
   Spinon spinon_model_;
   SlaveSpin boson_model_;
+  bool diag_only_{false};
+
+  // output data
+  file::DataFile file_conv_data_;
+  file::DataFile file_mfp_;
+  file::DataFile file_sp_site_;
+  file::DataFile file_sp_bond_;
+  bool heading_printed_{false};
 
   // gsl solver
   //double lm_ftol_{1.0E-8};
-  unsigned fx_dim_;
-  std::vector<double> x_vec_;
-  std::vector<double> fx_vec_;
-  root::gsl_solver solver_;
-  //unsigned num_kpoints_{1};
-  //unsigned kblock_dim_{1};
-  //mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up_;
-  //std::vector<Vector3d> symm_line_;
-  // outputs
-  /*bool need_chern_number_{false};
-  bool need_ebands_full_{false};
-  bool need_ebands_symm_{false};
-  bool need_band_gap_{false};*/
+  //unsigned fx_dim_;
+  //std::vector<double> x_vec_;
+  //std::vector<double> fx_vec_;
+  //root::gsl_solver solver_;
+
   // work arrays
   cmpl_bondparms_t boson_ke_;
   cmpl_bondparms_t spinon_ke_;
@@ -65,8 +67,12 @@ private:
   realArray1D spinon_ke_norm_;
   realArray1D qp_weights_norm_;
 
+  mutable std::ostringstream info_str_;
+
   //int compute_chern_number(void);
   //int compute_band_gap(void);
+  void print_output(void);
+  void make_info_str(const input::Parameters& inputs);
   int selconsistent_solve(void);
   int spinon_energy_eqn(const std::vector<double>& x, std::vector<double>& fx);
 };

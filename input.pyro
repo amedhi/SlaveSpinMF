@@ -5,31 +5,28 @@
 #---------------------------------------------
 # Job Specification 
 #---------------------------------------------
-job = "SRMF"  #"Diagonalization" 
+job = "SSMF"  #"Diagonalization" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
+prefix = "results"
 
 #---------------------------------------------
 # Slave-spin parameters
 #---------------------------------------------
 theory = "Z2" # "Z2/U1"
-solve_single_site = "NO"
+solve_single_site = "YES"
 tol = 1.0E-8
 #maxiter = 500
 #maxiter_rotor = 500
 #use_previous_iter = "NO"
-#sr_constraint = "GLOBAL"  # ("GLOBAL"/"LOCAL")
-#rotor_cluster = "SITE"    # ("SITE"/"BOND"/"CELL")
-#max_rotor_charge = +2
-#min_rotor_charge = -2
 
 #---------------------------------------------
 # Lattice:
 #---------------------------------------------
 lattice = "PYROCHLORE_3D" 
-lsize1 = 10
-lsize2 = 10
-lsize3 = 10
+lsize1 = 20
+lsize2 = 20
+lsize3 = 20
 bc1 = "periodic"
 bc2 = "periodic"
 bc3 = "periodic"
@@ -37,13 +34,15 @@ bc3 = "periodic"
 #---------------------------------------------
 # Model:
 #---------------------------------------------
-#model = "TBI_HUBBARD"
 model = "PYROCHLORE"
-t = 1.00
-lambda = 2.0
-U = 15.68
-J = 2.0
 hole_doping = 0.0
+t = 1.00
+lambda = 0.0
+U = 31.0, 1.0, 40.0
+J = 0.2
+J_is_relative = "YES"
+#fixed_gauge = 1.9147
+#assume_fixed_groundstate = "NO"
 
 #---------------------------------------------
 # List of observable to calculate:

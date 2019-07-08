@@ -133,6 +133,37 @@ int BlochBasis::make_kpoints(const lattice::Lattice& lattice)
   }
 #endif
 
+  // k-points along symmetry line
+  symm_path_k_.clear();
+  if (lattice.id()==lattice::lattice_id::PYROCHLORE_3D) {
+    // High symmetry BZ points for FCC lattice
+    Vector3d Gamma = Vector3d(0,0,0);
+    Vector3d X = 0.5*(b2+b3);
+    Vector3d W = (0.25*b1+0.50*b2+0.75*b3);
+    Vector3d L = 0.5*(b1+b2+b3);
+    Vector3d K = (3.0/8*b1+3.0/8*b2+3.0/4*b3);
+    /*
+    std::cout << "W = " << W.transpose() << "\n"; 
+    std::cout << "L = " << L.transpose() << "\n"; 
+    std::cout << "K = " << K.transpose() << "\n"; 
+    getchar();
+    */
+    int N = 100;
+    Vector3d step = (X-Gamma)/N;
+    for (int i=0; i<N; ++i) symm_path_k_.push_back(Gamma+i*step);
+    step = (W-X)/N;
+    for (int i=0; i<N; ++i) symm_path_k_.push_back(X+i*step);
+    step = (L-W)/N;
+    for (int i=0; i<N; ++i) symm_path_k_.push_back(W+i*step);
+    step = (Gamma-L)/N;
+    for (int i=0; i<N; ++i) symm_path_k_.push_back(L+i*step);
+    step = (K-Gamma)/N;
+    for (int i=0; i<N; ++i) symm_path_k_.push_back(Gamma+i*step);
+    step = (X-K)/N;
+    for (int i=0; i<N; ++i) symm_path_k_.push_back(K+i*step);
+  }
+
+
   /*
   std::cout << "a1 = " << a1.transpose() << "\n"; 
   std::cout << "a2 = " << a2.transpose() << "\n"; 

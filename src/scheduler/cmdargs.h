@@ -44,6 +44,7 @@ public:
   CommandArg(); // default constructor
   ~CommandArg(); // destructor
   std::string extract_filename(const std::string& path) const;
+  const std::string& prog_name(void) const { return progname; }
   bool process_options(void) const;
   bool have_option(enum OptionIndex idx) const { return options[idx]; }
   bool not_valid(void) const {return !valid_;}

@@ -175,7 +175,7 @@ public:
   void rotate_by(const Eigen::Matrix3d& matrix);
 
 private:
-  int id {0};
+  //int id {0};
   unsigned max_site_type_val {0};
   unsigned max_bond_type_val {0};
   unsigned max_neighb_val {0};

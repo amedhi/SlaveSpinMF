@@ -24,6 +24,8 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
 
   if (graph.lattice().id()==lattice::lattice_id::PYROCHLORE_3D) {
   }
+  int nowarn;
+  assume_fixed_groundstate_ = inputs.set_value("assume_fixed_groundstate", false, nowarn);
   have_TP_symmetry_ = model.have_TP_symmetry();
   SO_coupling_ = model.is_spinorbit_coupled();
   if (SO_coupling_) spin_multiply_ = 1;
@@ -90,6 +92,12 @@ void Spinon::update(const input::Parameters& inputs)
   orbital_en_shifted_ = orbital_en_;
 }
 
+void Spinon::init_files(const std::string& prefix, const std::string& heading)
+{
+  // observables
+  file_bands_.init(prefix, "bands", heading);
+}
+
 void Spinon::solve(const lattice::LatticeGraph& graph, MF_Params& mf_params)
 {
   // renormalized bond couplings
@@ -105,9 +113,17 @@ void Spinon::solve(const lattice::LatticeGraph& graph, MF_Params& mf_params)
       term.update_siteterm_cc(mf_params);
     }
   }
-
-  construct_groundstate_v2(mf_params);
-  //construct_groundstate(mf_params);
+  if (!assume_fixed_groundstate_) {
+    construct_groundstate_v2(mf_params);
+    //construct_groundstate(mf_params);
+  }
+  else {
+    if (!groundstate_determined_) {
+      construct_groundstate_v2(mf_params);
+      //construct_groundstate(mf_params);
+      groundstate_determined_ = true;
+    }
+  }
   compute_averages(graph,mf_params);
   //std::cout << "START>>>>>>>>>>\n";
   //std::cout << "END>>>>>>>>>>\n";
@@ -253,13 +269,13 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     }
     mf_params.site(i).spinon_density() = n_avg;
     // print
-    /*
+    //*
     std::cout<<"site-"<<i<<":"<<"\n";
     for (int m=0; m<mf_params.site(i).dim(); ++m) {
       std::cout << "<n_up>["<<m<<"] = " << mf_params.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
-    */
+    //*/
   }
   //getchar();
 
@@ -306,6 +322,21 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     */
   }
   //std::cout << "Exiting at Spinon::compute_averages\n"; exit(0);
+}
+
+void Spinon::print_output(const MF_Params& mf_params)
+{
+  file_bands_.open();
+  int k = 0;
+  for (const auto& kvec : blochbasis_.symm_path_k()) {
+    construct_kspace_block(mf_params, kvec);
+    es_k_up_.compute(quadratic_spinup_block(), Eigen::EigenvaluesOnly);
+    file_bands_.fs()<<std::setw(6)<<k++; 
+    file_bands_.fs()<<std::setw(14)<<kvec(0)<<std::setw(14)<< kvec(1); 
+    file_bands_.fs()<<std::setw(14)<<es_k_up_.eigenvalues().transpose()<<"\n";
+  }
+  file_bands_.fs()<<"\n"; 
+  file_bands_.close();
 }
 
 void Spinon::construct_groundstate(const MF_Params& mf_params)
@@ -533,7 +564,8 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         std::cout << " ** warning: fermi energy solve - iteraction exceeded\n";
       }
     }
-    //std::cout << "metallic, e_F = "<<metallic_<<"  "<<fermi_energy_<< "\n";
+
+    std::cout << "metallic, e_F = "<<metallic_<<"  "<<fermi_energy_<< "\n";
 
     // check
     /*double particle_sum = 0.0;

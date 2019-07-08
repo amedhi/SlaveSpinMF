@@ -19,9 +19,8 @@
 #include "../lattice/blochbasis.h"
 #include "../model/quantum_op.h"
 #include "../model/model.h"
-//#include "sb_params.h"
 #include "mf_params.h"
-//#include "./blochbasis.h"
+#include "datafile.h"
 
 constexpr std::complex<double> ii(void) { return std::complex<double>{0.0,static_cast<double>(1.0)}; }
 
@@ -61,6 +60,7 @@ public:
   ~Spinon() {}
   int init(const lattice::Lattice& lattice) override;
   int finalize(const lattice::LatticeGraph& graph);
+  void init_files(const std::string& prefix, const std::string& heading);
   void solve(const lattice::LatticeGraph& graph, MF_Params& mf_params);
   void update(const input::Parameters& inputs);
   void update_terms(void) override;
@@ -72,6 +72,7 @@ public:
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
   const realArray1D& orbital_en(void) const override { return orbital_en_; }
+  void print_output(const MF_Params& mf_params);
 private:
   using Model = model::Hamiltonian;
   std::vector<UnitcellTerm> usite_terms_;
@@ -112,12 +113,17 @@ private:
   double fermi_energy_;
   double smear_width_;
   bool degeneracy_warning_{false};
+  bool assume_fixed_groundstate_{false};
+  bool groundstate_determined_{false};
   std::vector<std::pair<int,int>> qn_list_; // list of (k,n)
   std::vector<double> ek_list_;
   std::vector<int> idx_;
   struct kshell_t {int k; int nmin; int nmax; realArray1D smear_wt; };
   std::vector<kshell_t> kshells_up_;
   std::vector<kshell_t> kshells_dn_;
+
+  // output data
+  file::DataFile file_bands_;
 
   void build_unitcell_terms(const lattice::LatticeGraph& graph);
   void update_unitcell_terms(void);

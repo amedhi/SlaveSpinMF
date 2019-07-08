@@ -70,10 +70,12 @@ public:
   std::string set_value(const std::string& pname, const std::string& defval) const;  
   std::string set_value(const std::string& pname, const std::string& defval, int& info) const;  
   bool is_constant(const std::string& pname) const;  
+  const std::string& job_id(void) const { return job_idstring_; }
   unsigned task_id(void) const { return current_task_; }
   unsigned task_size(void) const { return total_tasks_; }
   void show(const unsigned&) const;
 private:
+  std::string job_idstring_{""};
   bool have_option_quiet_{false};
   bool have_option_test_{false};
   //std::map<std::string, pval> params;
@@ -139,6 +141,7 @@ private:
   private:
     int lnum;
   };
+  std::string set_id_string(const scheduler::CommandArg& cmdarg);
   unsigned int parse(const std::string& inputfile);
 };
 

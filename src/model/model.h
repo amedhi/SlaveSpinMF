@@ -100,6 +100,7 @@ public:
     { return site_terms_.size()+bond_terms_.size()+disorder_terms_.size(); }
   void get_term_names(std::vector<std::string>& term_names) const;
   const std::string& signature_str(void) const { return signature_str_; }
+  const std::string& info_str(void) const { return info_str_; }
   std::ostream& print_info(std::ostream& os) const { return os << info_str_; }
   bool is_spinorbit_coupled(void) const { return SO_coupled_; }
   bool have_TP_symmetry(void) const { return TP_symmetry_; }
