@@ -47,22 +47,18 @@ int Lattice::define_lattice(void)
     add_basis_site(orbitals=2, coord=vec(0,0,0));
     add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
     add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+  }
 
-    // bonds along +x
-    /*
+  else if (lname == "SQUARE_NBAND") {
+    // type
+    lid = lattice_id::SQUARE_NBAND;
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    // basis vectors
+    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
     // add sites
-    add_basis_site(type=0, atom=0, coord=vec(0,0,0));
-    add_basis_site(type=1, atom=0, coord=vec(0,0,0));
-    add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
-    add_bond(type=1, ngb=1, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(1,0,0));
-    add_bond(type=2, ngb=1, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
-    add_bond(type=3, ngb=1, src=1, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(1,0,0));
-    // bonds along +y
-    add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
-    add_bond(type=4, ngb=1, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,1,0));
-    add_bond(type=5, ngb=1, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
-    add_bond(type=3, ngb=1, src=1, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,1,0));
-    */
+    add_basis_site(orbitals=2, coord=vec(0,0,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
   }
 
   else if (lname == "SIMPLE_CUBIC") {
@@ -118,6 +114,33 @@ int Lattice::define_lattice(void)
     add_bond(type=3, ngb=2, src=1, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,1,0));
     add_bond(type=4, ngb=2, src=1, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(1,1,0));
     */
+  }
+
+  else if (lname == "TBG") {
+    // type
+    lid = lattice_id::TBG;
+    // basis vectors
+    double A = 1.0;
+    double x = 0.5;
+    double y = -0.5*std::sqrt(3.0);
+    set_basis_vectors(a1=A*vec(x,y,0),a2=A*vec(x,-y,0),a3=vec(0,0,0));
+    // add sites
+    // Ir site-0
+    add_basis_site(type=0, orbitals=2, coord=vec(0,0,0));
+    y = 1.0/std::sqrt(3.0);
+    add_basis_site(type=1, orbitals=2, coord=vec(0,y,0));
+
+    // Intra-cell bonds
+    add_bond(type=0,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+    add_bond(type=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=2,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    // NNN bonds
+    add_bond(type=3,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(2,1,0));
+    add_bond(type=4,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,2,0));
+    add_bond(type=3,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(-1,1,0));
+    add_bond(type=3,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(2,1,0));
+    add_bond(type=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,2,0));
+    add_bond(type=3,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,1,0));
   }
 
   else if (lname == "KAGOME") {

@@ -27,8 +27,8 @@ min_rotor_charge = -2
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 10
-lsize2 = 10
+lsize1 = 100
+lsize2 = 100
 bc1 = "periodic"
 bc2 = "periodic"
 
@@ -38,7 +38,7 @@ bc2 = "periodic"
 #model = "tJ"
 model = "HUBBARD"
 t = 1.0
-U = 10.0
+U = 13.5
 
 #---------------------------------------------
 # Variational wavefunction

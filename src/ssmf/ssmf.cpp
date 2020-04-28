@@ -33,7 +33,7 @@ SRMF::SRMF(const input::Parameters& inputs)
   boost::to_upper(job);
   if (job == "DIAGONALIZATION") diag_only_ = true;
   diag_only_ = false;
-
+  conv_tol_ = inputs.set_value("ssmf_conv_tol", 1.0E-6);
 
   std::string prefix = inputs.set_value("prefix", "results");
   prefix = "./"+prefix+"/";
@@ -119,21 +119,24 @@ int SRMF::selconsistent_solve(void)
       diff_boson_ke_[i] = boson_ke_[i] - mf_params_.bond(i).boson_ke(0);
       spinon_ke_norm_[i] = diff_spinon_ke_[i].abs2().maxCoeff();
       boson_ke_norm_[i] = diff_boson_ke_[i].abs2().maxCoeff();
+      //std::cout << "spinon_ke_norm["<<i<<"] = "<<spinon_ke_norm_[i] << "\n";
     }
+    //getchar();
     double sp_norm = spinon_ke_norm_.maxCoeff();
     double sb_norm = boson_ke_norm_.maxCoeff();
 
     std::cout<<"ssmf iter="<<iter+1<<", norm=("<<sp_norm<<","<<sb_norm<<")\n";
-    if (sp_norm<1.0E-8 && sb_norm<1.0E-7) {
+    if (sp_norm<conv_tol_ && sb_norm<conv_tol_) {
       converged = true;
       break;
     }
     // stop if all QP weights becomes zero
     for (int i=0; i<mf_params_.num_sites(); ++i) {
-      qp_weights_norm_[i] = mf_params_.site(i).qp_weights().minCoeff();
+      //qp_weights_norm_[i] = mf_params_.site(i).qp_weights().minCoeff();
+      qp_weights_norm_[i] = mf_params_.site(i).qp_weights().maxCoeff();
     }
     double z_norm = qp_weights_norm_.maxCoeff();
-    if (z_norm<1.0E-8) {
+    if (z_norm<1.0E-6) {
       converged = true;
       break;
     }

@@ -41,13 +41,45 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
   if (model_name == "HUBBARD") {
     mid = model_id::HUBBARD;
     id2_ = model_id2::HUBBARD;
-    set_TP_symmetry(true);
-    // model parameters
-    add_parameter(name="t", defval=1.0, inputs);
-    add_parameter(name="U", defval=0.0, inputs);
-    // bond operator terms
-    add_bondterm(name="hopping", cc="-t", op::spin_hop());
-    add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    if (lattice.id()==lattice::lattice_id::TBG) {
+      set_TP_symmetry(true);
+      add_parameter(name="t1", defval=1.0, inputs);
+      add_parameter(name="t2", defval=1.0, inputs);
+      add_parameter(name="tp1", defval=1.0, inputs);
+      add_parameter(name="tp2", defval=1.0, inputs);
+      add_parameter(name="mu", defval=0.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      // bond operator terms
+      cc.create(5);
+      expr_mat.resize(2,2);
+      expr_mat(0,0) = "t1-tp1"; expr_mat(0,1) = "0";
+      expr_mat(1,0) = "0"; expr_mat(1,1) = "t1+tp1";
+      cc.add_type(0, expr_mat);
+      expr_mat(0,0) = "t1+0.5*tp1"; expr_mat(0,1) = "(-0.866*tp1)";
+      expr_mat(1,0) = "(-0.866*tp1)"; expr_mat(1,1) = "t1-0.5*tp1";
+      cc.add_type(1, expr_mat);
+      expr_mat(0,0) = "t1+0.5*tp1"; expr_mat(0,1) = "(0.866*tp1)";
+      expr_mat(1,0) = "(0.866*tp1)"; expr_mat(1,1) = "t1-0.5*tp1";
+      cc.add_type(2, expr_mat);
+      expr_mat(0,0) = "t2"; expr_mat(0,1) = "tp2";
+      expr_mat(1,0) = "-tp2"; expr_mat(1,1) = "t2";
+      cc.add_type(3, expr_mat);
+      expr_mat(0,0) = "t2"; expr_mat(0,1) = "-tp2";
+      expr_mat(1,0) = "tp2"; expr_mat(1,1) = "t2";
+      cc.add_type(4, expr_mat);
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      // hubbard
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+    else {
+      set_TP_symmetry(true);
+      // model parameters
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      // bond operator terms
+      add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
   }
 
   else if (model_name == "TJ") {
@@ -62,6 +94,36 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     // bond operator terms
     add_bondterm(name="hopping", cc="-t", op::spin_hop());
     add_bondterm(name="exchange", cc="J", op::sisj_plus());
+  }
+
+  else if (model_name == "HUBBARD_NBAND") {
+    mid = model_id::HUBBARD_NBAND;
+    int num_bands;
+    switch (lattice.id()) {
+      case lattice::lattice_id::SQUARE_NBAND:
+        id2_ = model_id2::HUBBARD_NBAND;
+        // model parameters
+        add_parameter(name="t", defval=1.0, inputs);
+        add_parameter(name="U", defval=0.0, inputs);
+        add_parameter(name="J", defval=0.0, inputs);
+        //add_parameter(name="lambda", defval=0.0, inputs);
+        // bond operator terms
+        num_bands = inputs.set_value("num_bands", 1);
+        cc.create(1);
+        expr_mat.resize(num_bands,num_bands);
+        for (int i=0; i<num_bands; ++i) {
+          for (int j=0; j<num_bands; ++j) {
+            if (i==j) expr_mat(i,j) = "-t";
+            else expr_mat(i,j) = "0";
+          }
+        }
+        cc.add_type(0, expr_mat);
+        add_bondterm(name="hopping", cc, op::spin_hop());
+        add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+        break;
+      default:
+        throw std::range_error("*error: modellibrary: model not defined for the lattice"); 
+    }
   }
 
   else if (model_name == "TBI_HUBBARD") {

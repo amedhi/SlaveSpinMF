@@ -32,7 +32,7 @@ namespace srmf {
 
 enum cluster_t {SITE, BOND, CELL};
 enum theory_t {Z2, U1};
-enum model_id {HUBBARD, BHZ, PYROCHLORE};
+enum model_id {HUBBARD, HUBBARD_NBAND, BHZ, PYROCHLORE};
 
 class MatrixElem
 {
@@ -127,7 +127,8 @@ public:
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
   void get_avg_Zminus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
   void get_avg_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
-  void get_avg_Oplus_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& Opm_avg) const;
+  void get_avg_OplusOminus(const real_siteparms_t& gauge_factors, cmplArray2D& Opm_avg) const;
+  void get_avg_ZplusZminus(const real_siteparms_t& gauge_factors, cmplArray2D& Zpm_avg) const;
 private:
   cluster_t type_{cluster_t::SITE};
   theory_t theory_{theory_t::Z2};
@@ -194,6 +195,8 @@ private:
   std::vector<int> spin_orbitals_; // for a single site
   cluster_t cluster_type_;
   std::vector<Cluster> clusters_;
+
+  double conv_tol_{1.0E-8};
 
   // gsl solver
   double lm_ftol_{1.0E-8};

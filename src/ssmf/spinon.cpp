@@ -277,7 +277,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     std::cout << "\n";
     //*/
   }
-  //getchar();
+  getchar();
 
   // final spin-flip amplitudes
   if (SO_coupling_) {
@@ -287,6 +287,8 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
       mf_params.site(i).set_spinon_renormalization();
       // print
       /*
+      std::cout << std::setprecision(2);
+      std::cout << std::scientific;
       std::cout<<"site-"<<i<<":"<<"\n";
       std::cout << "sf ampl = " << mf_params.site(i).spinon_flip_ampl() << "\n";
       std::cout << "\n";
@@ -483,12 +485,12 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     std::iota(idx_.begin(),idx_.end(),0);
     std::sort(idx_.begin(),idx_.end(),[this](const int& i1, const int& i2) 
       {return ek_list_[i1]<ek_list_[i2];});
-    /*
+    /* 
     for (int i=0; i<ek_list_.size(); ++i) {
       std::cout << i << "  " << idx_[i] << "  " << ek_list_[idx_[i]] << "\n";
     }
     */
-
+    
     // Check whether metallic
     metallic_ = false;
     if (SO_coupling_) {
@@ -499,8 +501,8 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     }
 
     // Smearing Parameters
-    double bandwidth = ek_list_.back()-ek_list_.front();
-    smear_width_ = 10.0*bandwidth/num_unitcells_;
+    double bandwidth = ek_list_[idx_.back()]-ek_list_[idx_.front()];
+    smear_width_ = 0.1*bandwidth/num_unitcells_;
     smear_func_order_ = 4;
     //std::cout << "BW = " << bandwidth << "\n";
     //std::cout << "W = " << smear_width_ << "\n";
@@ -532,6 +534,8 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         }
         // all states are not filled
         if (std::abs(ek_list_[idx_[i+1]]-ek) > gap_tol) {
+          //std::cout <<  "ek = " << ek << "\n";
+          //std::cout << "np, num_fill_particles_ = " << np << "  " << num_fill_particles_ << "\n";
           metallic_ = false;
           fermi_energy_ = 0.5*(ek+ek_list_[idx_[i+1]]);
           break;
@@ -566,6 +570,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     }
 
     std::cout << "metallic, e_F = "<<metallic_<<"  "<<fermi_energy_<< "\n";
+    std::cout << "Bandwidth = " << bandwidth << "\n";
 
     // check
     /*double particle_sum = 0.0;
@@ -791,6 +796,8 @@ double Spinon::MarzariVenderbilt_smear(const double& x)
 
 void Spinon::set_particle_num(const input::Parameters& inputs)
 {
+  
+  /*
   if (Model::id()==model::model_id::PYROCHLORE) {
     num_spins_ = 5*num_sites_;
     num_dnspins_ = num_spins_/2;
@@ -799,6 +806,8 @@ void Spinon::set_particle_num(const input::Parameters& inputs)
     hole_doping_ = 1.0 - band_filling_;
     return;
   }
+  */
+  
 
   hole_doping_ = inputs.set_value("hole_doping", 0.0);
   if (std::abs(last_hole_doping_-hole_doping_)<1.0E-15) {
@@ -929,6 +938,7 @@ void UnitcellTerm::update_bondterm_cc(const int& term_id, const MF_Params& mf_pa
   for (auto& M : coeff_matrices_) M.setZero();
   for (int i=0; i<mf_params.num_bonds(); ++i) {
     int id = mf_params.bond(i).vector_id();
+    //std::cout << "id = " << id << "\n";
     int src = mf_params.bond(i).src();
     int tgt = mf_params.bond(i).tgt();
     int rows = mf_params.site(src).dim();
@@ -949,6 +959,7 @@ void UnitcellTerm::update_bondterm_cc(const int& term_id, const MF_Params& mf_pa
 void UnitcellTerm::update_siteterm_cc(const MF_Params& mf_params)
 {
   for (auto& M : coeff_matrices_) M.setZero();
+  //coeff_matrices_[0].setZero();
   for (int i=0; i<mf_params.num_sites(); ++i) {
     int rows = mf_params.site(i).dim();
     int cols = mf_params.site(i).dim();
@@ -960,6 +971,7 @@ void UnitcellTerm::update_siteterm_cc(const MF_Params& mf_params)
       for (int n=0; n<cols; ++n) {
         auto jj = mf_params.site(i).state_indices()[n];
         coeff_matrices_[0](ii,jj) += renorm_soc(m,n);
+        //std::cout << "coeff = " << renorm_soc(m,n) << "\n";
       }
     }
   }

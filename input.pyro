@@ -15,7 +15,8 @@ prefix = "results"
 #---------------------------------------------
 theory = "Z2" # "Z2/U1"
 solve_single_site = "YES"
-tol = 1.0E-8
+ssmf_conv_tol = 1.0E-8
+boson_conv_tol = 1.0E-8
 #maxiter = 500
 #maxiter_rotor = 500
 #use_previous_iter = "NO"
@@ -24,9 +25,9 @@ tol = 1.0E-8
 # Lattice:
 #---------------------------------------------
 lattice = "PYROCHLORE_3D" 
-lsize1 = 20
-lsize2 = 20
-lsize3 = 20
+lsize1 = 10
+lsize2 = 10
+lsize3 = 10
 bc1 = "periodic"
 bc2 = "periodic"
 bc3 = "periodic"
@@ -37,12 +38,12 @@ bc3 = "periodic"
 model = "PYROCHLORE"
 hole_doping = 0.0
 t = 1.00
-lambda = 0.0
-U = 31.0, 1.0, 40.0
-J = 0.2
+lambda = 0.0 # 4.0
+U = 0.0 # 3.25 #1362 #127
+J = 0.3
 J_is_relative = "YES"
-#fixed_gauge = 1.9147
-#assume_fixed_groundstate = "NO"
+#fixed_gauge = 1.0
+#assume_fixed_groundstate = "YES"
 
 #---------------------------------------------
 # List of observable to calculate:

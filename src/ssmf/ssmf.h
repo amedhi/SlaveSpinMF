@@ -44,6 +44,8 @@ private:
   SlaveSpin boson_model_;
   bool diag_only_{false};
 
+  double conv_tol_{1.0E-8};
+
   // output data
   file::DataFile file_conv_data_;
   file::DataFile file_mfp_;

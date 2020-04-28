@@ -69,7 +69,7 @@ private:
 
   int MAXITER_{100};
   double STPMX_{100.0};
-  double LFUNC_{1.0E-6};
+  double LFUNC_{1.0E-8};
   double ftol_{1.0E-9};
   double min_tol_{1.0E-9};
   double xtol_{1.0E-9};
