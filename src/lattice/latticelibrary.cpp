@@ -49,6 +49,18 @@ int Lattice::define_lattice(void)
     add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
   }
 
+  else if (lname == "SQUARE_IRIDATE") {
+    // type
+    lid = lattice_id::SQUARE_IRIDATE;
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    // basis vectors
+    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+    // add sites
+    add_basis_site(orbitals=6, coord=vec(0,0,0)); // spin+orbitals
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+  }
+
   else if (lname == "SQUARE_NBAND") {
     // type
     lid = lattice_id::SQUARE_NBAND;

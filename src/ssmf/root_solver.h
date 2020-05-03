@@ -12,6 +12,7 @@
 #include <vector>
 #include <Eigen/Dense>
 #include "../lattice/matrix.h"
+#include "mf_params.h"
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
 

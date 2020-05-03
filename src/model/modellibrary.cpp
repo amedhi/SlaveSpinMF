@@ -126,6 +126,44 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     }
   }
 
+  else if (model_name == "HUBBARD_SQIRIDATE") {
+    mid = model_id::HUBBARD_SQIRIDATE;
+    if (lattice.id()==lattice::lattice_id::SQUARE_IRIDATE) {
+      id2_ = model_id2::HUBBARD_SQIRIDATE;
+      set_spinorbit_coupling(true);
+      set_TP_symmetry(true);
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="lambda", defval=0.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+
+      // SOC term in product basis (not diagonal)
+      path = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/product_basis/";
+      cc.create(1);
+      expr_mat.resize(6,6);
+      expr_mat.getfromtxt(path+"soc_matrix.txt");
+      cc.add_type(0,expr_mat);
+      add_siteterm(name="spin_flip", cc, op::spin_flip());
+
+      // bond operators (Diagonal in either product basis or SOC basis)
+      int num_bands = 6;
+      cc.create(2);
+      expr_mat.resize(num_bands,num_bands);
+      for (int i=0; i<num_bands; ++i) {
+        for (int j=0; j<num_bands; ++j) {
+          if (i==j) expr_mat(i,j) = "-t";
+          else expr_mat(i,j) = "0";
+        }
+      }
+      cc.add_type(0, expr_mat);
+      cc.add_type(1, expr_mat);
+      add_bondterm(name="hopping", cc, op::upspin_hop());
+    }
+    else {
+      throw std::range_error("*error: modellibrary: model not defined for the lattice"); 
+    }
+  }
+
   else if (model_name == "TBI_HUBBARD") {
     mid = model_id::TBI_HUBBARD;
     switch (lattice.id()) {

@@ -20,7 +20,7 @@
 #include "../lattice/matrix.h"
 //#include "../model/quantum_op.h"
 #include "../model/model.h"
-#include "sb_params.h"
+//#include "sb_params.h"
 #include "mf_params.h"
 #include "boson_basis.h"
 #include "root_solver.h"
@@ -32,7 +32,7 @@ namespace srmf {
 
 enum cluster_t {SITE, BOND, CELL};
 enum theory_t {Z2, U1};
-enum model_id {HUBBARD, HUBBARD_NBAND, BHZ, PYROCHLORE};
+enum model_id {HUBBARD, HUBBARD_NBAND, BHZ, PYROCHLORE, HUBBARD_SQIRIDATE};
 
 class MatrixElem
 {
@@ -97,11 +97,23 @@ public:
     //std::cout << total_spinorbitals_ << " " << basis_dim_ << "\n";
     lm_params_.resize(end_site_id_);
     for (auto& elem : lm_params_) elem.resize(spin_orbitals_.size());
+    gauge_factors_.resize(end_site_id_);
+    for (auto& elem : gauge_factors_) elem.resize(spin_orbitals_.size());
+    site_couplings_.resize(end_site_id_);
+    for (auto& elem : site_couplings_) {
+      elem.resize(spin_orbitals_.size());
+      elem = cmplArray1D::Ones(spin_orbitals_.size());
+    }
+
     spinon_density_.resize(end_site_id_);
     for (auto& elem : spinon_density_) elem.resize(spin_orbitals_.size());
     interaction_elems_.resize(basis_dim_);
     lagrange_elems_.resize(basis_dim_);
     //orbital_en_elems_.resize(basis_dim_);
+    soc_couplings_.resize(end_site_id_);
+    for (auto& elem : soc_couplings_) {
+      elem = cmplArray2D::Zero(spin_orbitals_.size(),spin_orbitals_.size());
+    }
     soc_mat_.resize(basis_dim_,basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
     groundstate_.resize(basis_dim_);
@@ -113,8 +125,10 @@ public:
   void init_hamiltonian(const ModelParams& p, const real_siteparms_t& gauge_factors, 
     const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& renorm_site_fields);
   void set_spinon_density(const real_siteparms_t& spinon_density);
+  void set_site_couplings(const cmpl_siteparms_t& site_couplings);
+  void set_soc_couplings(const MF_Params& mfp);
   void solve_lm_params(real_siteparms_t& lm_params);
-  void update_soc_matrix(const MF_Params& mfp, const real_siteparms_t& gauge_factors);
+  void update_soc_matrix(const real_siteparms_t& gauge_factors);
   void update_interaction_matrix(const ModelParams& p);
   void update_hamiltonian(const real_siteparms_t& new_lm_params);
   void update_hamiltonian(const real_siteparms_t& gauge_factors, const cmpl_siteparms_t& new_site_couplings);
@@ -141,11 +155,14 @@ private:
   root::RootSolver root_solver_;
 
   real_siteparms_t lm_params_;
+  real_siteparms_t gauge_factors_;
+  cmpl_siteparms_t site_couplings_;
   real_siteparms_t spinon_density_;
   RealVector interaction_elems_; 
   RealVector lagrange_elems_; 
   //RealVector orbital_en_elems_; 
 
+  cmpl_bondparms_t soc_couplings_; 
   ComplexMatrix soc_mat_;
   ComplexMatrix hmatrix_;
   ComplexMatrix H_dLambda_;
@@ -157,6 +174,8 @@ private:
     RealMatrix& df_lambda, const bool& need_derivative);
   int rosenbrock_f(const RealVector& x, RealVector& fx, 
     RealMatrix& dfx, const bool& need_derivative);
+  //realArray1D gauge_and_lambda_func(const MF_Params& mf_params, const int& i)
+  int gauge_and_lambda_func(const std::vector<double>& x, std::vector<double>& fx); 
 };
 
 
@@ -196,10 +215,11 @@ private:
   cluster_t cluster_type_;
   std::vector<Cluster> clusters_;
 
+  int max_iter_{500};
   double conv_tol_{1.0E-8};
 
   // gsl solver
-  double lm_ftol_{1.0E-8};
+  double gsl_ftol_{1.0E-12};
   unsigned fx_dim_;
   std::vector<double> x_vec_;
   std::vector<double> fx_vec_;
@@ -207,6 +227,7 @@ private:
 
   // site & bond parameters
   real_siteparms_t lm_params_;
+  real_siteparms_t lm_params_noint_;
   //real_siteparms_t lm_params_noint_;
   real_siteparms_t qp_weights_;
   real_siteparms_t gauge_factors_;
@@ -237,6 +258,8 @@ private:
   void make_clusters(const MF_Params& mf_params);
   void init_matrix_elems(const MF_Params& mf_params);
   void set_bond_couplings(const MF_Params& mf_params);
+  void set_lm_params_noint(const MF_Params& mf_params);
+  void set_noninteracting_params(const MF_Params& mf_params);
   void set_site_couplings(const MF_Params& mf_params, 
     const cmpl_siteparms_t& site_order_params);
   void set_site_fields(void);

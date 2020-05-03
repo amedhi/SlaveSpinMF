@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-06-17 11:51:36
+* @Last Modified time: 2020-05-03 23:35:19
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"
@@ -12,6 +12,9 @@ namespace root {
 gsl_solver::gsl_solver(void) 
 {
   solver_type_.reset(gsl_multiroot_fsolver_hybrids);
+  //solver_type_.reset(gsl_multiroot_fsolver_hybrid);
+  //solver_type_.reset(gsl_multiroot_fsolver_broyden);
+  //solver_type_.reset(gsl_multiroot_fsolver_dnewton);
 }
 
 void gsl_solver::allocate(const std::size_t& n)
@@ -57,7 +60,6 @@ int gsl_solver::find_root(void* params, int (*func) (const gsl_vector* x, void* 
   //gsl_vector_free(xvec_.get());
   return status;
 }
-
 
 
 //void gsl_solver::find_root(const std::vector<double>& x_init)

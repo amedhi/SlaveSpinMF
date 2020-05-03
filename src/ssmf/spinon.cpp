@@ -277,7 +277,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     std::cout << "\n";
     //*/
   }
-  getchar();
+  //getchar();
 
   // final spin-flip amplitudes
   if (SO_coupling_) {
@@ -915,6 +915,7 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
   for (const auto& term : usite_terms_) {
     if (term.qn_operator().spin_up()) {
       quadratic_block_up_ += term.coeff_matrix();
+      //std::cout << term.coeff_matrix() << "\n"; getchar();
     }
   }
   for (int i=0; i<mf_params.num_sites(); ++i) {
