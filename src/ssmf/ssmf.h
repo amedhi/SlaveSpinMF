@@ -43,7 +43,6 @@ private:
   Spinon spinon_model_;
   SlaveSpin boson_model_;
   bool diag_only_{false};
-
   double conv_tol_{1.0E-8};
 
   // output data
@@ -51,6 +50,7 @@ private:
   file::DataFile file_mfp_;
   file::DataFile file_sp_site_;
   file::DataFile file_sp_bond_;
+  file::DataFile file_energy_;
   bool heading_printed_{false};
 
   // gsl solver

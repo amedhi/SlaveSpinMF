@@ -8,20 +8,16 @@
 job = "SRMF"  #"Diagonalization" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
+prefix = "results"
 
 #---------------------------------------------
 # Slave-rotor parameters
 #---------------------------------------------
-theory = "Z2" # "U1"
-solve_single_site = "YES"
-tol = 1.0E-8
-#maxiter = 500
-#maxiter_rotor = 500
-#use_previous_iter = "NO"
-#sr_constraint = "GLOBAL"  # ("GLOBAL"/"LOCAL")
-rotor_cluster = "SITE"    # ("SITE"/"BOND"/"CELL")
-max_rotor_charge = +2
-min_rotor_charge = -2
+theory = "Z2" # "Z2/U1"
+solve_single_site = "YES" # "YES"
+ssmf_conv_tol = 1.0E-12
+boson_conv_tol = 1.0E-12
+boson_max_iter = 5000
 
 #---------------------------------------------
 # Lattice:
@@ -38,11 +34,9 @@ bc2 = "periodic"
 #model = "tJ"
 model = "HUBBARD"
 t = 1.0
-U = 13.5
+U = 4.0
 
-#---------------------------------------------
-# Variational wavefunction
-#---------------------------------------------
+non_magnetic_sector = "NO"
 hole_doping = 0.0 # 0.18 
 
 #---------------------------------------------

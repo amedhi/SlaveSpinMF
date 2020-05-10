@@ -71,6 +71,63 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       // hubbard
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
     }
+
+    else if (lattice.id()==lattice::lattice_id::CHAIN) {
+      set_spinorbit_coupling(true);
+      set_TP_symmetry(true);
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      int nowarn;
+      add_parameter(name="ext_field", defval=0.0, inputs, nowarn);
+
+      if (true) {
+        // external site field
+        cc.create(2);
+        expr_vec.resize(2);
+        expr_vec[0] = "-ext_field";
+        expr_vec[1] = "ext_field";
+        cc.add_type(0, expr_vec);
+        expr_vec[0] = "ext_field";
+        expr_vec[1] = "-ext_field";
+        cc.add_type(1, expr_vec);
+        add_siteterm(name="ExtField", cc, op::ni_up());
+        // bond operators (Diagonal in either product basis or SOC basis)
+        cc.create(2);
+        int num_bands = 2;
+        expr_mat.resize(num_bands,num_bands);
+        for (int i=0; i<num_bands; ++i) {
+          for (int j=0; j<num_bands; ++j) {
+            if (i==j) expr_mat(i,j) = "-t";
+            else expr_mat(i,j) = "0";
+          }
+        }
+        cc.add_type(0, expr_mat);
+        cc.add_type(1, expr_mat);
+        add_bondterm(name="hopping", cc, op::upspin_hop());
+      }
+      else {
+        // external site field
+        cc.create(1);
+        expr_vec.resize(2);
+        expr_vec[0] = "-ext_field";
+        expr_vec[1] = "ext_field";
+        cc.add_type(0, expr_vec);
+        add_siteterm(name="ExtField", cc, op::ni_up());
+        // bond operators (Diagonal in either product basis or SOC basis)
+        cc.create(1);
+        int num_bands = 2;
+        expr_mat.resize(num_bands,num_bands);
+        for (int i=0; i<num_bands; ++i) {
+          for (int j=0; j<num_bands; ++j) {
+            if (i==j) expr_mat(i,j) = "-t";
+            else expr_mat(i,j) = "0";
+          }
+        }
+        cc.add_type(0, expr_mat);
+        add_bondterm(name="hopping", cc, op::upspin_hop());
+      }
+    }
+
     else {
       set_TP_symmetry(true);
       // model parameters
@@ -136,6 +193,16 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="lambda", defval=0.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
       add_parameter(name="J", defval=0.0, inputs);
+      int nowarn;
+      add_parameter(name="ext_field", defval=0.0, inputs, nowarn);
+
+      // external site field
+      expr_vec.resize(6);
+      for (int i=0; i<6; i+=2) expr_vec[i] = "-ext_field";
+      for (int i=1; i<6; i+=2) expr_vec[i] = "ext_field";
+      cc.create(1);
+      cc.add_type(0, expr_vec);
+      add_siteterm(name="ExtField", cc, op::ni_up());
 
       // SOC term in product basis (not diagonal)
       path = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/product_basis/";

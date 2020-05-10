@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-03-12 12:20:33
-* @Last Modified by:   Amal Medhi
-* @Last Modified time: 2019-05-06 11:18:53
+* @Last Modified by:   Amal Medhi, amedhi@mbpro
+* @Last Modified time: 2020-05-06 21:26:32
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "mf_params.h"
@@ -216,6 +216,8 @@ MF_Params::MF_Params(const input::Parameters& inputs, const lattice::LatticeGrap
       } 
     }
   }
+  ke_per_site_ = 0.0;
+  pe_per_site_ = 0.0;
 }
 
 void MF_Params::init_params(void)

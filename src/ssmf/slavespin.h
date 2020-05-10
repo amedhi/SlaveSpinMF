@@ -116,6 +116,7 @@ public:
     }
     soc_mat_.resize(basis_dim_,basis_dim_);
     hmatrix_.resize(basis_dim_, basis_dim_);
+    interaction_mat_.resize(basis_dim_,basis_dim_);
     groundstate_.resize(basis_dim_);
     H_dLambda_.resize(basis_dim_,total_spinorbitals_);
     groundstate_dLambda_.resize(basis_dim_,total_spinorbitals_);
@@ -137,6 +138,7 @@ public:
   const ComplexMatrix& hamiltonian_matrix(void) const { return hmatrix_; }
   const ComplexVector& groundstate(void) const { return groundstate_; }
   const ComplexMatrix& groundstate_dLambda(void); 
+  double get_interaction_energy(const ModelParams& p);
   void get_avg_Sz(real_siteparms_t& Sz_avg) const;
   void get_avg_Splus(real_siteparms_t& Splus_avg) const;
   void get_avg_Zminus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
@@ -165,6 +167,7 @@ private:
   cmpl_bondparms_t soc_couplings_; 
   ComplexMatrix soc_mat_;
   ComplexMatrix hmatrix_;
+  ComplexMatrix interaction_mat_;
   ComplexMatrix H_dLambda_;
   ComplexMatrix groundstate_dLambda_;
   mutable ComplexVector groundstate_;
@@ -188,6 +191,7 @@ public:
   ~SlaveSpin() {}
   void update(const model::Hamiltonian& model);
   void solve(MF_Params& mf_params);
+  double interaction_energy(void);
   //int init(const lattice::Lattice& lattice) override;
   //int finalize(const lattice::LatticeGraph& graph);
   //void update(const input::Parameters& inputs);
@@ -198,6 +202,7 @@ private:
   bool gauge_factors_set_{false};
   bool gauge_factors_solved_{false};
   bool set_fixed_gauge_{true};
+  bool SO_coupling_{false};
   double fixed_gauge_{1.0};
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
@@ -224,6 +229,7 @@ private:
   std::vector<double> x_vec_;
   std::vector<double> fx_vec_;
   root::gsl_solver gsl_solver_;
+  int solve_cluster_{0};
 
   // site & bond parameters
   real_siteparms_t lm_params_;

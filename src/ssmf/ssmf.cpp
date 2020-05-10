@@ -43,6 +43,7 @@ SRMF::SRMF(const input::Parameters& inputs)
   file_mfp_.init(prefix, "mfp", info_str_.str());
   file_sp_site_.init(prefix, "sp_site", info_str_.str());
   file_sp_bond_.init(prefix, "sp_bond", info_str_.str());
+  file_energy_.init(prefix, "energy", info_str_.str());
   //site_avg_.init("site_avg", heading);
   //bond_avg_.init("bond_avg", heading);
   make_info_str(inputs);
@@ -149,12 +150,21 @@ int SRMF::selconsistent_solve(void)
   }
   //if (converged) std::cout<<"ssmf converged!\n";
 
-  std::cout<<spinon_model_.get_parameter_value("U")<<"  ";
   for (int i=0; i<mf_params_.num_sites(); ++i) {
+    std::cout<<spinon_model_.get_parameter_value("U")<<"  ";
     //std::cout<<"Z["<<i<<"] = "<< sr_parms_.site(i).qp_weights().transpose()<<"\n";
     std::cout<<mf_params_.site(i).qp_weights().transpose()<<"\n";
+  }
+  for (int i=0; i<mf_params_.num_sites(); ++i) {
+    std::cout<<spinon_model_.get_parameter_value("U")<<"  ";
     std::cout<<mf_params_.site(i).lm_params().transpose()<<"\n";
   }
+  double KE = spinon_model_.energy(mf_params_);
+  double PE = boson_model_.interaction_energy();
+  double E = KE+PE;
+  std::cout << "KE = " << KE << "\n";
+  std::cout << "PE = " << PE << "\n";
+  std::cout << "TE = " << E << "\n";
 
   spinon_model_.print_output(mf_params_);
   print_output();
@@ -168,43 +178,65 @@ void SRMF::print_output(void)
   //---------------------Z and lambda-------------------------
   file_mfp_.open();
   if (!heading_printed_) { 
-    file_mfp_.fs()<<std::left<<std::setw(12)<< "# U";
-    for (int m=0; m<mf_params_.site(0).dim(); ++m) {
-      file_mfp_.fs()<<std::left<<"Z["<<m<<std::setw(9)<<"]";
+    file_mfp_.fs()<<std::left<<std::setw(16)<< "#   U";
+    for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
+      file_mfp_.fs()<<std::left<<"  Z["<<m<<std::setw(10)<<"]";
     }
-    for (int m=0; m<mf_params_.site(0).dim(); ++m) {
-      file_mfp_.fs()<<std::left<<"lambda["<<m<<std::setw(4)<<"]";
+    for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
+      file_mfp_.fs()<<std::left<<"lambda["<<m<<std::setw(7)<<"]";
     }
-    file_mfp_.fs()<<"\n\n";
+    file_mfp_.fs() << "\n";
+    file_mfp_.fs()<<"#"<< std::string(72, '-') << "\n";
   }
 
-  file_mfp_.fs()<<std::fixed<<std::setprecision(6);
+  file_mfp_.fs()<<std::scientific<<std::setprecision(6);
   for (int i=0; i<mf_params_.num_sites(); ++i) {
-    file_mfp_.fs()<<std::setw(12)<<U;
-    for (int m=0; m<mf_params_.site(i).dim(); ++m) {
-      file_mfp_.fs()<<std::setw(12)<<mf_params_.site(i).qp_weights()[m];
+    file_mfp_.fs()<<std::right<<std::setw(15)<<U;
+    for (int m=0; m<mf_params_.site(i).spin_orbitals().size(); ++m) {
+      file_mfp_.fs()<<std::setw(15)<<mf_params_.site(i).qp_weights()[m];
     }
-    for (int m=0; m<mf_params_.site(i).dim(); ++m) {
-      file_mfp_.fs()<<std::setw(12)<<mf_params_.site(i).lm_params()[m];
+    for (int m=0; m<mf_params_.site(i).spin_orbitals().size(); ++m) {
+      file_mfp_.fs()<<std::setw(15)<<mf_params_.site(i).lm_params()[m];
     }
     file_mfp_.fs() << "\n";
   }
-  file_mfp_.fs() << "\n";
+  //file_mfp_.fs() << "\n";
   file_mfp_.close();
+  //---------------------energy-------------------------
+  file_energy_.open();
+  if (!heading_printed_) { 
+    file_energy_.fs()<<"#"<< std::string(72, '-') << "\n";
+    file_energy_.fs()<<std::left<<std::setw(16)<< "#   H";
+    file_energy_.fs()<<std::left<<std::setw(16)<< "TE";
+    file_energy_.fs()<<std::left<<std::setw(16)<< "KE";
+    file_energy_.fs()<<std::left<<std::setw(16)<< "PE";
+    file_energy_.fs() << "\n";
+    file_energy_.fs()<<"#"<< std::string(72, '-') << "\n";
+  }
+  double KE = spinon_model_.energy(mf_params_);
+  double PE = boson_model_.interaction_energy();
+  file_energy_.fs()<<std::scientific<<std::setprecision(6);
+  file_energy_.fs()<<std::right<<std::setw(15)<<spinon_model_.get_parameter_value("U");
+  file_energy_.fs()<<std::right<<std::setw(15)<<KE+PE;
+  file_energy_.fs()<<std::right<<std::setw(15)<<KE;
+  file_energy_.fs()<<std::right<<std::setw(15)<<PE;
+  file_energy_.fs() << "\n";
+  file_energy_.close();
 
   //-------------spinon site parameter------------------------
   if (!heading_printed_) { 
     file_sp_site_.fs()<<std::left<<std::setw(12)<< "# U";
-    for (int m=0; m<mf_params_.site(0).dim(); ++m) {
+    for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
       file_sp_site_.fs()<<std::left<<"<n>["<<m<<std::setw(7)<<"]";
     }
     file_sp_site_.fs() << "\n";
+    file_sp_site_.fs() << "#" << std::string(72, '-') << "\n";
   }
 
   file_sp_site_.fs()<<std::fixed<<std::setprecision(6);
   for (int i=0; i<mf_params_.num_sites(); ++i) {
     file_sp_site_.fs()<<std::setw(12)<<U;
-    for (int m=0; m<mf_params_.site(i).dim(); ++m) {
+    for (int m=0; m<mf_params_.site(i).spin_orbitals().size(); ++m) {
       file_sp_site_.fs()<<std::setw(12)<<mf_params_.site(i).spinon_density()[m];
     }
     file_sp_site_.fs() << "\n";

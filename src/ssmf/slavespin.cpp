@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-03 23:34:03
+* @Last Modified time: 2020-05-09 23:35:53
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -25,6 +25,7 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   // Assuming all sites have same 'site_dim'.
   spin_orbitals_ = mf_params.site(0).spin_orbitals(); // including 'UP' & 'DN' spins
   site_dim_ = spin_orbitals_.size(); 
+  SO_coupling_ = model.is_spinorbit_coupled();
   /*
     'spin_orbitals' Note:  If NO SOC, the assumption is that
     the first half of the spin-orbitals correspond to UP-spins 
@@ -142,7 +143,6 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
 void SlaveSpin::update(const model::Hamiltonian& model)
 {
   gauge_factors_set_ = false;
-
   switch (modelparams_.id()) {
     case HUBBARD:
       modelparams_.update_U(model.get_parameter_value("U"));
@@ -185,29 +185,29 @@ void SlaveSpin::solve(MF_Params& mf_params)
     cluster.set_spinon_density(spinon_density_);
   }
 
+  // gauge factors
   if (!gauge_factors_set_) {
-    /*
-    // gauge factors
-    for (int site=0; site<num_sites_; ++site) {
-      for (auto alpha : spin_orbitals_) {
-        double nf = spinon_density_[site][alpha];
-        //gauge_factors_[site][alpha]=1.0/std::sqrt((nf+delta_)*(1.0-nf-delta_))-1.0; 
-        gauge_factors_[site][alpha]=1.0/std::sqrt((nf)*(1.0-nf))-1.0; 
-        //std::cout << "nf["<<site<<"]["<<alpha<<"] = "<<nf<<"\n";
-        //std::cout << "c["<<site<<"]["<<alpha<<"] = "<<gauge_factors_[site][alpha]<<"\n";
-        //getchar();
-      }
+    std::cout << "----HACK in setting gauge_factors----\n";
+    if (false/*SO_coupling_*/) {
+      set_noninteracting_params(mf_params);
     }
-    // lm_parameters for non-interacting case 
-    // (depends upon renormalized_bond_couplings & gauge factors)
-    set_lm_params_noint(mf_params);
-    */
-
-    set_noninteracting_params(mf_params);
-
+    else {
+      for (int site=0; site<num_sites_; ++site) {
+        for (auto alpha : spin_orbitals_) {
+          double nf = spinon_density_[site][alpha];
+          //gauge_factors_[site][alpha]=1.0/std::sqrt((nf+delta_)*(1.0-nf-delta_))-1.0; 
+          gauge_factors_[site][alpha]=1.0/std::sqrt((nf)*(1.0-nf))-1.0; 
+          //std::cout << "nf["<<site<<"]["<<alpha<<"] = "<<nf<<"\n";
+          //std::cout << "c["<<site<<"]["<<alpha<<"] = "<<gauge_factors_[site][alpha]<<"\n";
+          //getchar();
+        }
+      }
+      // lm_parameters for non-interacting case 
+      // (depends upon renormalized_bond_couplings & gauge factors)
+      set_lm_params_noint(mf_params);
+    }
     gauge_factors_set_ = true;
   }
-
 
   // set SOC matrix // depends upon  gauge factors
   if (modelparams_.id()==PYROCHLORE || modelparams_.id()==HUBBARD_SQIRIDATE) {
@@ -230,7 +230,9 @@ void SlaveSpin::solve(MF_Params& mf_params)
   for (int i=0; i<num_sites_; ++i) {
     mf_params.site(i).lm_params() = lm_params_[i]-lm_params_noint_[i];
     mf_params.site(i).qp_weights() = qp_weights_[i];
-    //std::cout<<"lambda="<<mf_params.site(i).lm_params().transpose()<<"\n";
+    //std::cout<<"lambda0="<<lm_params_noint_[i].transpose()<<"\n"; 
+    //std::cout<<"lambda ="<<lm_params_[i].transpose()<<"\n"; 
+    //std::cout<<"lambdaN="<<mf_params.site(i).lm_params().transpose()<<"\n"; getchar();
     //std::cout<<"lambda["<<i<<"] = "<< lm_params_[i].transpose()<<"\n";
     //std::cout<<"Z["<<i<<"] = "<< qp_weights_[i].transpose()<<"\n";
   }
@@ -282,16 +284,18 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
     // calculate new site op-s
     update_site_order_params();
     // take only the real values
+    //*
     for (int site=0; site<num_sites_; ++site) {
       for (auto alpha : spin_orbitals_) {
         site_order_params_[site][alpha] = std::real(site_order_params_[site][alpha]);
       }
     }
+    //*/
      
     /*
     for (int site=0; site<num_sites_; ++site) {
       std::cout << "<Zplus>["<<site<<"] = " << site_order_params_[site].transpose() << "\n";
-      std::cout<<"lambda["<<site<<"] = "<< lm_params_[site].transpose()<<"\n";
+      //std::cout<<"lambda["<<site<<"] = "<< lm_params_[site].transpose()<<"\n";
     }
     getchar();
     */
@@ -325,6 +329,16 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
     std::cout<<"Bosons NOT converged!\n";
     //getchar();
   }
+}
+
+double SlaveSpin::interaction_energy(void)
+{
+  double energy = 0.0;
+  for (auto& cluster : clusters_) {
+    energy += cluster.get_interaction_energy(modelparams_);
+  }
+  energy = energy/clusters_.size();
+  return energy;
 }
 
 void SlaveSpin::set_bond_couplings(const MF_Params& mf_params) 
@@ -408,6 +422,15 @@ void SlaveSpin::set_noninteracting_params(const MF_Params& mf_params)
       renorm_site_couplings_[t] += tchi_t.array().rowwise().sum(); // array(); 
     }
 
+    // set interaction term zero
+    double U = modelparams_.get_U();
+    double J = modelparams_.get_J();
+    modelparams_.update_U(0.0);
+    modelparams_.update_J(0.0);
+    for (auto& cluster : clusters_) {
+      cluster.update_interaction_matrix(modelparams_);
+    }
+
     // set the parameters for each cluster
     for (int i=0; i<clusters_.size(); ++i) {
       clusters_[i].set_site_couplings(renorm_site_couplings_);
@@ -419,6 +442,7 @@ void SlaveSpin::set_noninteracting_params(const MF_Params& mf_params)
     fx_vec_.resize(fx_dim_); 
     gsl_solver_.allocate(fx_dim_);
     for (int site=0; site<num_sites_; ++site) {
+      solve_cluster_ = site;
       // guess solution
       for (auto alpha : spin_orbitals_) {
         double nf = spinon_density_[site][alpha];
@@ -433,9 +457,16 @@ void SlaveSpin::set_noninteracting_params(const MF_Params& mf_params)
         gauge_factors_[site][alpha] = x_vec_[alpha];
         lm_params_noint_[site][alpha] = x_vec_[site_dim_+alpha];
       }
-      std::cout<<"c["<<site<<"] = "<< gauge_factors_[site].transpose()<<"\n";
-      std::cout<<"lambda_0["<<site<<"] = "<< lm_params_noint_[site].transpose()<<"\n";
-      getchar();
+      //std::cout<<"c["<<site<<"] = "<< gauge_factors_[site].transpose()<<"\n";
+      //std::cout<<"lambda_0["<<site<<"] = "<< lm_params_noint_[site].transpose()<<"\n";
+      //getchar();
+    }
+
+    // restore interaction matrix
+    modelparams_.update_U(U);
+    modelparams_.update_J(J);
+    for (auto& cluster : clusters_) {
+      cluster.update_interaction_matrix(modelparams_);
     }
   }
   else if (cluster_type_ == cluster_t::BOND) {
@@ -449,8 +480,7 @@ void SlaveSpin::set_noninteracting_params(const MF_Params& mf_params)
 int SlaveSpin::constraint_equation(const std::vector<double>& x, std::vector<double>& fx)
 {
   // read the new gauge factors & LM-parameters
-  int solve_cls_ = 0;
-  int site=solve_cls_;
+  int site=solve_cluster_;
   int n = spin_orbitals_.size();
   for (int alpha=0; alpha<spin_orbitals_.size(); ++alpha) {
     gauge_factors_[site][alpha] = x[alpha];
@@ -459,20 +489,20 @@ int SlaveSpin::constraint_equation(const std::vector<double>& x, std::vector<dou
   //std::cout<<"c["<<site<<"] = "<< lm_params_[site].transpose()<<"\n";
   //getchar();
 
-  clusters_[solve_cls_].update_soc_matrix(gauge_factors_);
-  clusters_[solve_cls_].update_hamiltonian(gauge_factors_,renorm_site_couplings_);
-  clusters_[solve_cls_].update_hamiltonian(lm_params_);
-  clusters_[solve_cls_].solve_hamiltonian();
-  clusters_[solve_cls_].get_avg_Ominus(gauge_factors_,site_order_params_);
-  clusters_[solve_cls_].get_avg_Sz(Sz_avg_);
+  clusters_[solve_cluster_].update_soc_matrix(gauge_factors_);
+  clusters_[solve_cluster_].update_hamiltonian(gauge_factors_,renorm_site_couplings_);
+  clusters_[solve_cluster_].update_hamiltonian(lm_params_);
+  clusters_[solve_cluster_].solve_hamiltonian();
+  clusters_[solve_cluster_].get_avg_Ominus(gauge_factors_,site_order_params_);
+  clusters_[solve_cluster_].get_avg_Sz(Sz_avg_);
 
   // LHS of the constraint equation: fx = (<Sz> + 1/2) - n_f
   for (int alpha=0; alpha<spin_orbitals_.size(); ++alpha) {
     fx[alpha] = std::norm(site_order_params_[site][alpha]) - 1.0;
     fx[n+alpha] = (Sz_avg_[site][alpha]+0.5)-spinon_density_[site][alpha];
-    std::cout << fx[alpha] << " " << fx[n+alpha] << "\n";
+    //std::cout << fx[alpha] << " " << fx[n+alpha] << "\n";
   }
-  getchar();
+  //getchar();
 
   return 0;
 }
@@ -823,6 +853,7 @@ void Cluster::init_hamiltonian(const ModelParams& p, const real_siteparms_t& gau
     throw std::range_error("Cluster::init_hamiltonian: defined only for 'SITE' cluster\n");
   }
   interaction_elems_.setZero();
+  interaction_mat_.setZero();
   lagrange_elems_.setZero();
   soc_mat_.setZero();
   hmatrix_.setZero();
@@ -831,12 +862,13 @@ void Cluster::init_hamiltonian(const ModelParams& p, const real_siteparms_t& gau
 // update 'interaction terms'
 void Cluster::update_interaction_matrix(const ModelParams& p)
 {
+  interaction_mat_.setZero();
   int site_id = 0;
   SlaveSpinBasis::idx_t i, j;
   // interaction matrix elements
   if (p.id()==HUBBARD || p.id()==BHZ) {
-    //double U_half = 0.5*p.get_U();
-    double U_half = 1.0*p.get_U(); // correct choice ?
+    double U_half = 0.5*p.get_U();
+    //double U_half = 1.0*p.get_U(); // correct choice ?
     double Sz;
     for (i=0; i<basis_dim_; ++i) {
       double total_Sz = 0.0;
@@ -844,12 +876,12 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
         std::tie(Sz,j) = basis_.apply_Sz(site_id,alpha,i);
         total_Sz += Sz;
       }
-      interaction_elems_(i) = U_half*total_Sz*(total_Sz-1.0);
-      //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
+      interaction_mat_(i,i) = U_half*total_Sz*(total_Sz+1);
     }
   }
 
-  else if (p.id()==HUBBARD_NBAND || p.id()==HUBBARD_SQIRIDATE) {
+  else if (p.id()==HUBBARD_NBAND || p.id()==HUBBARD_SQIRIDATE 
+        || p.id()==PYROCHLORE) {
     // |basis> = |0U, 0D, 1U, 1D, 2U, 2D>
     double U = p.get_U();
     double J = p.get_J();
@@ -862,14 +894,18 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
     for (i=0; i<basis_dim_; ++i) {
       // U term
       double sum = 0.0;
+      double sum2 = 0.0;
       for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
         std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
         std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
         sum += Sz_up*Sz_dn;
+        sum2 += Sz_up+Sz_dn;
       }
-      interaction_elems_(i) = U*sum;
+      //interaction_mat_(i,i) = U*sum ; //+ 0.5*(5.0*U-10.0*J)*sum2;
+      interaction_mat_(i,i) = U*sum + 0.5*(5.0*U-10.0*J)*sum2;
       //std::cout << "H_U=" << interaction_elems_(i)  << "\n";
 
+      //*
       // Uprime term
       sum = 0.0;
       for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
@@ -880,7 +916,8 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
           sum += Sz_up*Sz_dn;
         }
       }
-      interaction_elems_(i) += Uprime*sum;
+      //interaction_elems_(i) += Uprime*sum;
+      interaction_mat_(i,i) += Uprime*sum;
 
       // Uprime-J term
       sum = 0.0;
@@ -895,12 +932,53 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
           sum += Sz_up*Sz2_up + Sz_dn*Sz2_dn;
         }
       }
-      interaction_elems_(i) += (Uprime-J)*sum;
+      //interaction_elems_(i) += (Uprime-J)*sum;
+      interaction_mat_(i,i) += (Uprime-J)*sum;
+      //*/
+
+      if (true) {
+      //if (std::abs(J)>1.0E-12) {
+        // spin-flip term
+        int k;
+        double elem;
+        sum = 0.0;
+        for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
+          for (int n=0; n<spin_orbitals_.size()-1; n+=2) {
+            if (m == n) continue;
+            std::tie(elem,j) = basis_.apply_Sminus(site_id,n,i);
+            if (j == basis_.null_idx()) continue;
+            std::tie(elem,k) = basis_.apply_Splus(site_id,n+1,j);
+            if (k == basis_.null_idx()) continue;
+            std::tie(elem,j) = basis_.apply_Sminus(site_id,m+1,k);
+            if (j == basis_.null_idx()) continue;
+            std::tie(elem,k) = basis_.apply_Splus(site_id,m,j);
+            if (k == basis_.null_idx()) continue;
+            //std::cout << "flip(i, j) = " << k << ",  "<<i<< "\n"; getchar();
+            interaction_mat_(k,i) += -J;
+          }
+        }
+
+        // pair hopping term
+        for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
+          for (int n=0; n<spin_orbitals_.size()-1; n+=2) {
+            if (m == n) continue;
+            std::tie(elem,j) = basis_.apply_Sminus(site_id,n,i);
+            if (j == basis_.null_idx()) continue;
+            std::tie(elem,k) = basis_.apply_Sminus(site_id,n+1,j);
+            if (k == basis_.null_idx()) continue;
+            std::tie(elem,j) = basis_.apply_Splus(site_id,m+1,k);
+            if (j == basis_.null_idx()) continue;
+            std::tie(elem,k) = basis_.apply_Splus(site_id,m,j);
+            if (k == basis_.null_idx()) continue;
+            //std::cout << "hop(i, j) = " << k << ",  "<<i<< "\n"; getchar();
+            interaction_mat_(k,i) += J;
+          }
+        }
+      }
     }
   }
-
   else {
-    throw std::range_error("Cluster::init_hamiltonian: undefined model\n");
+    throw std::range_error("Cluster::update_interaction_matrix: undefined model\n");
   }
 }
 
@@ -1012,9 +1090,13 @@ void Cluster::update_hamiltonian(const real_siteparms_t& gauge_factors,
   // add SOC part
   hmatrix_ += soc_mat_;
   // diagonal elements
-  for (i=0; i<basis_dim_; ++i) {
-    hmatrix_(i,i) = interaction_elems_(i)+lagrange_elems_(i);
+  //for (i=0; i<basis_dim_; ++i) {
+  //  hmatrix_(i,i) = interaction_elems_(i)+lagrange_elems_(i);
     //std::cout << "hmatrix("<<i<<","<<i<<") = "<<hmatrix_(i,i)<<"\n"; getchar();
+  //}
+  hmatrix_ += interaction_mat_;
+  for (i=0; i<basis_dim_; ++i) {
+    hmatrix_(i,i) += lagrange_elems_(i);
   }
 }
 
@@ -1036,7 +1118,8 @@ void Cluster::update_hamiltonian(const real_siteparms_t& new_lm_params)
   }
 
   for (i=0; i<basis_dim_; ++i) {
-    hmatrix_(i,i) = interaction_elems_(i)+lagrange_elems_(i);
+    //hmatrix_(i,i) = interaction_elems_(i)+lagrange_elems_(i);
+    hmatrix_(i,i) = interaction_mat_(i,i)+lagrange_elems_(i);
   }
   //std::cout<<"H (LM-update) =\n" << hmatrix_ << "\n"; getchar();
   // final matrix 
@@ -1048,6 +1131,28 @@ void Cluster::solve_hamiltonian(void) const
   eigen_solver_.compute(hmatrix_);
   groundstate_ = eigen_solver_.eigenvectors().col(0);
   //std::cout << "Eigenvalues = " << eigen_solver_.eigenvalues().transpose() << "\n";
+  //std::cout << "Eigenvector = " << groundstate_.transpose() << "\n";
+  //getchar();
+}
+
+double Cluster::get_interaction_energy(const ModelParams& p) 
+{
+  double U_half = 0.5*p.get_U();
+  int site_id = 0;
+  SlaveSpinBasis::idx_t i, j;
+  double energy = 0.0;
+  double Sz;
+  for (i=0; i<basis_dim_; ++i) {
+    double total_Sz = 0.0;
+    for (auto& alpha : spin_orbitals_) {
+      std::tie(Sz,j) = basis_.apply_Sz(site_id,alpha,i);
+      total_Sz += Sz;
+    }
+    energy += total_Sz*(total_Sz+1.0)*std::norm(groundstate_(i));
+  }
+  energy *= U_half;
+  //std::cout << "E_int = " << energy << "\n"; getchar();
+  return energy;
   //std::cout << "Eigenvector = " << groundstate_.transpose() << "\n";
   //getchar();
 }
@@ -1113,6 +1218,12 @@ int Cluster::lambda_equation(const RealVector& lambda, RealVector& func,
     func(alpha) = (Sz_avg(alpha)+0.5) - spinon_density_[site_][alpha];
     //std::cout << "func = " << func(alpha) << "\n";
   }
+  // assume spin-independent
+  /*for (int alpha=0; alpha<spin_orbitals_.size()-1; alpha+=2) {
+    func(alpha+1) = func(alpha);
+  }*/
+
+
   //std::cout << "x = " << lambda.transpose() << "\n";
   //std::cout << "f(x) = " << func.transpose() << "\n";
   //std::cout << "sp density = " << spinon_density_[site_].transpose() << "\n";
@@ -1344,7 +1455,7 @@ void Cluster::get_avg_Ominus(const real_siteparms_t& gauge_factors,
       }
     }
   }
-  //std::cout << "groundstate = "<< groundstate_ << "\n";
+  //std::cout << "groundstate = "<< groundstate_ << "\n"; getchar();
   //std::cout << "<Zplus>["<<site_<<"] = "<< Ominus_avg[site_].transpose() << "\n";
   //getchar();
 }

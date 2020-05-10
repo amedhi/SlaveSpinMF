@@ -131,11 +131,18 @@ public:
   const MF_Bond& bond(const int& i) const { return bonds_[i]; }
   MF_Bond& bond(const int& i) { return bonds_[i]; }
   const std::vector<MF_Bond>& bonds(void) const { return bonds_; }
+  const double& ke_per_site(void) const { return ke_per_site_; }
+  const double& pe_per_site(void) const { return pe_per_site_; }
+  double& ke_per_site(void) { return ke_per_site_; }
+  double& pe_per_site(void) { return pe_per_site_; }
+  double total_energy(void) const { return ke_per_site_+pe_per_site_; }
 private:
   int num_basis_sites_;
   int num_bonds_;
   bool SO_coupling_{false};
   int num_bondterms_;
+  double ke_per_site_{0.0};
+  double pe_per_site_{0.0};
   std::vector<MF_Site> sites_; // list of all sites in unitcell
   std::vector<MF_Bond> bonds_; // list of all bonds
   std::vector<cmplArray2D> spinon_ke_;

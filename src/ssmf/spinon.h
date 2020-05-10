@@ -41,7 +41,9 @@ public:
   const ComplexMatrix& coeff_matrix(const int& i=0) const { return coeff_matrices_[i]; }
   //const double& coupling(const unsigned& site_type) const; 
   const model::op::quantum_op& qn_operator(void) const { return op_; }
+  const std::string& name(void) const { return name_; }
 private:
+  std::string name_;
   model::op::quantum_op op_;
   unsigned num_out_bonds_;
   unsigned num_basis_sites_;
@@ -72,6 +74,7 @@ public:
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
   const realArray1D& orbital_en(void) const override { return orbital_en_; }
+  double energy(const MF_Params& mf_params) { return total_energy_; }
   void print_output(const MF_Params& mf_params);
 private:
   using Model = model::Hamiltonian;
@@ -80,6 +83,7 @@ private:
   basis::BlochBasis blochbasis_;
   bool have_TP_symmetry_{true};
   bool SO_coupling_{false};
+  bool non_magnetic_sector_{false};
   int spin_multiply_{2};
   int num_sites_{0};
   int num_unitcells_{0};
@@ -112,6 +116,7 @@ private:
   int smear_func_order_{4};
   double fermi_energy_;
   double smear_width_;
+  double total_energy_;
   bool degeneracy_warning_{false};
   bool assume_fixed_groundstate_{false};
   bool groundstate_determined_{false};

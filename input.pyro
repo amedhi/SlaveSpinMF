@@ -17,7 +17,7 @@ theory = "Z2" # "Z2/U1"
 solve_single_site = "YES"
 ssmf_conv_tol = 1.0E-8
 boson_conv_tol = 1.0E-8
-#maxiter = 500
+boson_max_iter = 200
 #maxiter_rotor = 500
 #use_previous_iter = "NO"
 
@@ -36,10 +36,12 @@ bc3 = "periodic"
 # Model:
 #---------------------------------------------
 model = "PYROCHLORE"
+non_magnetic_sector = "NO"
 hole_doping = 0.0
+particle_per_site = 5
 t = 1.00
-lambda = 0.0 # 4.0
-U = 0.0 # 3.25 #1362 #127
+lambda = 20.0
+U = 4.0 # 3.25 #1362 #127
 J = 0.3
 J_is_relative = "YES"
 #fixed_gauge = 1.0
