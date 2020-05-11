@@ -313,7 +313,9 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     mf_params.bond(i).spinon_ke(0) = ke_matrix;
     mf_params.bond(i).set_spinon_renormalization();
 
-    bond_en += 2*mf_params.bond(i).spinon_renormed_cc(0).real().sum();
+    //bond_en += 2*mf_params.bond(i).spinon_renormed_cc(0).real().sum();
+    ke_matrix = ke_matrix*mf_params.bond(i).boson_renormed_cc(0);
+    bond_en += 2*ke_matrix.real().sum();
     //std::cout << "ke_matrix =\n" << ke_matrix << "\n"; getchar();
     // print
     /*
