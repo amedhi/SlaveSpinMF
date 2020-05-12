@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-03-12 12:20:33
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-06 21:26:32
+* @Last Modified time: 2020-05-12 23:57:44
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "mf_params.h"
@@ -19,35 +19,28 @@ MF_Site::MF_Site()
   bond_outgoing_.clear();
 } 
 
-MF_Site::MF_Site(const int& type, const int& dim, const idx_list& state_indices, 
-    const bool& SO_coupled)
-  : type_{type}, dim_{dim}, SO_coupled_{SO_coupled}, state_indices_{state_indices}
+MF_Site::MF_Site(const int& type, const int& dim, const idx_list& state_indices)
+  : type_{type}, dim_{dim}, state_indices_{state_indices}
 {
   connected_bonds_.clear();
   bond_outgoing_.clear();
-  // spin-oribitals
-
-  int num_spinorb;
-  if (SO_coupled_) num_spinorb = dim_;
-  else num_spinorb = 2*dim_;
   /*
-    'spin_orbitals' Note:  If NO SOC, the assumption is that
-    the first half of the spin-orbitals correspond to UP-spins 
-    and the second half correspond to DOWN-spins.
-    If SOC, then the spin-orbitals will follow the same ordering
-    as in the site basis in the given Hamiltonian.
+    'spin_orbitals' Note:  the spin-orbitals correspond to same
+    ordering of quantum as defined in Model hamiltonian. 
+    That is terms for DOWN spins should be explicitly added. Then
+    only it will be considered here.
   */
-  spin_orbitals_.resize(num_spinorb); 
+  spin_orbitals_.resize(dim_); 
   std::iota(spin_orbitals_.begin(),spin_orbitals_.end(),0);
-  spinon_density_.resize(num_spinorb);
-  boson_density_.resize(num_spinorb);
-  lm_params_.resize(num_spinorb);
-  qp_weights_.resize(num_spinorb);
-  soc_matrix_.resize(num_spinorb,num_spinorb); 
-  spinon_flip_ampl_.resize(num_spinorb,num_spinorb); 
-  boson_flip_ampl_.resize(num_spinorb,num_spinorb); 
-  spinon_renormed_soc_.resize(num_spinorb,num_spinorb); 
-  boson_renormed_soc_.resize(num_spinorb,num_spinorb); 
+  spinon_density_.resize(dim_);
+  boson_density_.resize(dim_);
+  lm_params_.resize(dim_); lm_params_.setZero();
+  qp_weights_.resize(dim_); qp_weights_.setOnes();
+  soc_matrix_.resize(dim_,dim_); soc_matrix_.setZero();
+  spinon_flip_ampl_.resize(dim_,dim_); spinon_flip_ampl_.setZero();
+  boson_flip_ampl_.resize(dim_,dim_); boson_flip_ampl_.setZero();
+  spinon_renormed_soc_.resize(dim_,dim_); spinon_renormed_soc_.setZero();
+  boson_renormed_soc_.resize(dim_,dim_); boson_renormed_soc_.setZero();
 }
 
 void MF_Site::set_soc_matrix(const cmplArray2D& soc_mat)
@@ -65,6 +58,9 @@ void MF_Site::set_spinon_renormalization(void)
 void MF_Site::set_boson_renormalization(void)
 {
   boson_renormed_soc_ = soc_matrix_*boson_flip_ampl_;
+  //std::cout << "\n" << soc_matrix_ << "\n";
+  //std::cout << "\n" << boson_renormed_soc_ << "\n";
+  //getchar();
 }
 
 
@@ -77,9 +73,9 @@ void MF_Site::add_bond(const int& id, const bool& outgoing)
 
 //-------------------------------MF Bond-----------------------------
 MF_Bond::MF_Bond(const int& type, const bool& is_intracell, const int& src, const int& tgt, 
-  const int& vector_id, const Vector3d& vector,  const bool& SO_coupled)
+  const int& vector_id, const Vector3d& vector)
   : type_{type}, is_intracell_{is_intracell}, src_{src}, tgt_{tgt}, vector_id_{vector_id}, 
-    vector_{vector}, SO_coupled_{SO_coupled}
+    vector_{vector}
 {
   term_couplings_.clear(); // for all 'bond terms'
   spinon_ke_.clear(); 
@@ -91,10 +87,6 @@ void MF_Bond::add_term_cc(const cmplArray2D& mat)
   term_couplings_.push_back(mat); 
   int m = mat.rows();
   int n = mat.cols();
-  if (!SO_coupled_) {
-    m *= 2;
-    n *= 2;
-  }
   spinon_renormed_cc_.push_back(cmplArray2D::Zero(m,n)); 
   boson_renormed_cc_.push_back(cmplArray2D::Zero(m,n)); 
   spinon_ke_.push_back(cmplArray2D::Zero(m,n));
@@ -105,40 +97,15 @@ void MF_Bond::add_term_cc(const cmplArray2D& mat)
 
 void MF_Bond::set_spinon_renormalization(void)
 {
-  if(SO_coupled_) {
-    for (int i=0; i<term_couplings_.size(); ++i) {
-      spinon_renormed_cc_[i] = term_couplings_[i] * spinon_ke_[i]; 
-    }
-  }
-  else {
-    for (int i=0; i<term_couplings_.size(); ++i) {
-    	int m = spinon_ke_[i].rows();
-    	int n = spinon_ke_[i].cols();
-    	cmplArray2D coupling=cmplArray2D::Zero(m,n);
-      coupling.block(0,0,m/2,n/2) = term_couplings_[i];
-      coupling.block(m/2,n/2,m/2,n/2) = term_couplings_[i];
-      spinon_renormed_cc_[i] = coupling * spinon_ke_[i];   
-    }
+  for (int i=0; i<term_couplings_.size(); ++i) {
+    spinon_renormed_cc_[i] = term_couplings_[i] * spinon_ke_[i]; 
   }
 }
 
 void MF_Bond::set_boson_renormalization(void)
 {
-  if(SO_coupled_) {
-    for (int i=0; i<term_couplings_.size(); ++i) {
-      boson_renormed_cc_[i] = term_couplings_[i] * boson_ke_[i]; 
-    }
-  }
-  else {
-    for (int i=0; i<term_couplings_.size(); ++i) {
-      int m = boson_ke_[i].rows();
-      int n = boson_ke_[i].cols();
-      cmplArray2D coupling=cmplArray2D::Zero(m,n);
-      coupling.block(0,0,m/2,n/2) = term_couplings_[i];
-      coupling.block(m/2,n/2,m/2,n/2) = term_couplings_[i];
-      boson_renormed_cc_[i] = coupling * boson_ke_[i];   
-      //std::cout << boson_renormed_cc_[i] << "\n"; getchar();
-    }
+  for (int i=0; i<term_couplings_.size(); ++i) {
+    boson_renormed_cc_[i] = term_couplings_[i] * boson_ke_[i]; 
   }
 }
 
@@ -159,7 +126,7 @@ MF_Params::MF_Params(const input::Parameters& inputs, const lattice::LatticeGrap
     state_indices.resize(dim);
     for (int j=0; j<dim; ++j) 
        state_indices[j] = graph.lattice().basis_index_number(i,j);
-    sites_.push_back({type, dim, state_indices, SO_coupling_});
+    sites_.push_back({type, dim, state_indices});
   }
 
   // store the bonds in a 'unit cell'
@@ -185,8 +152,7 @@ MF_Params::MF_Params(const input::Parameters& inputs, const lattice::LatticeGrap
       //int tgt_dim = graph.site_dim(t);
 
       //std::cout << "src="<<src<<", tgt="<<tgt<<"\n"; getchar();
-      bonds_.push_back({type,is_intracell,src,tgt,graph.vector_id(ei),graph.vector(ei),
-      	SO_coupling_});
+      bonds_.push_back({type,is_intracell,src,tgt,graph.vector_id(ei),graph.vector(ei)});
 
       // store id of the bond connected to the site
       int id = bonds_.size()-1;

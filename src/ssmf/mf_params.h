@@ -31,8 +31,7 @@ class MF_Site
 public:
   using idx_list = std::vector<int>;
   MF_Site();
-  MF_Site(const int& type, const int& dim, const idx_list& state_indices, 
-    const bool& SO_coupled);
+  MF_Site(const int& type, const int& dim, const idx_list& state_indices);
   void set_soc_matrix(const cmplArray2D& soc_mat); 
   const int& type(void) const { return type_; }
   const int& dim(void) const { return dim_; }
@@ -59,7 +58,6 @@ public:
 private:
   int type_;
   int dim_;
-  bool SO_coupled_;
   std::vector<int> spin_orbitals_;
   idx_list state_indices_;
   idx_list connected_bonds_;
@@ -81,8 +79,7 @@ class MF_Bond
 public:
   using idx_list = std::vector<unsigned>;
   MF_Bond(const int& type, const bool& is_intracell, const int& src, 
-    const int& tgt, const int& vector_id, const Vector3d& vector, 
-    const bool& SO_coupled);
+    const int& tgt, const int& vector_id, const Vector3d& vector);
   ~MF_Bond() {}
 	void add_term_cc(const cmplArray2D& mat);
   void set_spinon_renormalization(void);
@@ -108,7 +105,6 @@ private:
   int tgt_;
   int vector_id_;
   Vector3d vector_;
-  bool SO_coupled_;
   std::vector<cmplArray2D> term_couplings_; // for all 'bond terms'
   std::vector<cmplArray2D> spinon_renormed_cc_; 
   std::vector<cmplArray2D> boson_renormed_cc_; 
@@ -123,6 +119,7 @@ public:
   MF_Params(const input::Parameters& inputs, const lattice::LatticeGraph& graph,
     const model::Hamiltonian& model);
   ~MF_Params() {}
+  bool SO_coupling(void) const { return SO_coupling_; }
   const int& num_sites(void) const { return num_basis_sites_; }
   const int& num_bonds(void) const { return num_bonds_; }
   void init_params(void);

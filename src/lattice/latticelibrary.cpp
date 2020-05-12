@@ -29,13 +29,40 @@ int Lattice::define_lattice(void)
     lid = lattice_id::SQUARE;
     extent[dim3] = Extent{1,boundary_type::open,boundary_type::open};
     // basis vectors
-    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+    double a = std::sqrt(2.0);
+    set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,0));
     // add sites
-    add_basis_site(orbitals=1, coord=vec(0,0,0));
+    add_basis_site(type=0, orbitals=2, coord=vec(0,0,0)); 
+    add_basis_site(type=1, orbitals=2, coord=vec(0.5*a,0.5*a,0)); 
     // add bonds
-    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
-    add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
   }
+
+  /*------------- 'CHAIN' lattice--------------*/
+  else if (lname == "CHAIN") {
+    lid = lattice_id::CHAIN;
+    extent[dim2] = Extent{1, boundary_type::open, boundary_type::open};
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    if (true) {
+      // basis vectors
+      set_basis_vectors(a1=vec(2,0,0), a2=vec(0,0,0), a3=vec(0,0,0));
+      // add sites
+      add_basis_site(type=0, orbitals=2, coord=vec(0,0,0));
+      add_basis_site(type=1, orbitals=2, coord=vec(1,0,0));
+      // add bonds
+      add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,0,0));
+      add_bond(type=1, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    }
+    else {
+      set_basis_vectors(a1=vec(1,0,0), a2=vec(0,0,0), a3=vec(0,0,0));
+      add_basis_site(type=0, orbitals=2, coord=vec(0,0,0));
+      add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    }
+  }
+
 
   else if (lname == "SQUARE_2BAND") {
     // type
@@ -53,12 +80,27 @@ int Lattice::define_lattice(void)
     // type
     lid = lattice_id::SQUARE_IRIDATE;
     extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
-    // basis vectors
-    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
-    // add sites
-    add_basis_site(orbitals=6, coord=vec(0,0,0)); // spin+orbitals
-    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
-    add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    if (true) {
+      // basis vectors
+      double a = std::sqrt(2.0);
+      set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,0));
+      // add sites
+      add_basis_site(type=0, orbitals=6, coord=vec(0,0,0)); 
+      add_basis_site(type=1, orbitals=6, coord=vec(0.5*a,0.5*a,0)); 
+      // add bonds
+      add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,0,0));
+      add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+      add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+      add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
+    }
+    else {
+      // basis vectors
+      set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+      // add sites
+      add_basis_site(orbitals=6, coord=vec(0,0,0)); // spin+orbitals
+      add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+      add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    }
   }
 
   else if (lname == "SQUARE_NBAND") {
@@ -86,28 +128,6 @@ int Lattice::define_lattice(void)
     add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
     add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,0,1));
     */
-  }
-
-  /*------------- 'CHAIN' lattice--------------*/
-  else if (lname == "CHAIN") {
-    lid = lattice_id::CHAIN;
-    extent[dim2] = Extent{1, boundary_type::open, boundary_type::open};
-    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
-    if (true) {
-      // basis vectors
-      set_basis_vectors(a1=vec(2,0,0), a2=vec(0,0,0), a3=vec(0,0,0));
-      // add sites
-      add_basis_site(type=0, orbitals=2, coord=vec(0,0,0));
-      add_basis_site(type=1, orbitals=2, coord=vec(1,0,0));
-      // add bonds
-      add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,0,0));
-      add_bond(type=1, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
-    }
-    else {
-      set_basis_vectors(a1=vec(1,0,0), a2=vec(0,0,0), a3=vec(0,0,0));
-      add_basis_site(type=0, orbitals=2, coord=vec(0,0,0));
-      add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
-    }
   }
 
   else if (lname == "HONEYCOMB") {

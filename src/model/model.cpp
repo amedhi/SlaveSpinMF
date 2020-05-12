@@ -189,6 +189,13 @@ void Hamiltonian::update_terms(void)
   }
 }
 
+bool Hamiltonian::have_parameter(const std::string& pname) const
+{
+  auto it = parms_.find(pname);
+  if (it != parms_.end()) return true;
+  else return false;
+}
+
 double Hamiltonian::get_parameter_value(const std::string& pname) const
 {
   auto it = parms_.find(pname);

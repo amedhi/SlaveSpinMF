@@ -14,7 +14,7 @@ prefix = "results"
 # Slave-rotor parameters
 #---------------------------------------------
 theory = "Z2" # "Z2/U1"
-solve_single_site = "YES" # "YES"
+solve_single_site = "NO" # "YES"
 ssmf_conv_tol = 1.0E-12
 boson_conv_tol = 1.0E-12
 boson_max_iter = 5000
@@ -31,13 +31,13 @@ bc2 = "periodic"
 #---------------------------------------------
 # Model:
 #---------------------------------------------
-#model = "tJ"
 model = "HUBBARD"
 t = 1.0
-U = 4.0
+U = 6.0
 
-non_magnetic_sector = "NO"
 hole_doping = 0.0 # 0.18 
+ext_field = 1.0
+non_magnetic_sector = "YES"
 
 #---------------------------------------------
 # List of observable to calculate:

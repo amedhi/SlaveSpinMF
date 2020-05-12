@@ -66,14 +66,10 @@ public:
   void solve(const lattice::LatticeGraph& graph, MF_Params& mf_params);
   void update(const input::Parameters& inputs);
   void update_terms(void) override;
-  //const realArray1D& orbital_en(void) const { return orbital_en_; }
-  void set_shifted_en(const std::vector<double>& shifted_e0) 
-    { for (int i=0; i<kblock_dim_; ++i) orbital_en_shifted_[i]=shifted_e0[i]; }
   void update_site_parameter(const std::string& pname, const double& pvalue);
   void construct_kspace_block(const MF_Params& mf_params, const Vector3d& kvec);
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
-  const realArray1D& orbital_en(void) const override { return orbital_en_; }
   double energy(const MF_Params& mf_params) { return total_energy_; }
   void print_output(const MF_Params& mf_params);
 private:
@@ -84,7 +80,6 @@ private:
   bool have_TP_symmetry_{true};
   bool SO_coupling_{false};
   bool non_magnetic_sector_{false};
-  int spin_multiply_{2};
   int num_sites_{0};
   int num_unitcells_{0};
   int num_bonds_{0};
@@ -96,8 +91,6 @@ private:
   ComplexMatrix quadratic_block_up_;
   ComplexMatrix quadratic_block_dn_;
   ComplexMatrix pairing_block_;
-  realArray1D orbital_en_;
-  realArray1D orbital_en_shifted_;
   ComplexMatrix work; //, work2;
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up_;
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_dn_;
@@ -105,8 +98,8 @@ private:
   // ground state (Fermi-Sea) representations
   int num_total_states_{0};
   int num_spins_{0};
-  int num_upspins_{0};
-  int num_dnspins_{0};
+  //int num_upspins_{0};
+  //int num_dnspins_{0};
   bool metallic_{false};
   double hole_doping_{0.0};
   double last_hole_doping_{10.39}; // unlikely input

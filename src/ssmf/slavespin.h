@@ -63,6 +63,7 @@ public:
   void update_J(const double& J) { hunde_J_=J; hunde_coupling_=true; }
   void update_lambda(const double& lambda) { SO_lambda_=lambda; }
   void set_J_relative(const bool& yesno) { J_is_relative_=yesno; }
+  void set_spinflip_terms(const bool& yesno ) { have_spinflip_terms_=yesno; }
   const model_id& id(void) const { return id_; }
   const realArray1D& get_e0(void) const { return e0_; }
   const double& get_U(void) const { return U_; }
@@ -71,10 +72,12 @@ public:
   const double& get_lambda(void) const { return SO_lambda_; }
   bool have_hunde_coupling(void) const { return hunde_coupling_; }
   bool J_is_relative(void) const { return J_is_relative_; }
+  bool have_spinflip_terms(void) const { return have_spinflip_terms_; }
 private:
   model_id id_;
   bool hunde_coupling_{false};
   bool J_is_relative_{false};
+  bool have_spinflip_terms_{true};
   double U_{0.0};
   double U1_{0.0}; // inter-orbital
   double hunde_J_{0.0};
@@ -150,8 +153,9 @@ private:
   theory_t theory_{theory_t::Z2};
   int site_{0};
   int end_site_id_{0};
-  unsigned basis_dim_{0};
-  unsigned total_spinorbitals_{0};
+  bool real_amplitudes_{true};
+  int basis_dim_{0};
+  int total_spinorbitals_{0};
   std::vector<int> spin_orbitals_; 
   SlaveSpinBasis basis_;
   root::RootSolver root_solver_;
