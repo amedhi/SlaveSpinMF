@@ -11,10 +11,10 @@
 #include <boost/algorithm/string.hpp>
 #include "ssmf.h"
 
-namespace srmf {
+namespace ssmf {
 
 
-SRMF::SRMF(const input::Parameters& inputs) 
+SSMF::SSMF(const input::Parameters& inputs) 
   : graph_(inputs) 
   , model_(inputs, graph_.lattice())
   , mf_params_(inputs, graph_,model_)
@@ -39,19 +39,25 @@ SRMF::SRMF(const input::Parameters& inputs)
   prefix = "./"+prefix+"/";
   boost::filesystem::path prefix_dir(prefix);
   boost::filesystem::create_directory(prefix_dir);
-  file_conv_data_.init(prefix, "conv_data", info_str_.str());
-  file_mfp_.init(prefix, "mfp", info_str_.str());
-  file_sp_site_.init(prefix, "sp_site", info_str_.str());
-  file_sp_bond_.init(prefix, "sp_bond", info_str_.str());
+  make_info_str(inputs);
+  //file_conv_data_.init(prefix, "conv_data", info_str_.str());
+  for (int i=0; i<mf_params_.num_sites(); ++i) {
+    mfp_files_.push_back(std::make_shared<file::DataFile>());
+    mfp_files_.back()->init(prefix, "mfp_site"+std::to_string(i), info_str_.str());
+    siteavg_files_.push_back(std::make_shared<file::DataFile>());
+    siteavg_files_.back()->init(prefix, "siteavg_site"+std::to_string(i), info_str_.str());
+  }
+  //file_mfp_.init(prefix, "mfp", info_str_.str());
+  //file_sp_site_.init(prefix, "sp_site", info_str_.str());
+  //file_sp_bond_.init(prefix, "sp_bond", info_str_.str());
   file_energy_.init(prefix, "energy", info_str_.str());
   //site_avg_.init("site_avg", heading);
   //bond_avg_.init("bond_avg", heading);
-  make_info_str(inputs);
   spinon_model_.init_files(prefix, info_str_.str());
 }
 
 
-int SRMF::run(const input::Parameters& inputs) 
+int SSMF::run(const input::Parameters& inputs) 
 {
   spinon_model_.update(inputs);
   boson_model_.update(spinon_model_);
@@ -107,11 +113,10 @@ int SRMF::run(const input::Parameters& inputs)
   return 0;
 }
 
-int SRMF::selconsistent_solve(void) 
+int SSMF::selconsistent_solve(void) 
 {
-  int max_sr_iter = 100;
   bool converged = false;
-  for (int iter=0; iter<max_sr_iter; ++iter) {
+  for (int iter=0; iter<max_ssmf_iter_; ++iter) {
     spinon_model_.solve(graph_,mf_params_);
     boson_model_.solve(mf_params_);
     // check convergence
@@ -172,89 +177,110 @@ int SRMF::selconsistent_solve(void)
   return 0;
 }
 
-void SRMF::print_output(void)
+void SSMF::print_output(void)
 {
-  double U = spinon_model_.get_parameter_value("U");
   //---------------------Z and lambda-------------------------
-  file_mfp_.open();
-  if (!heading_printed_) { 
-    file_mfp_.fs()<<std::left<<std::setw(16)<< "#   U";
-    for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
-      file_mfp_.fs()<<std::left<<"  Z["<<m<<std::setw(10)<<"]";
+  int s = -1;
+  for (auto& file : mfp_files_) {
+    s++;
+    file->open();
+    if (!heading_printed_) { 
+      file->fs()<<std::left<< "   ";
+      for (const auto& pname : spinon_model_.pnames()) {
+        file->fs()<<std::left<<std::setw(15)<< pname;
+      }
+      for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
+        file->fs()<<std::left<<"  Z["<<m<<std::setw(10)<<"]";
+      }
+      for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
+        file->fs()<<std::left<<"lambda["<<m<<std::setw(7)<<"]";
+      }
+      file->fs() << "\n";
+      file->fs()<<"#"<< std::string(72, '-') << "\n";
     }
-    for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
-      file_mfp_.fs()<<std::left<<"lambda["<<m<<std::setw(7)<<"]";
+    file->fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
+    for (const auto& pval : spinon_model_.pvals()) {
+      file->fs()<<std::right<<std::setw(15)<<pval;
     }
-    file_mfp_.fs() << "\n";
-    file_mfp_.fs()<<"#"<< std::string(72, '-') << "\n";
+    for (int m=0; m<mf_params_.site(s).spin_orbitals().size(); ++m) {
+      file->fs()<<std::setw(15)<<mf_params_.site(s).qp_weights()[m];
+    }
+    for (int m=0; m<mf_params_.site(s).spin_orbitals().size(); ++m) {
+      file->fs()<<std::setw(15)<<mf_params_.site(s).lm_params()[m];
+    }
+    file->fs() << "\n";
+    file->close();
   }
 
-  file_mfp_.fs()<<std::scientific<<std::setprecision(6);
-  for (int i=0; i<mf_params_.num_sites(); ++i) {
-    file_mfp_.fs()<<std::right<<std::setw(15)<<U;
-    for (int m=0; m<mf_params_.site(i).spin_orbitals().size(); ++m) {
-      file_mfp_.fs()<<std::setw(15)<<mf_params_.site(i).qp_weights()[m];
+  s = -1;
+  for (auto& file : siteavg_files_) {
+    s++;
+    file->open();
+    if (!heading_printed_) { 
+      file->fs()<<std::left<< "   ";
+      for (const auto& pname : spinon_model_.pnames()) {
+        file->fs()<<std::left<<std::setw(15)<< pname;
+      }
+      for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
+        file->fs()<<std::left<<std::setw(15)<<"n"+std::to_string(m);
+      }
+      file->fs() << "\n";
+      file->fs()<<"#"<< std::string(72, '-') << "\n";
     }
-    for (int m=0; m<mf_params_.site(i).spin_orbitals().size(); ++m) {
-      file_mfp_.fs()<<std::setw(15)<<mf_params_.site(i).lm_params()[m];
+    file->fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
+    for (const auto& pval : spinon_model_.pvals()) {
+      file->fs()<<std::right<<std::setw(15)<<pval;
     }
-    file_mfp_.fs() << "\n";
+    for (int m=0; m<mf_params_.site(s).spin_orbitals().size(); ++m) {
+      file->fs()<<std::setw(15)<<mf_params_.site(s).spinon_density()[m];
+    }
+    file->fs() << "\n";
+    file->close();
   }
-  //file_mfp_.fs() << "\n";
-  file_mfp_.close();
+
+
   //---------------------energy-------------------------
   file_energy_.open();
   if (!heading_printed_) { 
-    file_energy_.fs()<<"#"<< std::string(72, '-') << "\n";
-    file_energy_.fs()<<std::left<<std::setw(16)<< "#   H";
-    file_energy_.fs()<<std::left<<std::setw(16)<< "TE";
-    file_energy_.fs()<<std::left<<std::setw(16)<< "KE";
-    file_energy_.fs()<<std::left<<std::setw(16)<< "PE";
-    file_energy_.fs() << "\n";
+    file_energy_.fs()<<std::left<< "   ";
+    for (const auto& pname : spinon_model_.pnames()) {
+      file_energy_.fs()<<std::left<<std::setw(15)<< pname;
+    }
+    file_energy_.fs()<<std::left<<std::setw(15)<< "TE";
+    file_energy_.fs()<<std::left<<std::setw(15)<< "KE";
+    file_energy_.fs()<<std::left<<std::setw(15)<< "PE";
+    file_energy_.fs()<<"\n";
     file_energy_.fs()<<"#"<< std::string(72, '-') << "\n";
   }
   double KE = spinon_model_.energy(mf_params_);
   double PE = boson_model_.interaction_energy();
-  file_energy_.fs()<<std::scientific<<std::setprecision(6);
-  file_energy_.fs()<<std::right<<std::setw(15)<<spinon_model_.get_parameter_value("U");
+  file_energy_.fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
+  for (const auto& pval : spinon_model_.pvals()) {
+    file_energy_.fs()<<std::right<<std::setw(15)<<pval;
+  }
   file_energy_.fs()<<std::right<<std::setw(15)<<KE+PE;
   file_energy_.fs()<<std::right<<std::setw(15)<<KE;
   file_energy_.fs()<<std::right<<std::setw(15)<<PE;
   file_energy_.fs() << "\n";
   file_energy_.close();
 
-  //-------------spinon site parameter------------------------
-  if (!heading_printed_) { 
-    file_sp_site_.fs()<<std::left<<std::setw(12)<< "# U";
-    for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
-      file_sp_site_.fs()<<std::left<<"<n>["<<m<<std::setw(7)<<"]";
-    }
-    file_sp_site_.fs() << "\n";
-    file_sp_site_.fs() << "#" << std::string(72, '-') << "\n";
-  }
-
-  file_sp_site_.fs()<<std::fixed<<std::setprecision(6);
-  for (int i=0; i<mf_params_.num_sites(); ++i) {
-    file_sp_site_.fs()<<std::setw(12)<<U;
-    for (int m=0; m<mf_params_.site(i).spin_orbitals().size(); ++m) {
-      file_sp_site_.fs()<<std::setw(12)<<mf_params_.site(i).spinon_density()[m];
-    }
-    file_sp_site_.fs() << "\n";
-  }
-  file_sp_site_.fs() << "\n";
-  file_sp_site_.close();
-  //----------------------------------------------------------
-
 
   heading_printed_ = true;
 }
 
-void SRMF::make_info_str(const input::Parameters& inputs)
+void SSMF::make_info_str(const input::Parameters& inputs)
 {
   info_str_.clear();
   print_copyright(info_str_);
   info_str_ << "# "<< inputs.job_id() <<"\n"; 
   info_str_ << spinon_model_.info_str(); 
+  info_str_ << boson_model_.info_str(); 
+  info_str_ << "#" << std::string(72, '-') << "\n";
+  info_str_ << "# SSMF solution:\n"; 
+  info_str_ << "# Max iterations = "<<max_ssmf_iter_<<"\n"; 
+  info_str_ << std::scientific<<std::uppercase<<std::setprecision(2);
+  info_str_ << "# Conv tolerance = "<<conv_tol_<<"\n"; 
+
   //info_str_ << config.info_str(); 
   //info_str_ << "# Samples = " << num_measure_steps_;
   //info_str_ << ", warmup = " << num_warmup_steps_;
@@ -262,7 +288,7 @@ void SRMF::make_info_str(const input::Parameters& inputs)
   //info_str_ << ", max_interval = " << max_interval_ << "\n";
 }
 
-void SRMF::print_copyright(std::ostream& os)
+void SSMF::print_copyright(std::ostream& os)
 {
   os << "#" << std::string(72,'-') << "\n";
   os << "#" << " Program: Slave Spinon Mean Field (SSMF) calculation\n";
@@ -273,7 +299,7 @@ void SRMF::print_copyright(std::ostream& os)
 /*
 int gsl_problem_eqn1(const gsl_vector* x, void* parms, gsl_vector* f)
 {
-  SRMF * pThis = ((class SRMF *) parms);
+  SSMF * pThis = ((class SSMF *) parms);
   for (int i=0; i<pThis->fx_dim_; ++i) {
     pThis->x_vec_[i] = gsl_vector_get(x,i);
   }
@@ -285,7 +311,7 @@ int gsl_problem_eqn1(const gsl_vector* x, void* parms, gsl_vector* f)
   else return GSL_FAILURE;
 }
 
-int SRMF::spinon_energy_eqn(const std::vector<double>& x, std::vector<double>& fx)
+int SSMF::spinon_energy_eqn(const std::vector<double>& x, std::vector<double>& fx)
 {
   spinon_model_.set_shifted_en(x);
   selconsistent_solve();

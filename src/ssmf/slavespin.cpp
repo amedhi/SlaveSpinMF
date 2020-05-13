@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-12 23:35:31
+* @Last Modified time: 2020-05-14 00:35:43
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -13,7 +13,7 @@
 #include <boost/math/tools/roots.hpp>
 
 
-namespace srmf {
+namespace ssmf {
 
 SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& model, const lattice::LatticeGraph& graph, const MF_Params& mf_params)
   //: rotor_graph_(graph)
@@ -137,6 +137,7 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   if (status ==0 ) set_fixed_gauge_ = true;
   else set_fixed_gauge_ = false;
 
+  cluster_type_=cluster_t::SITE;
   make_clusters(mf_params);
   for (auto& cluster : clusters_) 
     cluster.init_hamiltonian(modelparams_,gauge_factors_,lm_params_,renorm_site_couplings_);
@@ -148,6 +149,25 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   fx_vec_.resize(fx_dim_);
   gsl_solver_.allocate(fx_dim_);
   */
+  set_info_string();
+}
+
+void SlaveSpin::set_info_string(void)
+{
+  std::ostringstream info_strm;
+  info_strm.clear();
+  info_strm << "#" << std::string(72, '-') << "\n";
+  info_strm << "# Slave Spin Sector:\n";
+  if (theory_==theory_t::Z2) info_strm << "# Z2 Theory\n";
+  if (theory_==theory_t::U1) info_strm << "# U1 Theory\n";
+  info_strm << "# Number of sites = " << num_sites_ << "\n";
+  if (cluster_type_==cluster_t::SITE) info_strm << "# Cluster size = 1";
+  if (solve_single_site_) info_strm << " (solving ONLY one site)";
+  info_strm << "\n";
+  info_strm << "# Max iteration = " << max_iter_ << "\n";
+  info_strm << std::scientific<<std::uppercase<<std::setprecision(2);
+  info_strm << "# Conv tolerance = "<<conv_tol_<< "\n";
+  info_str_ = info_strm.str();
 }
 
 void SlaveSpin::update(const model::Hamiltonian& model)
@@ -1752,4 +1772,4 @@ realArray1D SlaveSpin::gauge_factors_func(const MF_Params& mf_params, const int&
 
 
 
-} // end namespace srmf
+} // end namespace ssmf

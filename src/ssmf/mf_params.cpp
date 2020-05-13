@@ -2,12 +2,12 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-03-12 12:20:33
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-12 23:57:44
+* @Last Modified time: 2020-05-13 15:30:26
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "mf_params.h"
 
-namespace srmf {
+namespace ssmf {
 
 //-------------------------------MF Site-----------------------------
 MF_Site::MF_Site() 
@@ -208,4 +208,4 @@ void MF_Params::init_params(void)
 
 
 
-} // end namespace srmf
+} // end namespace ssmf

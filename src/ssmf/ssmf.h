@@ -7,6 +7,7 @@
 #define DIAG_H
 
 #include <iostream>
+#include <memory>
 #include <Eigen/Eigenvalues>
 #include "../scheduler/worker.h"
 #include "../lattice/constants.h"
@@ -19,13 +20,13 @@
 #include "datafile.h"
 #include <boost/filesystem.hpp>
 
-namespace srmf {
+namespace ssmf {
 
-class SRMF : public scheduler::Worker
+class SSMF : public scheduler::Worker
 {
 public:
-  SRMF(const input::Parameters& parms); 
-  ~SRMF() {}
+  SSMF(const input::Parameters& parms); 
+  ~SSMF() {}
   int start(const input::Parameters& parms) override { return 0; }
   int run(const input::Parameters& parms) override;
   void finish(void) override {} 
@@ -42,8 +43,11 @@ private:
   SlaveSpin boson_model_;
   bool diag_only_{false};
   double conv_tol_{1.0E-8};
+  int max_ssmf_iter_{200};
 
   // output data
+  std::vector<std::shared_ptr<file::DataFile>> mfp_files_;
+  std::vector<std::shared_ptr<file::DataFile>> siteavg_files_;
   file::DataFile file_conv_data_;
   file::DataFile file_mfp_;
   file::DataFile file_sp_site_;
@@ -78,6 +82,6 @@ private:
 };
 
 
-} // end namespace srmf
+} // end namespace ssmf
 
 #endif

@@ -28,7 +28,7 @@
 #include <gsl/gsl_multiroots.h>
 //#include "./blochbasis.h"
 
-namespace srmf {
+namespace ssmf {
 
 enum cluster_t {SITE, BOND, CELL};
 enum theory_t {Z2, U1};
@@ -193,6 +193,7 @@ public:
   SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& model, 
     const lattice::LatticeGraph& graph, const MF_Params& mf_params);
   ~SlaveSpin() {}
+  const std::string& info_str(void) const { return info_str_; }
   void update(const model::Hamiltonian& model);
   void solve(MF_Params& mf_params);
   double interaction_energy(void);
@@ -208,6 +209,7 @@ private:
   bool set_fixed_gauge_{true};
   bool SO_coupling_{false};
   double fixed_gauge_{1.0};
+  std::string info_str_;
   //using LatticeGraph = lattice::LatticeGraph;
   using Model = model::Hamiltonian;
   //Model rotor_model_;
@@ -262,6 +264,7 @@ private:
   //Eigen::SparseMatrix<double> work_;
   //ComplexMatrix psi_work2_;
   */
+  void set_info_string(void); 
   void solve_gauge_factors(const MF_Params& mf_params);
   realArray1D gauge_factors_func(const MF_Params& mf_params, const int& i);
   void self_consistent_solve(const MF_Params& mf_params);
@@ -293,6 +296,6 @@ private:
 
 
 
-} // end namespace srmf
+} // end namespace ssmf
 
 #endif

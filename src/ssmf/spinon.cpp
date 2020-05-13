@@ -12,20 +12,37 @@
 #include "../expression/complex_expression.h"
 //#include "../expression/expression.h"
 
-namespace srmf {
+namespace ssmf {
 
 Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model, const lattice::LatticeGraph& graph, const MF_Params& mf_params)
 : model::Hamiltonian(model)
 , blochbasis_(graph)
 {
+  // model parameters
+  if (have_parameter("U")) {
+    modelp_names_.push_back("U");
+    modelp_vals_.push_back(get_parameter_value("U"));
+  }
+  if (have_parameter("J")) {
+    modelp_names_.push_back("J");
+    modelp_vals_.push_back(get_parameter_value("J"));
+  }
+  if (have_parameter("lambda")) {
+    modelp_names_.push_back("lambda");
+    modelp_vals_.push_back(get_parameter_value("lambda"));
+  }
+  if (have_parameter("ext_field")) {
+    modelp_names_.push_back("ext_field");
+    modelp_vals_.push_back(get_parameter_value("ext_field"));
+  }
+
   // add mean-field terms to the spinon model
   if (graph.lattice().id()==lattice::lattice_id::SQUARE_2BAND) {
   }
-
   if (graph.lattice().id()==lattice::lattice_id::PYROCHLORE_3D) {
   }
   int nowarn;
-  non_magnetic_sector_ = inputs.set_value("non_magnetic_sector", false, nowarn);
+  no_spinon_lambda_ = inputs.set_value("no_spinon_lambda",true,nowarn);
   assume_fixed_groundstate_ = inputs.set_value("assume_fixed_groundstate", false, nowarn);
   have_TP_symmetry_ = model.have_TP_symmetry();
   SO_coupling_ = model.is_spinorbit_coupled();
@@ -46,6 +63,8 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
   work.resize(kblock_dim_,kblock_dim_);
   build_unitcell_terms(graph);
   set_particle_num(inputs);
+  set_info_string();
+  iteration_zero_ = true;
 }
 
 int Spinon::init(const lattice::Lattice& lattice)
@@ -62,7 +81,26 @@ int Spinon::finalize(const lattice::LatticeGraph& graph)
   pairing_block_.resize(kblock_dim_,kblock_dim_);
   work.resize(kblock_dim_,kblock_dim_);
   build_unitcell_terms(graph);
+  set_info_string();
+  iteration_zero_ = true;
   return 0;
+}
+
+void Spinon::set_info_string(void)
+{
+  std::ostringstream info_strm;
+  info_strm.clear();
+  info_strm << "#" << std::string(72, '-') << "\n";
+  info_strm << "# Spinon Sector:\n";
+  if (SO_coupling_) info_strm << "# SO coupling = YES\n";
+  else info_strm << "# SO coupling = NO\n";
+  if (no_spinon_lambda_) info_strm << "# Lagrange coupling = OFF\n";
+  else info_strm << "# Lagrange coupling = ON\n";
+  info_strm << "# Number of states = "<<num_total_states_<<"\n";
+  info_strm << "# Number of particles = "<<num_spins_;
+  info_strm << " (per site = "<<double(num_spins_)/num_sites_<<")\n";
+  info_strm << "# Hole doping = "<<hole_doping_<<"\n";
+  info_str_ = model::Hamiltonian::info_str()+info_strm.str();
 }
 
 void Spinon::update(const input::Parameters& inputs)
@@ -71,6 +109,9 @@ void Spinon::update(const input::Parameters& inputs)
   //std::cout << "<<<<<<<<<<<<END\n";
   Model::update_parameters(inputs);
   update_terms();
+  for (int i=0; i<modelp_names_.size(); ++i) {
+    modelp_vals_[i] = get_parameter_value(modelp_names_[i]);
+  }
 }
 
 void Spinon::init_files(const std::string& prefix, const std::string& heading)
@@ -495,8 +536,8 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     //getchar();
 
     // Smearing Parameters
-    double bandwidth = ek_list_[idx_.back()]-ek_list_[idx_.front()];
-    smear_width_ = 0.4*bandwidth/num_unitcells_;
+    bandwidth_ = ek_list_[idx_.back()]-ek_list_[idx_.front()];
+    smear_width_ = 0.4*bandwidth_/num_unitcells_;
     smear_func_order_ = 4;
     //std::cout << "BW = " << bandwidth << "\n";
     //std::cout << "W = " << smear_width_ << "\n";
@@ -511,7 +552,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
 
     // Fermi Energy 
     int np = 0;
-    double gap_tol = bandwidth * 1.0E-8;
+    double gap_tol = bandwidth_ * 1.0E-8;
     fermi_energy_ = ek_list_[idx_[0]];
     for (int i=0; i<ek_list_.size(); ++i) {
       int k = qn_list_[idx_[i]].first;
@@ -563,8 +604,14 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
       }
     }
 
+    if (iteration_zero_) {
+      bandwidth_zero_ = bandwidth_;
+      fermi_energy_zero_ = fermi_energy_;
+      metallic_zero_ = metallic_;
+    }
+    iteration_zero_ = false;
     std::cout << "metallic, e_F = "<<metallic_<<"  "<<fermi_energy_<< "\n";
-    std::cout << "Bandwidth = " << bandwidth << "\n";
+    std::cout << "Bandwidth = " << bandwidth_ << "\n";
 
     // check
     /*double particle_sum = 0.0;
@@ -833,7 +880,7 @@ void Spinon::set_particle_num(const input::Parameters& inputs)
   if (num_spins_%2 !=0 ) num_spins_ += 1;
   //num_dnspins_ = num_spins_/2;
   //num_upspins_ = num_spins_ - num_dnspins_;
-  band_filling_ = static_cast<double>(num_spins_)/num_total_states_;
+  band_filling_ = 2.0*static_cast<double>(num_spins_)/num_total_states_;
   hole_doping_ = 1.0 - band_filling_;
   /*std::cout << "band_filling = " << band_filling_ << "\n";
   std::cout << "N_up = " << num_upspins_ << "\n";
@@ -909,7 +956,7 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
       //std::cout << term.coeff_matrix() << "\n"; getchar();
     }
   }
-  if (!non_magnetic_sector_) {
+  if (!no_spinon_lambda_) {
     for (int i=0; i<mf_params.num_sites(); ++i) {
       int site_dim = mf_params.site(i).dim();
       realArray1D lm_params = mf_params.site(i).lm_params(); 
@@ -1226,7 +1273,7 @@ void UnitcellTerm::eval_coupling_constant(const model::ModelParams& pvals, const
 
 
 
-} // end namespace srmf
+} // end namespace ssmf
 
 
 

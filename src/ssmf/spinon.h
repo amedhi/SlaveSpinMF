@@ -24,7 +24,7 @@
 
 constexpr std::complex<double> ii(void) { return std::complex<double>{0.0,static_cast<double>(1.0)}; }
 
-namespace srmf {
+namespace ssmf {
 
 class UnitcellTerm
 {
@@ -63,6 +63,9 @@ public:
   int init(const lattice::Lattice& lattice) override;
   int finalize(const lattice::LatticeGraph& graph);
   void init_files(const std::string& prefix, const std::string& heading);
+  const std::string& info_str(void) const override { return info_str_; }
+  const std::vector<std::string>& pnames(void) const { return modelp_names_; }
+  const std::vector<double>& pvals(void) const { return modelp_vals_; }
   void solve(const lattice::LatticeGraph& graph, MF_Params& mf_params);
   void update(const input::Parameters& inputs);
   void update_terms(void) override;
@@ -79,7 +82,8 @@ private:
   basis::BlochBasis blochbasis_;
   bool have_TP_symmetry_{true};
   bool SO_coupling_{false};
-  bool non_magnetic_sector_{false};
+  bool no_spinon_lambda_{true};
+  bool iteration_zero_{true};
   int num_sites_{0};
   int num_unitcells_{0};
   int num_bonds_{0};
@@ -87,6 +91,11 @@ private:
   int num_symm_kpoints_{0};
   int kblock_dim_{0};
   int num_basis_sites_{0};
+
+  // model parameters
+  std::vector<std::string> modelp_names_;
+  std::vector<double> modelp_vals_;
+
   // matrices in kspace representation
   ComplexMatrix quadratic_block_up_;
   ComplexMatrix quadratic_block_dn_;
@@ -100,6 +109,7 @@ private:
   int num_spins_{0};
   //int num_upspins_{0};
   //int num_dnspins_{0};
+  bool metallic_zero_{false}; // unrenormalized band (zeroth itheration)
   bool metallic_{false};
   double hole_doping_{0.0};
   double last_hole_doping_{10.39}; // unlikely input
@@ -107,6 +117,9 @@ private:
   // fermi level
   int num_fill_particles_{0};
   int smear_func_order_{4};
+  double bandwidth_zero_;
+  double fermi_energy_zero_;
+  double bandwidth_;
   double fermi_energy_;
   double smear_width_;
   double total_energy_;
@@ -123,6 +136,8 @@ private:
   // output data
   file::DataFile file_bands_;
 
+  std::string info_str_;
+  void set_info_string(void); 
   void build_unitcell_terms(const lattice::LatticeGraph& graph);
   void update_unitcell_terms(void);
   void set_particle_num(const input::Parameters& inputs);
@@ -135,6 +150,6 @@ private:
 };
 
 
-} // end namespace srmf
+} // end namespace ssmf
 
 #endif

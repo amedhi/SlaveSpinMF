@@ -16,7 +16,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace srmf {
+namespace ssmf {
   
 class SlaveSpinBasis  
 {
@@ -123,6 +123,6 @@ private:
 };
 
 
-} // end namespace srmf
+} // end namespace ssmf
 
 #endif

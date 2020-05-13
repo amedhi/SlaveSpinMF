@@ -20,7 +20,7 @@
 #include "../lattice/matrix.h"
 #include "../model/model.h"
 
-namespace srmf {
+namespace ssmf {
 
 using real_siteparms_t = std::vector<realArray1D>;
 using cmpl_siteparms_t = std::vector<cmplArray1D>;
@@ -148,6 +148,6 @@ private:
 
 
 
-} // end namespace srmf
+} // end namespace ssmf
 
 #endif

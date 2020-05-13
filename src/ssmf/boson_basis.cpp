@@ -2,13 +2,13 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-04-21 11:41:01
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-03-07 13:58:38
+* @Last Modified time: 2020-05-13 15:26:53
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "boson_basis.h"
 
-namespace srmf {
+namespace ssmf {
 
 //--------------------------------SlaveSpinBasis-------------------------------------
 void SlaveSpinBasis::construct(const int& num_sites, const int& site_dim)
@@ -360,4 +360,4 @@ RotorBasis::op_result RotorBasis::apply_ni(const RotorBasis::idx_t& idx,
 }
 
 
-} // end namespace srmf
+} // end namespace ssmf
