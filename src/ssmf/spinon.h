@@ -135,6 +135,7 @@ private:
 
   // output data
   file::DataFile file_bands_;
+  bool heading_printed_{false};
 
   std::string info_str_;
   void set_info_string(void); 

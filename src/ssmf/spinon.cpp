@@ -118,6 +118,7 @@ void Spinon::init_files(const std::string& prefix, const std::string& heading)
 {
   // observables
   file_bands_.init(prefix, "bands", heading);
+  heading_printed_ = false;
 }
 
 void Spinon::solve(const lattice::LatticeGraph& graph, MF_Params& mf_params)
@@ -365,6 +366,35 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
 void Spinon::print_output(const MF_Params& mf_params)
 {
   file_bands_.open();
+  if (!heading_printed_) { 
+    file_bands_.fs()<<std::left<< "   ";
+    for (const auto& pname : pnames()) {
+      file_bands_.fs()<<std::left<<std::setw(15)<< pname;
+    }
+    file_bands_.fs()<<std::left<<std::setw(15)<< "W0";
+    file_bands_.fs()<<std::left<<std::setw(15)<< "W";
+    file_bands_.fs()<<std::left<<std::setw(15)<< "EF0";
+    file_bands_.fs()<<std::left<<std::setw(15)<< "EF";
+    file_bands_.fs()<<std::left<<std::setw(15)<< "Metallic0";
+    file_bands_.fs()<<std::left<<std::setw(15)<< "Metallic";
+    file_bands_.fs()<<"\n";
+    file_bands_.fs()<<"#"<< std::string(72, '-') << "\n";
+  }
+  file_bands_.fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
+  for (const auto& pval : pvals()) {
+    file_bands_.fs()<<std::right<<std::setw(15)<<pval;
+  }
+  file_bands_.fs()<<std::right<<std::setw(15)<<bandwidth_zero_;
+  file_bands_.fs()<<std::right<<std::setw(15)<<bandwidth_;
+  file_bands_.fs()<<std::right<<std::setw(15)<<fermi_energy_zero_;
+  file_bands_.fs()<<std::right<<std::setw(15)<<fermi_energy_;
+  file_bands_.fs()<<std::right<<std::setw(15)<<metallic_zero_;
+  file_bands_.fs()<<std::right<<std::setw(15)<<metallic_;
+  file_bands_.fs()<<"\n";
+  file_bands_.close();
+  heading_printed_ = true;
+
+  /*
   int k = 0;
   for (const auto& kvec : blochbasis_.symm_path_k()) {
     construct_kspace_block(mf_params, kvec);
@@ -375,6 +405,7 @@ void Spinon::print_output(const MF_Params& mf_params)
   }
   file_bands_.fs()<<"\n"; 
   file_bands_.close();
+  */
 }
 
 void Spinon::construct_groundstate(const MF_Params& mf_params)

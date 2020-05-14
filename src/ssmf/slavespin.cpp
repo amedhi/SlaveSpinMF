@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-14 00:35:43
+* @Last Modified time: 2020-05-14 12:10:12
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -163,6 +163,7 @@ void SlaveSpin::set_info_string(void)
   info_strm << "# Number of sites = " << num_sites_ << "\n";
   if (cluster_type_==cluster_t::SITE) info_strm << "# Cluster size = 1";
   if (solve_single_site_) info_strm << " (solving ONLY one site)";
+  if (!modelparams_.have_spinflip_terms()) info_strm << "Spin flip terms = OFF\n";
   info_strm << "\n";
   info_strm << "# Max iteration = " << max_iter_ << "\n";
   info_strm << std::scientific<<std::uppercase<<std::setprecision(2);
@@ -210,6 +211,12 @@ void SlaveSpin::solve(MF_Params& mf_params)
   // set constrained density
   for (int i=0; i<num_sites_; ++i) {
     spinon_density_[i] = mf_params.site(i).spinon_density();
+    for (auto alpha : spin_orbitals_) {
+      if (std::abs(spinon_density_[i][alpha])<1.0E-3) 
+        spinon_density_[i][alpha] = 1.0E-3;
+      if (std::abs(1.0-spinon_density_[i][alpha])<1.0E-3)
+        spinon_density_[i][alpha] = 1.0-1.0E-3;
+    }
   }
   for (auto& cluster : clusters_) {
     cluster.set_spinon_density(spinon_density_);

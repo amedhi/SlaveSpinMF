@@ -14,7 +14,8 @@ prefix = "results"
 # Slave-spin parameters
 #---------------------------------------------
 theory = "Z2" # "Z2/U1"
-solve_single_site = "YES"
+solve_single_site = "NO"
+no_spinon_lambda = "YES"
 ssmf_conv_tol = 1.0E-8
 boson_conv_tol = 1.0E-8
 boson_max_iter = 200

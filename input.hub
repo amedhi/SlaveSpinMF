@@ -15,6 +15,7 @@ prefix = "results"
 #---------------------------------------------
 theory = "Z2" # "Z2/U1"
 solve_single_site = "NO" # "YES"
+no_spinon_lambda = "YES"
 ssmf_conv_tol = 1.0E-12
 boson_conv_tol = 1.0E-12
 boson_max_iter = 5000
@@ -33,11 +34,10 @@ bc2 = "periodic"
 #---------------------------------------------
 model = "HUBBARD"
 t = 1.0
-U = 2.0
+U = 0.0
 
 hole_doping = 0.0 # 0.18 
-ext_field = 0.0, 0.1, 1.0
-non_magnetic_sector = "YES"
+ext_field = 0.0
 
 #---------------------------------------------
 # List of observable to calculate:
