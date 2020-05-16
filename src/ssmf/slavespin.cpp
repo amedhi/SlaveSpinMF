@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-14 12:10:12
+* @Last Modified time: 2020-05-16 22:30:52
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -26,15 +26,27 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   spin_orbitals_ = mf_params.site(0).spin_orbitals(); // including 'UP' & 'DN' spins
   site_dim_ = spin_orbitals_.size(); 
   SO_coupling_ = model.is_spinorbit_coupled();
-  /*
-    'spin_orbitals' Note:  If NO SOC, the assumption is that
-    the first half of the spin-orbitals correspond to UP-spins 
-    and the second half correspond to DOWN-spins.
-    If SOC, then the spin-orbitals will follow the same ordering
-    as in the site basis in the given Hamiltonian.
-  */
-
   gauge_factors_set_ = false;
+
+  std::string theory_name = inputs.set_value("theory", "Z2");
+  boost::to_upper(theory_name);
+  if (theory_name=="Z2") {
+    theory_ = theory_t::Z2;
+  }
+  else if (theory_name=="U1") {
+    theory_ = theory_t::U1;
+    throw std::range_error("SlaveSpin: U1 theory not fully implemented yet"); 
+  }
+  else {
+    throw std::range_error("*error: SlaveSpin: invalid 'theory' name"); 
+  }
+  // whether solve only for single site
+  solve_single_site_ = inputs.set_value("solve_single_site", false);
+  conv_tol_ = inputs.set_value("boson_conv_tol", 1.0E-8);
+  max_iter_ = inputs.set_value("boson_max_iter", 500);
+  use_previous_iter_ = inputs.set_value("use_previous_iter",false);
+
+
   // storages
   // Lagrange multipliers
   lm_params_.resize(num_sites_);
@@ -113,30 +125,6 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   }
 
   // SlaveSpin clusters
-  std::string theory_name = inputs.set_value("theory", "Z2");
-  boost::to_upper(theory_name);
-  if (theory_name=="Z2") {
-    theory_ = theory_t::Z2;
-  }
-  else if (theory_name=="U1") {
-    theory_ = theory_t::U1;
-    throw std::range_error("SlaveSpin: U1 theory not fully implemented yet"); 
-  }
-  else {
-    throw std::range_error("*error: SlaveSpin: invalid 'theory' name"); 
-  }
-  // whether solve only for single site
-  solve_single_site_ = inputs.set_value("solve_single_site", false);
-
-  conv_tol_ = inputs.set_value("boson_conv_tol", 1.0E-8);
-  max_iter_ = inputs.set_value("boson_max_iter", 500);
-
-  // fixing gauge by 'hand'
-  int status;
-  fixed_gauge_ = inputs.set_value("fixed_gauge", 1.0, status);
-  if (status ==0 ) set_fixed_gauge_ = true;
-  else set_fixed_gauge_ = false;
-
   cluster_type_=cluster_t::SITE;
   make_clusters(mf_params);
   for (auto& cluster : clusters_) 
@@ -162,9 +150,10 @@ void SlaveSpin::set_info_string(void)
   if (theory_==theory_t::U1) info_strm << "# U1 Theory\n";
   info_strm << "# Number of sites = " << num_sites_ << "\n";
   if (cluster_type_==cluster_t::SITE) info_strm << "# Cluster size = 1";
-  if (solve_single_site_) info_strm << " (solving ONLY one site)";
-  if (!modelparams_.have_spinflip_terms()) info_strm << "Spin flip terms = OFF\n";
-  info_strm << "\n";
+  if (solve_single_site_) info_strm << " (solving ONLY one site)\n";
+  else info_strm << "\n";
+  if (!modelparams_.have_spinflip_terms()) 
+    info_strm << "# Spin flip terms = OFF\n";
   info_strm << "# Max iteration = " << max_iter_ << "\n";
   info_strm << std::scientific<<std::uppercase<<std::setprecision(2);
   info_strm << "# Conv tolerance = "<<conv_tol_<< "\n";
@@ -173,7 +162,10 @@ void SlaveSpin::set_info_string(void)
 
 void SlaveSpin::update(const model::Hamiltonian& model)
 {
+  // reset order parameter
+  for (auto& elem : site_order_params_) elem = cmplArray1D::Ones(site_dim_);
   gauge_factors_set_ = false;
+
   switch (modelparams_.id()) {
     case HUBBARD:
       modelparams_.update_U(model.get_parameter_value("U"));
@@ -286,7 +278,14 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
 {
   // trial 'qp_weights'
   cmpl_siteparms_t trial_order_params(num_sites_);
-  for (auto& elem : trial_order_params) elem = cmplArray1D::Constant(site_dim_,1.0);
+  if (use_previous_iter_) {
+    for (int i=0; i<num_sites_; ++i) {
+      trial_order_params[i] = site_order_params_[i];
+    }
+  }
+  else {
+    for (auto& elem : trial_order_params) elem = cmplArray1D::Constant(site_dim_,1.0);
+  }
   cmplArray1D order_params_diff(num_sites_*site_dim_);
 
   bool converged = false;

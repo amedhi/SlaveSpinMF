@@ -289,7 +289,7 @@ private:
   std::vector<Bond> impurity_bonds_;
 
   // helper functions
-  int define_lattice(void); 
+  int define_lattice(const input::Parameters& parms); 
   int finalize_lattice(void); 
   int symmetrize_lattice(void);
   //int construct_graph(void); 

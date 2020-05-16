@@ -44,6 +44,7 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
   int nowarn;
   no_spinon_lambda_ = inputs.set_value("no_spinon_lambda",true,nowarn);
   assume_fixed_groundstate_ = inputs.set_value("assume_fixed_groundstate", false, nowarn);
+  smearing_ = inputs.set_value("smearing",1.0E-3,nowarn);
   have_TP_symmetry_ = model.have_TP_symmetry();
   SO_coupling_ = model.is_spinorbit_coupled();
   num_sites_ = graph.num_sites();
@@ -96,6 +97,7 @@ void Spinon::set_info_string(void)
   else info_strm << "# SO coupling = NO\n";
   if (no_spinon_lambda_) info_strm << "# Lagrange coupling = OFF\n";
   else info_strm << "# Lagrange coupling = ON\n";
+  info_strm << "# Smearing = "<<smearing_<<"\n";
   info_strm << "# Number of states = "<<num_total_states_<<"\n";
   info_strm << "# Number of particles = "<<num_spins_;
   info_strm << " (per site = "<<double(num_spins_)/num_sites_<<")\n";
@@ -375,6 +377,8 @@ void Spinon::print_output(const MF_Params& mf_params)
     file_bands_.fs()<<std::left<<std::setw(15)<< "W";
     file_bands_.fs()<<std::left<<std::setw(15)<< "EF0";
     file_bands_.fs()<<std::left<<std::setw(15)<< "EF";
+    file_bands_.fs()<<std::left<<std::setw(15)<< "EG0";
+    file_bands_.fs()<<std::left<<std::setw(15)<< "EG";
     file_bands_.fs()<<std::left<<std::setw(15)<< "Metallic0";
     file_bands_.fs()<<std::left<<std::setw(15)<< "Metallic";
     file_bands_.fs()<<"\n";
@@ -388,6 +392,8 @@ void Spinon::print_output(const MF_Params& mf_params)
   file_bands_.fs()<<std::right<<std::setw(15)<<bandwidth_;
   file_bands_.fs()<<std::right<<std::setw(15)<<fermi_energy_zero_;
   file_bands_.fs()<<std::right<<std::setw(15)<<fermi_energy_;
+  file_bands_.fs()<<std::right<<std::setw(15)<<energy_gap_zero_;
+  file_bands_.fs()<<std::right<<std::setw(15)<<energy_gap_;
   file_bands_.fs()<<std::right<<std::setw(15)<<metallic_zero_;
   file_bands_.fs()<<std::right<<std::setw(15)<<metallic_;
   file_bands_.fs()<<"\n";
@@ -568,22 +574,23 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
 
     // Smearing Parameters
     bandwidth_ = ek_list_[idx_.back()]-ek_list_[idx_.front()];
-    smear_width_ = 0.4*bandwidth_/num_unitcells_;
+    //smear_width_ = 1.0*bandwidth_/num_unitcells_;
+    smear_width_ = smearing_*bandwidth_;
     smear_func_order_ = 4;
-    //std::cout << "BW = " << bandwidth << "\n";
+    //std::cout << "BW = " << bandwidth_ << "\n";
     //std::cout << "W = " << smear_width_ << "\n";
     //getchar();
 
     // for root finding
     double factor = 2.0;
-    const boost::uintmax_t maxit = 200; 
+    const boost::uintmax_t maxit = 1000; 
     boost::uintmax_t it = maxit; 
     bool is_rising = true;
     boost::math::tools::eps_tolerance<double> tol(15);
 
     // Fermi Energy 
     int np = 0;
-    double gap_tol = bandwidth_ * 1.0E-8;
+    double gap_tol = 0.5*smearing_*bandwidth_;
     fermi_energy_ = ek_list_[idx_[0]];
     for (int i=0; i<ek_list_.size(); ++i) {
       int k = qn_list_[idx_[i]].first;
@@ -602,6 +609,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         if (std::abs(ek_list_[idx_[i+1]]-ek) > gap_tol) {
           //std::cout <<  "ek = " << ek << "\n";
           //std::cout << "np, num_fill_particles_ = " << np << "  " << num_fill_particles_ << "\n";
+          energy_gap_ = ek_list_[idx_[i+1]]-ek;
           metallic_ = false;
           fermi_energy_ = 0.5*(ek+ek_list_[idx_[i+1]]);
           break;
@@ -609,6 +617,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         else {
           metallic_ = true;
           fermi_energy_ = ek;
+          energy_gap_ = 0.0;
           //std::cout << qn_list_[idx_[i+1]].second << "\n";
           //std::cout << std::abs(ek_list_[idx_[i+1]]-ek); getchar();
           // find fermi energy by solving with smeared levels
@@ -618,6 +627,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
       else if (np > num_fill_particles_) {
         metallic_ = true;
         fermi_energy_ = ek;
+        energy_gap_ = 0.0;
         break;
       }
     }
@@ -639,9 +649,11 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
       bandwidth_zero_ = bandwidth_;
       fermi_energy_zero_ = fermi_energy_;
       metallic_zero_ = metallic_;
+      energy_gap_zero_ = energy_gap_;
     }
     iteration_zero_ = false;
-    std::cout << "metallic, e_F = "<<metallic_<<"  "<<fermi_energy_<< "\n";
+    std::cout << "metallic, e_F, bandgap = "<<metallic_<<"  "<<fermi_energy_
+      <<"  "<<energy_gap_<<"\n";
     std::cout << "Bandwidth = " << bandwidth_ << "\n";
 
     // check
@@ -759,7 +771,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     getchar();
 
 
-    double degeneracy_tol = 1.0E-12;
+    double degeneracy_tol = 1.0E-15;
     top_filled_level = num_fill_particles-1;
     fermi_energy_ = ek[idx[top_filled_level]];
     int num_valence_states = 1;

@@ -119,9 +119,12 @@ private:
   int smear_func_order_{4};
   double bandwidth_zero_;
   double fermi_energy_zero_;
+  double energy_gap_zero_;
   double bandwidth_;
   double fermi_energy_;
+  double energy_gap_;
   double smear_width_;
+  double smearing_{1.0E-3};
   double total_energy_;
   bool degeneracy_warning_{false};
   bool assume_fixed_groundstate_{false};

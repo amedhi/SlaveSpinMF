@@ -78,7 +78,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="U", defval=0.0, inputs);
       add_parameter(name="ext_field", defval=0.0, inputs, nowarn);
 
-      if (true) {
+      if (inputs.set_value("afm_field",false,nowarn)) {
         // external site field
         cc.create(2);
         expr_vec.resize(2);
@@ -221,7 +221,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="ext_field", defval=0.0, inputs, nowarn);
 
       // external site field
-      if (true) {
+      if (inputs.set_value("afm_field",false,nowarn)) {
         cc.create(2);
         expr_vec.resize(6);
         for (int i=0; i<6; i+=2) expr_vec[i] = "-ext_field";

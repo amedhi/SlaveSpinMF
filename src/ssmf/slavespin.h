@@ -208,6 +208,7 @@ private:
   bool gauge_factors_solved_{false};
   bool set_fixed_gauge_{true};
   bool SO_coupling_{false};
+  bool use_previous_iter_{false};
   double fixed_gauge_{1.0};
   std::string info_str_;
   //using LatticeGraph = lattice::LatticeGraph;

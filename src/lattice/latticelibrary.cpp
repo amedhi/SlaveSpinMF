@@ -14,12 +14,12 @@
 namespace lattice {
 
 // define the lattice
-int Lattice::define_lattice(void) 
+int Lattice::define_lattice(const input::Parameters& parms) 
 {
   using pos = Eigen::Vector3i;
   using vec = Eigen::Vector3d;
   unsigned type, src, tgt;
-  int orbitals;
+  int orbitals, nowarn;
   vec a1, a2, a3, coord;
   pos src_offset, tgt_offset, cell;
 
@@ -46,7 +46,7 @@ int Lattice::define_lattice(void)
     lid = lattice_id::CHAIN;
     extent[dim2] = Extent{1, boundary_type::open, boundary_type::open};
     extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
-    if (true) {
+    if (parms.set_value("afm_field",false,nowarn)) {
       // basis vectors
       set_basis_vectors(a1=vec(2,0,0), a2=vec(0,0,0), a3=vec(0,0,0));
       // add sites
@@ -80,7 +80,7 @@ int Lattice::define_lattice(void)
     // type
     lid = lattice_id::SQUARE_IRIDATE;
     extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
-    if (true) {
+    if (parms.set_value("afm_field",false,nowarn)) {
       // basis vectors
       double a = std::sqrt(2.0);
       set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,0));
@@ -371,7 +371,7 @@ int Lattice::construct(const input::Parameters& parms)
   //impurity_sites_.clear();
   //impurity_bonds_.clear();
 
-  define_lattice();
+  define_lattice(parms);
   finalize_lattice();
   //construct_graph();
 

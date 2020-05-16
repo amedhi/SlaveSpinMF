@@ -190,10 +190,10 @@ void SSMF::print_output(void)
         file->fs()<<std::left<<std::setw(15)<< pname;
       }
       for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
-        file->fs()<<std::left<<"  Z["<<m<<std::setw(10)<<"]";
+        file->fs()<<std::left<<std::setw(15)<<"Z"+std::to_string(m);
       }
       for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
-        file->fs()<<std::left<<"lambda["<<m<<std::setw(7)<<"]";
+        file->fs()<<std::left<<std::setw(15)<<"h"+std::to_string(m);
       }
       file->fs() << "\n";
       file->fs()<<"#"<< std::string(72, '-') << "\n";
