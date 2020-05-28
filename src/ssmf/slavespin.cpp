@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-16 22:30:52
+* @Last Modified time: 2020-05-28 23:16:18
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -163,7 +163,12 @@ void SlaveSpin::set_info_string(void)
 void SlaveSpin::update(const model::Hamiltonian& model)
 {
   // reset order parameter
-  for (auto& elem : site_order_params_) elem = cmplArray1D::Ones(site_dim_);
+  for (auto& cluster : clusters_) {
+    cluster.reset_mfp();
+  }
+  for (auto& elem : site_order_params_) {
+    elem = cmplArray1D::Ones(site_dim_);
+  }
   gauge_factors_set_ = false;
 
   switch (modelparams_.id()) {
@@ -326,13 +331,22 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
       }
     }
     //*/
-     
+    double zmin = 1.0;
+    for (int site=0; site<num_sites_; ++site) {
+      double p = site_order_params_[site].abs2().minCoeff();
+      zmin = std::min(zmin,p);
+    }
+    if (zmin < 1.0E-2) {
+      converged = true;
+      break;
+    }
+
     /*
     for (int site=0; site<num_sites_; ++site) {
       std::cout << "<Zplus>["<<site<<"] = " << site_order_params_[site].transpose() << "\n";
-      //std::cout<<"lambda["<<site<<"] = "<< lm_params_[site].transpose()<<"\n";
+      std::cout<<"lambda["<<site<<"] = "<< lm_params_[site].transpose()<<"\n";
     }
-    getchar();
+    //getchar();
     */
 
     // check convergence
@@ -1335,20 +1349,77 @@ void Cluster::set_soc_couplings(const MF_Params& mfp)
   //std::cout << soc_couplings_[site_] << "\n"; getchar();
 }
 
+int gsl_lambda_equation(const gsl_vector* x, void* parms, gsl_vector* f)
+{
+  Cluster * pThis = ((class Cluster *) parms);
+  int ndim = pThis->total_spinorbitals_;
+  RealVector lambda(ndim);
+  RealVector f_lambda(ndim);
+  RealMatrix Jmat;
+  for (int i=0; i<ndim; ++i) {
+    lambda(i) = gsl_vector_get(x,i);
+  }
+  int status = pThis->lambda_equation(lambda, f_lambda, Jmat, false);
+  for (int i=0; i<ndim; ++i) {
+    gsl_vector_set(f,i,f_lambda[i]);
+  }
+  if (status ==0 ) return GSL_SUCCESS;
+  else return GSL_FAILURE;
+}
+
 // update for new 'lm parameters'
 void Cluster::solve_lm_params(real_siteparms_t& lm_params)
 {
   RealVector lambda(total_spinorbitals_);
-  for (int i=0; i<total_spinorbitals_; ++i) lambda[i] = 0.0;
+  //for (int i=0; i<total_spinorbitals_; ++i) lambda[i] = 0.0;
+  int i=0;
+  for (auto& alpha: spin_orbitals_) {
+    lambda[i++] = lm_params[site_][alpha];
+  }
   root_solver_.solve([this](const RealVector& x, RealVector& fx, 
     RealMatrix& J, const bool& need_derivative) 
     {return lambda_equation(x,fx,J,need_derivative);}, lambda);
   // read the new LM-parameters
+  int j=0;
+  for (auto& alpha: spin_orbitals_) {
+    lm_params[site_][alpha] = lambda[j++];
+  }
+
+  /*
+  std::vector<double> lambda(total_spinorbitals_);
+  for (int i=0; i<total_spinorbitals_; ++i) lambda[i] = 0.0;
+  double ftol = 1.0E-10;
+  const gsl_multiroot_fsolver_type *T;
+  gsl_multiroot_fsolver *s;
+  const size_t ndim = total_spinorbitals_;
+  gsl_multiroot_function f = {&gsl_lambda_equation, ndim, this};
+  gsl_vector *x = gsl_vector_alloc (ndim);
+  for (int i=0; i<ndim; ++i) gsl_vector_set(x, i, lambda[i]);
+  T = gsl_multiroot_fsolver_hybrids;
+  s = gsl_multiroot_fsolver_alloc(T, ndim);
+  gsl_multiroot_fsolver_set (s, &f, x);
+  int status = GSL_CONTINUE;
+  int iter = 0;
+  while (status==GSL_CONTINUE && iter < 500) {
+    status = gsl_multiroot_fsolver_iterate(s);
+    if (status) break; 
+    status = gsl_multiroot_test_residual(s->f, ftol);
+    ++iter;
+  }
+  if (status != GSL_SUCCESS) {
+    std::cout << ">> Cluster::solve_lm_params: '" << gsl_strerror(status)<< "'\n";
+  }
+  for (int i=0; i<ndim; ++i) {
+    lambda[i] = gsl_vector_get(s->x,i);
+  } 
+  gsl_multiroot_fsolver_free (s);
+  gsl_vector_free (x);
   int i=0;
   for (auto& alpha: spin_orbitals_) {
     lm_params[site_][alpha] = lambda[i];
     ++i; 
   }
+  */
   //std::cout<<"lambda["<<site_<<"] = "<< lm_params[site_].transpose()<<"\n";
   //getchar();
 }
@@ -1365,6 +1436,8 @@ int Cluster::lambda_equation(const RealVector& lambda, RealVector& func,
   }
   update_hamiltonian(lm_params_);
   solve_hamiltonian();
+  //std::cout<<"E = "<<std::scientific<<eigen_solver_.eigenvalues().transpose() << "\n";
+  //std::cout<<"v = "<<std::scientific<<groundstate_.transpose() << "\n";
   // average 'Sz'
   RealVector Sz_avg = RealVector::Zero(spin_orbitals_.size());
   SlaveSpinBasis::idx_t i, j;
@@ -1377,10 +1450,12 @@ int Cluster::lambda_equation(const RealVector& lambda, RealVector& func,
   }
   //std::cout << "<Sz> = "<<Sz_avg.transpose() << "\n"; //getchar();
   // function values
+  //std::cout<<"func = ";
   for (auto& alpha : spin_orbitals_) {
     func(alpha) = (Sz_avg(alpha)+0.5) - spinon_density_[site_][alpha];
-    //std::cout << "func = " << func(alpha) << "\n";
+    //std::cout<<func(alpha)<<"  ";
   }
+  //std::cout << "\n";
   // assume spin-independent
   /*for (int alpha=0; alpha<spin_orbitals_.size()-1; alpha+=2) {
     func(alpha+1) = func(alpha);
@@ -1418,7 +1493,10 @@ int Cluster::lambda_equation(const RealVector& lambda, RealVector& func,
     for (int j=1; j<basis_dim_; ++j) {
       auto xc = eigen_solver_.eigenvectors().col(j).transpose().conjugate() 
               * xvec;
-      Cvec(j) = xc(0,0)/(eigen_solver_.eigenvalues()(0)-eigen_solver_.eigenvalues()(j));
+      //Cvec(j) = xc(0,0)/(eigen_solver_.eigenvalues()(0)-eigen_solver_.eigenvalues()(j));
+      double dE = eigen_solver_.eigenvalues()(0)-eigen_solver_.eigenvalues()(j);
+      Cvec(j) = xc(0,0)/dE;
+      //std::cout << "diff=" << eigen_solver_.eigenvalues()(0)-eigen_solver_.eigenvalues()(j) << "\n";
     }
     Cvec(0) = 0.0;
     cmplVector dX = cmplVector::Zero(basis_dim_);

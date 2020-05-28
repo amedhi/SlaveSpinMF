@@ -126,6 +126,13 @@ public:
     root_solver_.init(total_spinorbitals_);
   }
   ~Cluster() {}
+  void reset_mfp(void) {
+    for (auto& elem : lm_params_) elem.setZero();
+    for (auto& elem : gauge_factors_) elem.setConstant(1.0);
+    for (auto& elem : site_couplings_) {
+      elem = cmplArray1D::Ones(spin_orbitals_.size());
+    }
+  }
   void init_hamiltonian(const ModelParams& p, const real_siteparms_t& gauge_factors, 
     const real_siteparms_t& lagrange_fields, const cmpl_siteparms_t& renorm_site_fields);
   void set_spinon_density(const real_siteparms_t& spinon_density);
@@ -148,6 +155,7 @@ public:
   void get_avg_Ominus(const real_siteparms_t& gauge_factors, cmpl_siteparms_t& order_params) const;
   void get_avg_OplusOminus(const real_siteparms_t& gauge_factors, cmplArray2D& Opm_avg) const;
   void get_avg_ZplusZminus(const real_siteparms_t& gauge_factors, cmplArray2D& Zpm_avg) const;
+  friend int gsl_lambda_equation(const gsl_vector* x, void* parms, gsl_vector* f);
 private:
   cluster_t type_{cluster_t::SITE};
   theory_t theory_{theory_t::Z2};

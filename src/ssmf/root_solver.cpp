@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@macbook
 * @Date:   2018-09-18 17:33:36
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-06 20:47:16
+* @Last Modified time: 2020-05-28 13:52:53
 *----------------------------------------------------------------------------*/
 #include <cassert>
 #include "root_solver.h"
@@ -24,6 +24,13 @@ void gsl_solver::allocate(const std::size_t& n)
   solver_.reset(gsl_multiroot_fsolver_alloc(solver_type_.get(), ndim_));
 }
 
+void gsl_solver::free(void)
+{
+  gsl_vector_free (xvec_.get());
+  gsl_multiroot_fsolver_free (solver_.get());
+  //xvec_ = nullptr;
+  //solver_ = {nullptr};
+}
 /*void gsl_solver::set_problem(int (*func) (const gsl_vector * x, void * params, gsl_vector * f),
     const std::size_t& n, void * params)
 {

@@ -22,8 +22,9 @@ class gsl_solver
 {
 public:
   gsl_solver();
-  ~gsl_solver() {}
+  //~gsl_solver() {}
   void allocate(const std::size_t& n);
+  void free(void);
   //void set_problem(int (*f) (const gsl_vector * x, void * params, gsl_vector * f),
   //  const std::size_t& n, void * params);
   //void find_root(const std::vector<double>& x_init);
@@ -92,6 +93,7 @@ int RootSolver::solve(F func, RealVector& x0)
   // stpmax for line searches
   stpmax_ = STPMX_*std::max(x_.norm(),double(ndim_));
   // start iteration
+  double dxmax, fnorm;
   for (int iter=0; iter<MAXITER_; ++iter) {
     func(x_,fx_,Jmat_,true);
     // calculate Grad(fx) for the line search
@@ -107,10 +109,19 @@ int RootSolver::solve(F func, RealVector& x0)
     // do line search
     int info = line_search(func,x_old_,fnorm_old_,fgrad_,pvec_,stpmax_,x_,fx_,fnorm_);
     if (info == 2) return info;
+
+    /*
+    std::cout << "iter = "<<iter<<"\n";
+    std::cout << "x_old = "<< x_old_.transpose() << "\n";
+    std::cout << "x_new = "<< x_.transpose() << "\n";
+    std::cout << "fx = "<<fx_.transpose() << "\n";
+    std::cout << "info = "<<info<<"\n\n";
+    */
     // line search returns 'x_' , 'fx_' & 'fnorm_'
     // std::cout << "fnorm = " << fnorm_ << "\n";
     // check for convergence on function values
-    if (fx_.array().abs().maxCoeff() < ftol_) {
+    fnorm = fx_.array().abs().maxCoeff();
+    if (fnorm < ftol_) {
       x0 = x_;
       return 0;
     } 
@@ -126,7 +137,7 @@ int RootSolver::solve(F func, RealVector& x0)
       return test < min_tol_ ? 1 : 0;
     }
     // check for convergence on del_x
-    double dxmax = 0.0;
+    dxmax = 0.0;
     for (int i=0; i<ndim_; ++i) {
       double dx = std::abs(x_(i)-x_old_(i))/std::max(std::abs(x_(i)),1.0);
       if (dxmax < dx) dxmax = dx;
@@ -136,6 +147,8 @@ int RootSolver::solve(F func, RealVector& x0)
       return 0;
     }
   }
+  //std::cout << "dxmax = " << dxmax << "\n";
+  std::cout << "fnorm = " << fnorm << "\n";
   std::cout << "** RootSolver::solve: iteration exceeded\n";
   //getchar();
   return 1;
@@ -159,6 +172,7 @@ int RootSolver::line_search(F func, const RealVector& x_old, const double& fnorm
 
   // slope
   slope = fgrad.dot(spvec);
+  //std::cout << "slope = " << slope << "\n";
   if (slope >= 0.0) {
     std::cout << "** RootSolver::line_search: Roundoff problem\n";
     return 2;
@@ -209,6 +223,7 @@ int RootSolver::line_search(F func, const RealVector& x_old, const double& fnorm
           if (disc < 0.0) lambda_tmp = 0.5*lambda;
           else if (b <= 0.0) lambda_tmp = (-b+std::sqrt(disc))/(3.0*a);
           else lambda_tmp = -slope/(b+std::sqrt(disc));
+          //std::cout << "lambda_tmp = " << lambda_tmp << "\n";
         }
         // lambda <= 0.5*lambda1
         if (lambda_tmp > 0.5*lambda) lambda_tmp = 0.5*lambda;
