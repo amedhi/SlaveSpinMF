@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-28 23:16:18
+* @Last Modified time: 2020-06-11 19:34:43
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -102,7 +102,9 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
       modelparams_.set_id(HUBBARD_NBAND);
       modelparams_.update_U(model.get_parameter_value("U"));
       modelparams_.update_J(model.get_parameter_value("J"));
-      modelparams_.set_spinflip_terms(inputs.set_value("spinflip_terms",true));
+      if (inputs.set_value("J_is_relative", false)) {
+        modelparams_.set_J_relative(true);
+      }
       break;
     case model::model_id::BHZ:
       modelparams_.set_id(BHZ);

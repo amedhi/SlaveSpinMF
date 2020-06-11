@@ -54,6 +54,7 @@ private:
   file::DataFile file_sp_bond_;
   file::DataFile file_energy_;
   bool heading_printed_{false};
+  bool replace_mode_{true};
 
   // gsl solver
   //double lm_ftol_{1.0E-8};

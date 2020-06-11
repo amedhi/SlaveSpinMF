@@ -31,7 +31,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
   boost::to_upper(model_name);
 
   int nowarn;
-  int num_bands;
+  int num_bands, num_orb;
   strMatrix expr_mat;
   strMatrix::row_t expr_vec;
   //smat.getfromtxt("./matrix.txt");
@@ -183,26 +183,74 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
   else if (model_name == "HUBBARD_NBAND") {
     mid = model_id::HUBBARD_NBAND;
-    int num_bands;
     if (lattice.id()==lattice::lattice_id::SQUARE_NBAND) {
+      set_spinorbit_coupling(false);
+      set_TP_symmetry(true);
       // model parameters
+      num_bands = inputs.set_value("num_bands", 1);
+      num_orb = 2*num_bands;
+      add_parameter("num_bands", num_bands);
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
       add_parameter(name="J", defval=0.0, inputs);
-      //add_parameter(name="lambda", defval=0.0, inputs);
-      // bond operator terms
-      num_bands = inputs.set_value("num_bands", 1);
+      add_parameter(name="bm", defval=0.0, inputs, nowarn);
+      add_parameter(name="bl", defval=0.0, inputs, nowarn);
+      bool afm_field = inputs.set_value("afm_field",true,nowarn);
+
+      // bond operators (Diagonal in either product basis or SOC basis)
       cc.create(1);
-      expr_mat.resize(num_bands,num_bands);
-      for (int i=0; i<num_bands; ++i) {
-        for (int j=0; j<num_bands; ++j) {
+      expr_mat.resize(num_orb,num_orb);
+      for (int i=0; i<num_orb; ++i) {
+        for (int j=0; j<num_orb; ++j) {
           if (i==j) expr_mat(i,j) = "-t";
           else expr_mat(i,j) = "0";
         }
       }
       cc.add_type(0, expr_mat);
-      add_bondterm(name="hopping", cc, op::spin_hop());
-      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+      add_bondterm(name="hopping", cc, op::upspin_hop());
+
+      // external site field
+      if (afm_field) {
+        cc.create(2);
+        expr_vec.resize(num_orb);
+        for (int i=0; i<num_orb; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_orb; i+=2) expr_vec[i] = "bm";
+        cc.add_type(0, expr_vec);
+        for (int i=0; i<num_orb; i+=2) expr_vec[i] = "bm";
+        for (int i=1; i<num_orb; i+=2) expr_vec[i] = "-bm";
+        cc.add_type(1, expr_vec);
+        add_siteterm(name="ExtField", cc, op::ni_up());
+      }
+
+      else { // FM field + Orb field
+        cc.create(2);
+        expr_vec.resize(num_orb);
+        for (int i=0; i<num_orb; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_orb; i+=2) expr_vec[i] = "bm";
+        if (num_bands==2) {
+          for (int i=0; i<2; ++i) expr_vec[i] += "-bl";
+          for (int i=2; i<4; ++i) expr_vec[i] += "+bl";
+        }
+        else if (num_bands==3) {
+          for (int i=0; i<2; ++i) expr_vec[i] += "-2*bl";
+          for (int i=2; i<6; ++i) expr_vec[i] += "+bl";
+        }
+        cc.add_type(0, expr_vec);
+
+        for (int i=0; i<num_orb; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_orb; i+=2) expr_vec[i] = "bm";
+        if (num_bands==2) {
+          for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
+          for (int i=2; i<4; ++i) expr_vec[i] += "-bl";
+        }
+        else if (num_bands==3) {
+          for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
+          for (int i=2; i<4; ++i) expr_vec[i] += "-2*bl";
+          for (int i=4; i<6; ++i) expr_vec[i] += "+bl";
+        }
+        cc.add_type(1, expr_vec);
+        add_siteterm(name="ExtField", cc, op::ni_up());
+      }
     }
     else {
       throw std::range_error("*error: modellibrary: model not defined for the lattice"); 
@@ -218,72 +266,61 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="lambda", defval=0.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
       add_parameter(name="J", defval=0.0, inputs);
-      add_parameter(name="ext_field", defval=0.0, inputs, nowarn);
+      add_parameter(name="bm", defval=0.0, inputs, nowarn);
+      add_parameter(name="bl", defval=0.0, inputs, nowarn);
+      bool afm_field = inputs.set_value("afm_field",true,nowarn);
+
+      // bond operators (Diagonal in either product basis or SOC basis)
+      num_bands = 6;
+      cc.create(1);
+      expr_mat.resize(num_bands,num_bands);
+      for (int i=0; i<num_bands; ++i) {
+        for (int j=0; j<num_bands; ++j) {
+          if (i==j) expr_mat(i,j) = "-t";
+          else expr_mat(i,j) = "0";
+        }
+      }
+      cc.add_type(0, expr_mat);
+      add_bondterm(name="hopping", cc, op::upspin_hop());
+
+      // SOC term in product basis (not diagonal)
+      path = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/product_basis/";
+      cc.create(2);
+      expr_mat.resize(num_bands,num_bands);
+      expr_mat.getfromtxt(path+"soc_matrix.txt");
+      cc.add_type(0,expr_mat);
+      cc.add_type(1,expr_mat);
+      add_siteterm(name="spin_flip", cc, op::spin_flip());
 
       // external site field
-      if (inputs.set_value("afm_field",false,nowarn)) {
+      if (afm_field) {
         cc.create(2);
-        expr_vec.resize(6);
-        for (int i=0; i<6; i+=2) expr_vec[i] = "-ext_field";
-        for (int i=1; i<6; i+=2) expr_vec[i] = "ext_field";
+        expr_vec.resize(num_bands);
+        for (int i=0; i<num_bands; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_bands; i+=2) expr_vec[i] = "bm";
         cc.add_type(0, expr_vec);
-        for (int i=0; i<6; i+=2) expr_vec[i] = "ext_field";
-        for (int i=1; i<6; i+=2) expr_vec[i] = "-ext_field";
+        for (int i=0; i<num_bands; i+=2) expr_vec[i] = "bm";
+        for (int i=1; i<num_bands; i+=2) expr_vec[i] = "-bm";
         cc.add_type(1, expr_vec);
         add_siteterm(name="ExtField", cc, op::ni_up());
-
-        // SOC term in product basis (not diagonal)
-        path = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/product_basis/";
-        cc.create(2);
-        expr_mat.resize(6,6);
-        expr_mat.getfromtxt(path+"soc_matrix.txt");
-        cc.add_type(0,expr_mat);
-        cc.add_type(1,expr_mat);
-        add_siteterm(name="spin_flip", cc, op::spin_flip());
-
-        // bond operators (Diagonal in either product basis or SOC basis)
-        num_bands = 6;
-        cc.create(1);
-        expr_mat.resize(num_bands,num_bands);
-        for (int i=0; i<num_bands; ++i) {
-          for (int j=0; j<num_bands; ++j) {
-            if (i==j) expr_mat(i,j) = "-t";
-            else expr_mat(i,j) = "0";
-          }
-        }
-        cc.add_type(0, expr_mat);
-        add_bondterm(name="hopping", cc, op::upspin_hop());
       }
 
-      else {
-        expr_vec.resize(6);
-        for (int i=0; i<6; i+=2) expr_vec[i] = "-ext_field";
-        for (int i=1; i<6; i+=2) expr_vec[i] = "ext_field";
-        cc.create(1);
-        cc.add_type(0, expr_vec);
-        add_siteterm(name="ExtField", cc, op::ni_up());
-
-        // SOC term in product basis (not diagonal)
-        path = "/Users/amedhi/Projects/PhDs/ArunMaurya/PyrochloreIrdidate/ModelParameters/product_basis/";
-        cc.create(1);
-        expr_mat.resize(6,6);
-        expr_mat.getfromtxt(path+"soc_matrix.txt");
-        cc.add_type(0,expr_mat);
-        add_siteterm(name="spin_flip", cc, op::spin_flip());
-
-        // bond operators (Diagonal in either product basis or SOC basis)
-        num_bands = 6;
+      else { // FM field + Orb field
         cc.create(2);
-        expr_mat.resize(num_bands,num_bands);
-        for (int i=0; i<num_bands; ++i) {
-          for (int j=0; j<num_bands; ++j) {
-            if (i==j) expr_mat(i,j) = "-t";
-            else expr_mat(i,j) = "0";
-          }
-        }
-        cc.add_type(0, expr_mat);
-        cc.add_type(1, expr_mat);
-        add_bondterm(name="hopping", cc, op::upspin_hop());
+        expr_vec.resize(num_bands);
+        for (int i=0; i<num_bands; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_bands; i+=2) expr_vec[i] = "bm";
+        for (int i=0; i<2; ++i) expr_vec[i] += "-2*bl";
+        for (int i=2; i<6; ++i) expr_vec[i] += "+bl";
+        cc.add_type(0, expr_vec);
+
+        for (int i=0; i<num_bands; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_bands; i+=2) expr_vec[i] = "bm";
+        for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
+        for (int i=2; i<4; ++i) expr_vec[i] += "-2*bl";
+        for (int i=4; i<6; ++i) expr_vec[i] += "+bl";
+        cc.add_type(1, expr_vec);
+        add_siteterm(name="ExtField", cc, op::ni_up());
       }
     }
     else {

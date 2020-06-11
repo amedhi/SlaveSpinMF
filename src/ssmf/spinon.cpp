@@ -31,9 +31,13 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
     modelp_names_.push_back("lambda");
     modelp_vals_.push_back(get_parameter_value("lambda"));
   }
-  if (have_parameter("ext_field")) {
-    modelp_names_.push_back("ext_field");
-    modelp_vals_.push_back(get_parameter_value("ext_field"));
+  if (have_parameter("bm")) {
+    modelp_names_.push_back("bm");
+    modelp_vals_.push_back(get_parameter_value("bm"));
+  }
+  if (have_parameter("bl")) {
+    modelp_names_.push_back("bl");
+    modelp_vals_.push_back(get_parameter_value("bl"));
   }
 
   // add mean-field terms to the spinon model
@@ -102,6 +106,9 @@ void Spinon::set_info_string(void)
   info_strm << "# Number of particles = "<<num_spins_;
   info_strm << " (per site = "<<double(num_spins_)/num_sites_<<")\n";
   info_strm << "# Hole doping = "<<hole_doping_<<"\n";
+  if (have_parameter("num_bands")) {
+    info_strm << "# HUBBARD_NBAND = "<<int(get_parameter_value("num_bands"))<<"\n";
+  }
   info_str_ = model::Hamiltonian::info_str()+info_strm.str();
 }
 

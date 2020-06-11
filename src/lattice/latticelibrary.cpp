@@ -94,25 +94,46 @@ int Lattice::define_lattice(const input::Parameters& parms)
       add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
     }
     else {
+      /*
       // basis vectors
       set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
       // add sites
       add_basis_site(orbitals=6, coord=vec(0,0,0)); // spin+orbitals
       add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
       add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+      */
+      // basis vectors
+      double a = std::sqrt(2.0);
+      set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,0));
+      // add sites
+      add_basis_site(type=0, orbitals=6, coord=vec(0,0,0)); 
+      add_basis_site(type=1, orbitals=6, coord=vec(0.5*a,0.5*a,0)); 
+      // add bonds
+      add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,0,0));
+      add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+      add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+      add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
     }
   }
 
   else if (lname == "SQUARE_NBAND") {
+    int num_bands = parms.set_value("num_bands", 1);
+    int num_orb = 2*num_bands;
     // type
     lid = lattice_id::SQUARE_NBAND;
     extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
     // basis vectors
-    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+    double a = std::sqrt(2.0);
+    set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,0));
+
     // add sites
-    add_basis_site(orbitals=2, coord=vec(0,0,0));
-    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
-    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_basis_site(type=0, orbitals=num_orb, coord=vec(0,0,0)); 
+    add_basis_site(type=1, orbitals=num_orb, coord=vec(0.5*a,0.5*a,0)); 
+    // add bonds
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
   }
 
   else if (lname == "SIMPLE_CUBIC") {

@@ -34,23 +34,30 @@ SSMF::SSMF(const input::Parameters& inputs)
   if (job == "DIAGONALIZATION") diag_only_ = true;
   diag_only_ = false;
   conv_tol_ = inputs.set_value("ssmf_conv_tol", 1.0E-6);
+  std::string mode = inputs.set_value("mode", "NEW");
+  boost::to_upper(mode);
+  if (mode=="APPEND") replace_mode_ = false;
+  else replace_mode_ = true;
 
   std::string prefix = inputs.set_value("prefix", "results");
+  boost::algorithm::to_lower(prefix);
   prefix = "./"+prefix+"/";
   boost::filesystem::path prefix_dir(prefix);
-  boost::filesystem::create_directory(prefix_dir);
+  boost::filesystem::create_directories(prefix_dir);
   make_info_str(inputs);
   //file_conv_data_.init(prefix, "conv_data", info_str_.str());
   for (int i=0; i<mf_params_.num_sites(); ++i) {
     mfp_files_.push_back(std::make_shared<file::DataFile>());
-    mfp_files_.back()->init(prefix, "mfp_site"+std::to_string(i), info_str_.str());
+    mfp_files_.back()->init(prefix, "mfp_site"+std::to_string(i), 
+      info_str_.str(),replace_mode_);
     siteavg_files_.push_back(std::make_shared<file::DataFile>());
-    siteavg_files_.back()->init(prefix, "siteavg_site"+std::to_string(i), info_str_.str());
+    siteavg_files_.back()->init(prefix, "siteavg_site"+std::to_string(i),
+     info_str_.str(),replace_mode_);
   }
   //file_mfp_.init(prefix, "mfp", info_str_.str());
   //file_sp_site_.init(prefix, "sp_site", info_str_.str());
   //file_sp_bond_.init(prefix, "sp_bond", info_str_.str());
-  file_energy_.init(prefix, "energy", info_str_.str());
+  file_energy_.init(prefix, "energy", info_str_.str(),replace_mode_);
   //site_avg_.init("site_avg", heading);
   //bond_avg_.init("bond_avg", heading);
   spinon_model_.init_files(prefix, info_str_.str());
@@ -184,7 +191,7 @@ void SSMF::print_output(void)
   for (auto& file : mfp_files_) {
     s++;
     file->open();
-    if (!heading_printed_) { 
+    if (!heading_printed_ && replace_mode_) { 
       file->fs()<<std::left<< "   ";
       for (const auto& pname : spinon_model_.pnames()) {
         file->fs()<<std::left<<std::setw(15)<< pname;
@@ -216,7 +223,7 @@ void SSMF::print_output(void)
   for (auto& file : siteavg_files_) {
     s++;
     file->open();
-    if (!heading_printed_) { 
+    if (!heading_printed_ && replace_mode_) { 
       file->fs()<<std::left<< "   ";
       for (const auto& pname : spinon_model_.pnames()) {
         file->fs()<<std::left<<std::setw(15)<< pname;
@@ -241,7 +248,7 @@ void SSMF::print_output(void)
 
   //---------------------energy-------------------------
   file_energy_.open();
-  if (!heading_printed_) { 
+  if (!heading_printed_ && replace_mode_) { 
     file_energy_.fs()<<std::left<< "   ";
     for (const auto& pname : spinon_model_.pnames()) {
       file_energy_.fs()<<std::left<<std::setw(15)<< pname;
