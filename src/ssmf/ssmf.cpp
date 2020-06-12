@@ -231,6 +231,7 @@ void SSMF::print_output(void)
       for (int m=0; m<mf_params_.site(0).spin_orbitals().size(); ++m) {
         file->fs()<<std::left<<std::setw(15)<<"n"+std::to_string(m);
       }
+      file->fs()<<std::left<<std::setw(15)<<"Sz";
       file->fs() << "\n";
       file->fs()<<"#"<< std::string(72, '-') << "\n";
     }
@@ -241,6 +242,15 @@ void SSMF::print_output(void)
     for (int m=0; m<mf_params_.site(s).spin_orbitals().size(); ++m) {
       file->fs()<<std::setw(15)<<mf_params_.site(s).spinon_density()[m];
     }
+    double Sz = 0.0;
+    for (int m=0; m<mf_params_.site(s).spin_orbitals().size(); m+=2) {
+      Sz += mf_params_.site(s).spinon_density()[m];
+    }
+    for (int m=1; m<mf_params_.site(s).spin_orbitals().size(); m+=2) {
+      Sz -= mf_params_.site(s).spinon_density()[m];
+    }
+    Sz *= 0.5;
+    file->fs()<<std::setw(15)<<Sz;
     file->fs() << "\n";
     file->close();
   }
