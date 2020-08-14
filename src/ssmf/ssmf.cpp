@@ -134,6 +134,8 @@ int SSMF::selconsistent_solve(void)
       boson_ke_norm_[i] = diff_boson_ke_[i].abs2().maxCoeff();
       //std::cout << "spinon_ke_norm["<<i<<"] = "<<spinon_ke_norm_[i] << "\n";
     }
+    //double E = spinon_model_.energy(mf_params_)+boson_model_.interaction_energy();
+    //std::cout << "TE = " << E << "\n";
     //getchar();
     double sp_norm = spinon_ke_norm_.maxCoeff();
     double sb_norm = boson_ke_norm_.maxCoeff();
@@ -186,6 +188,19 @@ int SSMF::selconsistent_solve(void)
 
 void SSMF::print_output(void)
 {
+  bool data_block = false;
+  static double vp2_prev = 0.0;
+  double vp2 = 0.0;
+  int idx = spinon_model_.varparam2();
+  if (!heading_printed_ && idx>=0) {
+    vp2_prev = spinon_model_.pvals()[idx]; 
+  }
+  if (idx>=0) {
+    vp2 = spinon_model_.pvals()[idx];
+    if (std::abs(vp2_prev-vp2)>0.0) data_block = true;
+    vp2_prev = vp2;
+  }
+
   //---------------------Z and lambda-------------------------
   int s = -1;
   for (auto& file : mfp_files_) {
@@ -205,6 +220,7 @@ void SSMF::print_output(void)
       file->fs() << "\n";
       file->fs()<<"#"<< std::string(72, '-') << "\n";
     }
+    if (data_block) file->fs() << "\n\n";
     file->fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
     for (const auto& pval : spinon_model_.pvals()) {
       file->fs()<<std::right<<std::setw(15)<<pval;
@@ -235,6 +251,7 @@ void SSMF::print_output(void)
       file->fs() << "\n";
       file->fs()<<"#"<< std::string(72, '-') << "\n";
     }
+    if (data_block) file->fs() << "\n\n";
     file->fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
     for (const auto& pval : spinon_model_.pvals()) {
       file->fs()<<std::right<<std::setw(15)<<pval;
@@ -255,7 +272,6 @@ void SSMF::print_output(void)
     file->close();
   }
 
-
   //---------------------energy-------------------------
   file_energy_.open();
   if (!heading_printed_ && replace_mode_) { 
@@ -269,6 +285,7 @@ void SSMF::print_output(void)
     file_energy_.fs()<<"\n";
     file_energy_.fs()<<"#"<< std::string(72, '-') << "\n";
   }
+  if (data_block) file_energy_.fs() << "\n\n";
   double KE = spinon_model_.energy(mf_params_);
   double PE = boson_model_.interaction_energy();
   file_energy_.fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
@@ -280,7 +297,6 @@ void SSMF::print_output(void)
   file_energy_.fs()<<std::right<<std::setw(15)<<PE;
   file_energy_.fs() << "\n";
   file_energy_.close();
-
 
   heading_printed_ = true;
 }

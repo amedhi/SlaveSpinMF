@@ -196,6 +196,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="bm", defval=0.0, inputs, nowarn);
       add_parameter(name="bl", defval=0.0, inputs, nowarn);
       bool afm_field = inputs.set_value("afm_field",true,nowarn);
+      bool orb_field_O1 = inputs.set_value("orb_field_O1",true,nowarn);
 
       // bond operators (Diagonal in either product basis or SOC basis)
       cc.create(1);
@@ -232,8 +233,14 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
           for (int i=2; i<4; ++i) expr_vec[i] += "+bl";
         }
         else if (num_bands==3) {
-          for (int i=0; i<2; ++i) expr_vec[i] += "-2*bl";
-          for (int i=2; i<6; ++i) expr_vec[i] += "+bl";
+	  if (orb_field_O1) {
+            for (int i=0; i<2; ++i) expr_vec[i] += "-2*bl";
+            for (int i=2; i<6; ++i) expr_vec[i] += "+bl";
+          }
+	  else {
+            for (int i=0; i<2; ++i) expr_vec[i] += "-bl";
+            for (int i=2; i<4; ++i) expr_vec[i] += "+bl";
+	  }
         }
         cc.add_type(0, expr_vec);
 
@@ -244,9 +251,15 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
           for (int i=2; i<4; ++i) expr_vec[i] += "-bl";
         }
         else if (num_bands==3) {
-          for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
-          for (int i=2; i<4; ++i) expr_vec[i] += "-2*bl";
-          for (int i=4; i<6; ++i) expr_vec[i] += "+bl";
+	  if (orb_field_O1) {
+            for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
+            for (int i=2; i<4; ++i) expr_vec[i] += "-2*bl";
+            for (int i=4; i<6; ++i) expr_vec[i] += "+bl";
+	  }
+	  else {
+            for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
+            for (int i=2; i<4; ++i) expr_vec[i] += "-bl";
+	  }
         }
         cc.add_type(1, expr_vec);
         add_siteterm(name="ExtField", cc, op::ni_up());

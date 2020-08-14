@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-06-11 19:34:43
+* @Last Modified time: 2020-08-14 13:05:06
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -241,6 +241,7 @@ void SlaveSpin::solve(MF_Params& mf_params)
       // lm_parameters for non-interacting case 
       // (depends upon renormalized_bond_couplings & gauge factors)
       set_lm_params_noint(mf_params);
+      //std::cout << "setting gauge factors\n";
     }
     gauge_factors_set_ = true;
   }
@@ -297,6 +298,7 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
 
   bool converged = false;
   bool print_progress = false;
+  double norm;
   for (int iter=0; iter<max_iter_; ++iter) {
     // update 'renormalized site couplings' for the new 'order parameters'
     set_site_couplings(mf_params, trial_order_params);
@@ -324,7 +326,7 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
       */
     }
     // calculate new site op-s
-    update_site_order_params();
+    get_order_params(site_order_params_);
     // take only the real values
     //*
     for (int site=0; site<num_sites_; ++site) {
@@ -333,22 +335,14 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
       }
     }
     //*/
-    double zmin = 1.0;
-    for (int site=0; site<num_sites_; ++site) {
-      double p = site_order_params_[site].abs2().minCoeff();
-      zmin = std::min(zmin,p);
-    }
-    if (zmin < 1.0E-2) {
-      converged = true;
-      break;
-    }
+    //std::cout << "zmin, zmax = " << zmin << "     " << zmax << "\n";
 
     /*
     for (int site=0; site<num_sites_; ++site) {
       std::cout << "<Zplus>["<<site<<"] = " << site_order_params_[site].transpose() << "\n";
       std::cout<<"lambda["<<site<<"] = "<< lm_params_[site].transpose()<<"\n";
     }
-    //getchar();
+    getchar();
     */
 
     // check convergence
@@ -359,25 +353,45 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
         ++i; 
       }
     }
-    double norm = order_params_diff.abs2().maxCoeff();
+    norm = order_params_diff.abs2().maxCoeff();
     //std::cout << "boson iter = " << iter+1 << ", norm = " << norm << "\n";
-    if (print_progress) {
-      std::cout << "boson iter = " << iter+1 << ", norm = " << norm << "\n";
-    }
     if (norm<conv_tol_) {
       converged = true;
       break;
     } 
+
+    double zmin = 1.0;
+    double zmax = 0.0;
+    for (int site=0; site<num_sites_; ++site) {
+      double min = site_order_params_[site].abs2().minCoeff();
+      double max = site_order_params_[site].abs2().maxCoeff();
+      zmin = std::min(zmin,min);
+      zmax = std::max(zmax,max);
+    }
+    if (zmin < 1.0E-3) {
+      converged = true;
+      break;
+    }
+    if (zmax > 1.0) {
+      // revert back to previous iteration values
+      site_order_params_ = trial_order_params; 
+      converged = false;
+      break;
+    }
+
     // continue
     for (int site=0; site<num_sites_; ++site) {
       trial_order_params[site] = site_order_params_[site];
+    }
+    if (print_progress) {
+      std::cout << "boson iter = " << iter+1 << ", norm = " << norm << "\n";
     }
   }
   if (converged) {
     if(print_progress) std::cout<<"Bosons converged!\n";
   } 
   else {
-    std::cout<<"Bosons NOT converged!\n";
+    std::cout<<"** Bosons NOT converged! "<<"norm = " << norm << "\n";
     //getchar();
   }
 }
@@ -835,36 +849,36 @@ void SlaveSpin::update_lm_params(void)
   */
 }
 
-void SlaveSpin::update_site_order_params(void)
+void SlaveSpin::get_order_params(cmpl_siteparms_t& order_params)
 {
   // calculate <O+> 
   if (theory_==Z2) {
     if (solve_single_site_) {
       clusters_[0].solve_hamiltonian();
-      clusters_[0].get_avg_Ominus(gauge_factors_,site_order_params_);
+      clusters_[0].get_avg_Ominus(gauge_factors_,order_params);
       for (int i=1; i<clusters_.size(); ++i) {
-        site_order_params_[i] = site_order_params_[0];
+        order_params[i] = order_params[0];
       }
     }
     else {
       for (auto& cluster : clusters_) {
         cluster.solve_hamiltonian();
-        cluster.get_avg_Ominus(gauge_factors_,site_order_params_);
+        cluster.get_avg_Ominus(gauge_factors_,order_params);
       }
     }
   }
   else { // U1 Theory
     if (solve_single_site_) {
       clusters_[0].solve_hamiltonian();
-      clusters_[0].get_avg_Zminus(gauge_factors_,site_order_params_);
+      clusters_[0].get_avg_Zminus(gauge_factors_,order_params);
       for (int i=1; i<clusters_.size(); ++i) {
-        site_order_params_[i] = site_order_params_[0];
+        order_params[i] = order_params[0];
       }
     }
     else {
       for (auto& cluster : clusters_) {
         cluster.solve_hamiltonian();
-        cluster.get_avg_Zminus(gauge_factors_,site_order_params_);
+        cluster.get_avg_Zminus(gauge_factors_,order_params);
       }
     }
   }

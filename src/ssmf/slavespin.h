@@ -286,7 +286,7 @@ private:
     const cmpl_siteparms_t& site_order_params);
   void set_site_fields(void);
   void update_lm_params(void);
-  void update_site_order_params(void);
+  void get_order_params(cmpl_siteparms_t& order_params);
   void set_renormalized_soc(MF_Params& mf_params);
   void update_bond_order_params(MF_Params& mf_params);
   void update_renorm_site_potential(MF_Params& mf_params);

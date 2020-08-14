@@ -34,7 +34,7 @@ bc2 = "periodic"
 #---------------------------------------------
 model = "HUBBARD"
 t = 1.0
-U = 0.0
+U = 2.0
 
 hole_doping = 0.0 # 0.18 
 ext_field = 0.0

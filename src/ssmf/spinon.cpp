@@ -35,9 +35,11 @@ Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model,
     modelp_names_.push_back("bm");
     modelp_vals_.push_back(get_parameter_value("bm"));
   }
+  varparam2_ = -1;
   if (have_parameter("bl")) {
     modelp_names_.push_back("bl");
     modelp_vals_.push_back(get_parameter_value("bl"));
+    varparam2_ = modelp_names_.size()-1;
   }
 
   // add mean-field terms to the spinon model
@@ -290,13 +292,13 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     realArray1D n_avg = mf_params.site(i).spinon_density()/num_kpoints_;
     mf_params.site(i).spinon_density() = n_avg;
     // print
-    //*
+    /*
     std::cout<<"site-"<<i<<":"<<"\n";
     for (int m=0; m<mf_params.site(i).dim(); ++m) {
       std::cout << "<n_up>["<<m<<"] = " << mf_params.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
-    //*/
+    */
   }
   //getchar();
   // onsite energy
@@ -659,9 +661,11 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
       energy_gap_zero_ = energy_gap_;
     }
     iteration_zero_ = false;
+    /*
     std::cout << "metallic, e_F, bandgap = "<<metallic_<<"  "<<fermi_energy_
       <<"  "<<energy_gap_<<"\n";
     std::cout << "Bandwidth = " << bandwidth_ << "\n";
+    */
 
     // check
     /*double particle_sum = 0.0;

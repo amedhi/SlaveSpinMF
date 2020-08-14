@@ -74,6 +74,7 @@ public:
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
   double energy(const MF_Params& mf_params) { return total_energy_; }
+  const int& varparam2(void) const { return varparam2_; }
   void print_output(const MF_Params& mf_params);
 private:
   using Model = model::Hamiltonian;
@@ -95,6 +96,7 @@ private:
   // model parameters
   std::vector<std::string> modelp_names_;
   std::vector<double> modelp_vals_;
+  int varparam2_{-1};
 
   // matrices in kspace representation
   ComplexMatrix quadratic_block_up_;
