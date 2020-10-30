@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-10-30 11:14:13
+* @Last Modified time: 2020-10-30 14:04:38
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -232,7 +232,13 @@ void SlaveSpin::solve(MF_Params& mf_params)
         for (auto alpha : spin_orbitals_) {
           double nf = spinon_density_[site][alpha];
           //gauge_factors_[site][alpha]=1.0/std::sqrt((nf+delta_)*(1.0-nf-delta_))-1.0; 
-          gauge_factors_[site][alpha]=1.0/std::sqrt((nf)*(1.0-nf))-1.0; 
+          if (nf>1.0E-6 & (1.0-nf)>1.0E-6) {
+            gauge_factors_[site][alpha]=1.0/std::sqrt((nf)*(1.0-nf))-1.0; 
+          } 
+          else {
+            gauge_factors_[site][alpha]=1000;
+            std::cout << "** SlaveSpin::solve: gauge factors reached limit value\n";
+          }
           //std::cout << "nf["<<site<<"]["<<alpha<<"] = "<<nf<<"\n";
           //std::cout << "c["<<site<<"]["<<alpha<<"] = "<<gauge_factors_[site][alpha]<<"\n";
           //getchar();
@@ -243,7 +249,8 @@ void SlaveSpin::solve(MF_Params& mf_params)
       set_lm_params_noint(mf_params);
       //std::cout << "setting gauge factors\n";
     }
-    gauge_factors_set_ = true;
+    //gauge_factors_set_ = true;
+    std::cout << ">> SlaveSpin::solve: gauge factors updated\n";
   }
 
   // set SOC matrix // depends upon  gauge factors
@@ -973,7 +980,7 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
         std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
         std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
         sum += Sz_up*Sz_dn;
-        sum2 += Sz_up+Sz_dn; //+0.5;
+        sum2 += Sz_up+Sz_dn+0.50;
       }
       interaction_mat_(i,i) = U*sum + 0.5*U*sum2;
       //interaction_mat_(i,i) = U*sum + 0.5*(5.0*U-10.0*J)*sum2;
@@ -989,7 +996,7 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
           if (m == n) continue;
           std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           sum += Sz_up*Sz_dn;
-          sum2 += Sz_up+Sz_dn; //+0.5;
+          sum2 += Sz_up+Sz_dn+0.50;
         }
       }
       interaction_mat_(i,i) += Uprime*sum + 0.5*Uprime*sum2;
@@ -1006,7 +1013,7 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
           std::tie(Sz2_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           //std::cout << "m, n = " << m/2+1 << "  " << n/2+1 << "\n"; 
           sum += Sz_up*Sz2_up + Sz_dn*Sz2_dn;
-          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn; //+1.0;
+          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn+1.0;
         }
       }
       interaction_mat_(i,i) += (Uprime-J)*sum + 0.5*(Uprime-J)*sum2;
@@ -1102,7 +1109,7 @@ double Cluster::get_interaction_energy(const ModelParams& p)
         std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
         std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
         sum += Sz_up*Sz_dn;
-        sum2 += Sz_up+Sz_dn; //+0.5;
+        sum2 += Sz_up+Sz_dn+0.50;
       }
       energy1 += (sum+0.5*sum2)*std::norm(groundstate_(i));
     }
@@ -1118,7 +1125,7 @@ double Cluster::get_interaction_energy(const ModelParams& p)
           if (m == n) continue;
           std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           sum += Sz_up*Sz_dn;
-          sum2 += Sz_up+Sz_dn; //+0.5;
+          sum2 += Sz_up+Sz_dn+0.50;
         }
       }
       energy2 += (sum+0.5*sum2)*std::norm(groundstate_(i));
@@ -1138,7 +1145,7 @@ double Cluster::get_interaction_energy(const ModelParams& p)
           std::tie(Sz2_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           //std::cout << "m, n = " << m/2+1 << "  " << n/2+1 << "\n"; 
           sum += Sz_up*Sz2_up + Sz_dn*Sz2_dn;
-          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn; //+1.0;
+          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn+1.0;
         }
       }
       energy3 += (sum+0.5*sum2)*std::norm(groundstate_(i));
