@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-08-14 13:05:06
+* @Last Modified time: 2020-10-30 11:14:13
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -372,12 +372,14 @@ void SlaveSpin::self_consistent_solve(const MF_Params& mf_params)
       converged = true;
       break;
     }
+    /*
     if (zmax > 1.0) {
       // revert back to previous iteration values
       site_order_params_ = trial_order_params; 
       converged = false;
       break;
     }
+    */
 
     // continue
     for (int site=0; site<num_sites_; ++site) {
@@ -929,16 +931,26 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
   SlaveSpinBasis::idx_t i, j;
   // interaction matrix elements
   if (p.id()==HUBBARD || p.id()==BHZ) {
-    double U_half = 0.5*p.get_U();
+    //double U_half = 0.5*p.get_U();
     //double U_half = 1.0*p.get_U(); // correct choice ?
-    double Sz;
+    double U = p.get_U();
+    double Sz_up, Sz_dn;
     for (i=0; i<basis_dim_; ++i) {
-      double total_Sz = 0.0;
-      for (auto& alpha : spin_orbitals_) {
+      //double total_Sz = 0.0;
+      double sum = 0.0;
+      double sum2 = 0.0; // one body term
+      for (int m=0; m<spin_orbitals_.size()-1; m+=2) {
+        std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
+        std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
+        sum += Sz_up*Sz_dn;
+        sum2 += Sz_up+Sz_dn+0.5;
+      }
+      interaction_mat_(i,i) = U*sum + 0.5*U*sum2;
+      /*for (auto& alpha : spin_orbitals_) {
         std::tie(Sz,j) = basis_.apply_Sz(site_id,alpha,i);
         total_Sz += Sz;
-      }
-      interaction_mat_(i,i) = U_half*total_Sz*(total_Sz+1);
+      }*/
+      //interaction_mat_(i,i) = U_half*total_Sz*(total_Sz+1);
     }
   }
 
@@ -961,7 +973,7 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
         std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
         std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
         sum += Sz_up*Sz_dn;
-        sum2 += Sz_up+Sz_dn+0.5;
+        sum2 += Sz_up+Sz_dn; //+0.5;
       }
       interaction_mat_(i,i) = U*sum + 0.5*U*sum2;
       //interaction_mat_(i,i) = U*sum + 0.5*(5.0*U-10.0*J)*sum2;
@@ -977,7 +989,7 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
           if (m == n) continue;
           std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           sum += Sz_up*Sz_dn;
-          sum2 += Sz_up+Sz_dn+0.5;
+          sum2 += Sz_up+Sz_dn; //+0.5;
         }
       }
       interaction_mat_(i,i) += Uprime*sum + 0.5*Uprime*sum2;
@@ -994,7 +1006,7 @@ void Cluster::update_interaction_matrix(const ModelParams& p)
           std::tie(Sz2_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           //std::cout << "m, n = " << m/2+1 << "  " << n/2+1 << "\n"; 
           sum += Sz_up*Sz2_up + Sz_dn*Sz2_dn;
-          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn+1.0;
+          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn; //+1.0;
         }
       }
       interaction_mat_(i,i) += (Uprime-J)*sum + 0.5*(Uprime-J)*sum2;
@@ -1090,7 +1102,7 @@ double Cluster::get_interaction_energy(const ModelParams& p)
         std::tie(Sz_up,j) = basis_.apply_Sz(site_id,m,i);
         std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,m+1,i);
         sum += Sz_up*Sz_dn;
-        sum2 += Sz_up+Sz_dn+0.5;
+        sum2 += Sz_up+Sz_dn; //+0.5;
       }
       energy1 += (sum+0.5*sum2)*std::norm(groundstate_(i));
     }
@@ -1106,7 +1118,7 @@ double Cluster::get_interaction_energy(const ModelParams& p)
           if (m == n) continue;
           std::tie(Sz_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           sum += Sz_up*Sz_dn;
-          sum2 += Sz_up+Sz_dn+0.5;
+          sum2 += Sz_up+Sz_dn; //+0.5;
         }
       }
       energy2 += (sum+0.5*sum2)*std::norm(groundstate_(i));
@@ -1126,7 +1138,7 @@ double Cluster::get_interaction_energy(const ModelParams& p)
           std::tie(Sz2_dn,j) = basis_.apply_Sz(site_id,n+1,i);
           //std::cout << "m, n = " << m/2+1 << "  " << n/2+1 << "\n"; 
           sum += Sz_up*Sz2_up + Sz_dn*Sz2_dn;
-          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn+1.0;
+          sum2 += Sz_up+Sz_dn+Sz2_up+Sz2_dn; //+1.0;
         }
       }
       energy3 += (sum+0.5*sum2)*std::norm(groundstate_(i));

@@ -228,19 +228,21 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         expr_vec.resize(num_orb);
         for (int i=0; i<num_orb; i+=2) expr_vec[i] = "-bm";
         for (int i=1; i<num_orb; i+=2) expr_vec[i] = "bm";
+        // Orb field
         if (num_bands==2) {
           for (int i=0; i<2; ++i) expr_vec[i] += "-bl";
           for (int i=2; i<4; ++i) expr_vec[i] += "+bl";
         }
         else if (num_bands==3) {
-	  if (orb_field_O1) {
-            for (int i=0; i<2; ++i) expr_vec[i] += "-2*bl";
-            for (int i=2; i<6; ++i) expr_vec[i] += "+bl";
+	        if (orb_field_O1) {
+            for (int i=0; i<2; ++i) expr_vec[i] += "+0";
+            for (int i=2; i<4; ++i) expr_vec[i] += "-bl";
+            for (int i=4; i<6; ++i) expr_vec[i] += "+bl";
           }
-	  else {
+	        else {
             for (int i=0; i<2; ++i) expr_vec[i] += "-bl";
             for (int i=2; i<4; ++i) expr_vec[i] += "+bl";
-	  }
+	        }
         }
         cc.add_type(0, expr_vec);
 
@@ -251,20 +253,111 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
           for (int i=2; i<4; ++i) expr_vec[i] += "-bl";
         }
         else if (num_bands==3) {
-	  if (orb_field_O1) {
-            for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
-            for (int i=2; i<4; ++i) expr_vec[i] += "-2*bl";
-            for (int i=4; i<6; ++i) expr_vec[i] += "+bl";
-	  }
-	  else {
+	        if (orb_field_O1) {
+            for (int i=0; i<2; ++i) expr_vec[i] += "+0";
+            for (int i=2; i<4; ++i) expr_vec[i] += "+bl";
+            for (int i=4; i<6; ++i) expr_vec[i] += "-bl";
+	        }
+	        else {
             for (int i=0; i<2; ++i) expr_vec[i] += "+bl";
             for (int i=2; i<4; ++i) expr_vec[i] += "-bl";
-	  }
+	        }
         }
         cc.add_type(1, expr_vec);
         add_siteterm(name="ExtField", cc, op::ni_up());
       }
     }
+
+    else if (lattice.id()==lattice::lattice_id::CUBIC_NBAND) {
+      set_spinorbit_coupling(false);
+      set_TP_symmetry(true);
+      // model parameters
+      num_bands = inputs.set_value("num_bands", 1);
+      num_orb = 2*num_bands;
+      add_parameter("num_bands", num_bands);
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+      add_parameter(name="bm", defval=0.0, inputs, nowarn);
+      add_parameter(name="bl", defval=0.0, inputs, nowarn);
+      bool afm_field = inputs.set_value("afm_field",false,nowarn);
+      //bool orb_field_O1 = inputs.set_value("orb_field_O1",true,nowarn);
+
+      cc.create(1);
+      expr_mat.resize(num_orb,num_orb);
+      for (int i=0; i<num_orb; ++i) {
+        for (int j=0; j<num_orb; ++j) {
+          if (i==j) expr_mat(i,j) = "-t";
+          else expr_mat(i,j) = "0";
+        }
+      }
+      cc.add_type(0, expr_mat);
+      add_bondterm(name="hopping", cc, op::upspin_hop());
+
+      // external site field
+      if (afm_field) {
+        throw std::range_error("*error: modellibrary: AFM field not defined for the lattice"); 
+      }
+      else { // FM field + Orb field
+        cc.create(1);
+        expr_vec.resize(num_orb);
+        for (int i=0; i<num_orb; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_orb; i+=2) expr_vec[i] = "bm";
+        cc.add_type(0, expr_vec);
+        add_siteterm(name="ExtField", cc, op::ni_up());
+      }
+    }
+
+    else if (lattice.id()==lattice::lattice_id::FCC) {
+      set_spinorbit_coupling(false);
+      set_TP_symmetry(true);
+      // model parameters
+      num_bands = inputs.set_value("num_bands", 1);
+      num_orb = 2*num_bands;
+      add_parameter("num_bands", num_bands);
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+      add_parameter(name="bm", defval=0.0, inputs, nowarn);
+      add_parameter(name="bl", defval=0.0, inputs, nowarn);
+      bool afm_field = inputs.set_value("afm_field",true,nowarn);
+      //bool orb_field_O1 = inputs.set_value("orb_field_O1",true,nowarn);
+
+      // bond operators (Diagonal in either product basis or SOC basis)
+      cc.create(2);
+      expr_mat.resize(num_orb,num_orb);
+      for (int i=0; i<num_orb; ++i) {
+        for (int j=0; j<num_orb; ++j) {
+          if (i==j) expr_mat(i,j) = "-t";
+          else expr_mat(i,j) = "0";
+        }
+      }
+      cc.add_type(0, expr_mat);
+      expr_mat.resize(num_orb,num_orb);
+      for (int i=0; i<num_orb; ++i) {
+        for (int j=0; j<num_orb; ++j) {
+          if (i==j) expr_mat(i,j) = "-tp";
+          else expr_mat(i,j) = "0";
+        }
+      }
+      cc.add_type(1, expr_mat);
+      add_bondterm(name="hopping", cc, op::upspin_hop());
+
+      // external site field
+      if (afm_field) {
+        throw std::range_error("*error: modellibrary: AFM field not defined for the lattice"); 
+      }
+      else { // FM field + Orb field
+        cc.create(1);
+        expr_vec.resize(num_orb);
+        for (int i=0; i<num_orb; i+=2) expr_vec[i] = "-bm";
+        for (int i=1; i<num_orb; i+=2) expr_vec[i] = "bm";
+        cc.add_type(0, expr_vec);
+        add_siteterm(name="ExtField", cc, op::ni_up());
+      }
+    }
+
     else {
       throw std::range_error("*error: modellibrary: model not defined for the lattice"); 
     }

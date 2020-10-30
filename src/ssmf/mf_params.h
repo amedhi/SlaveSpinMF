@@ -85,6 +85,7 @@ public:
   void set_spinon_renormalization(void);
   void set_boson_renormalization(void);
   const int& type(void) const { return type_; }
+  //void make_intracell(void) const { is_intracell_ = true; }
   const bool& is_intracell(void) const { return is_intracell_; }
   const int& src(void) const { return src_; }
   const int& tgt(void) const { return tgt_; }
@@ -100,7 +101,7 @@ public:
   cmplArray2D& boson_ke(const int& i) { return boson_ke_[i]; }
 private:
   int type_;
-  bool is_intracell_;
+  bool is_intracell_{false};
   int src_;
   int tgt_;
   int vector_id_;

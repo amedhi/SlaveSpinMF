@@ -39,6 +39,18 @@ int Lattice::define_lattice(const input::Parameters& parms)
     add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
     add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
     add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
+
+    // make cluster
+    /*
+    add_cluster_site(type=0, orbitals=2); 
+    add_cluster_site(type=0, orbitals=2); 
+    add_cluster_site(type=0, orbitals=2); 
+    add_cluster_site(type=0, orbitals=2); 
+    add_cluster_bond(type=0, src=0, tgt=1);
+    add_cluster_bond(type=0, src=1, tgt=2);
+    add_cluster_bond(type=0, src=2, tgt=3);
+    add_cluster_bond(type=0, src=3, tgt=0);
+    */
   }
 
   /*------------- 'CHAIN' lattice--------------*/
@@ -135,6 +147,102 @@ int Lattice::define_lattice(const input::Parameters& parms)
     add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
     add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
   }
+
+  else if (lname == "CUBIC_NBAND") {
+    int num_bands = parms.set_value("num_bands", 1);
+    int num_orb = 2*num_bands;
+    // type
+    lid = lattice_id::CUBIC_NBAND;
+    // basis vectors
+    double a = std::sqrt(1.0);
+    set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,a));
+
+    // add sites
+    add_basis_site(type=0, orbitals=num_orb, coord=vec(0,0,0)); 
+    // add bonds
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,0,1));
+  }
+
+  else if (lname == "FCC") {
+    int num_bands = parms.set_value("num_bands", 1);
+    int num_orb = 2*num_bands;
+    // type
+    lid = lattice_id::FCC;
+    // basis vectors
+    double a = 1.0;
+    double b = 0.5*a;
+    set_basis_vectors(a1=vec(0,b,b), a2=vec(b,0,b), a3=vec(b,b,0));
+
+    // add sites
+    add_basis_site(type=0, orbitals=num_orb, coord=vec(0,0,0)); 
+
+    // add bonds
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,0,1));
+    add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,-1));
+    add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,-1,1));
+    add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(-1,1,1));
+  }
+
+  else if (lname == "FCC_TYPE3") {
+    int num_bands = parms.set_value("num_bands", 1);
+    int num_orb = 2*num_bands;
+    // type
+    lid = lattice_id::FCC_TYPE3;
+    // basis vectors
+    double a = 1.0;
+    double b = 0.5*a;
+    set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,2.0*a));
+
+    // add sites
+    std::vector<int> up(4);
+    std::vector<int> dn(4);
+    up[0] = add_basis_site(type=0, orbitals=num_orb, coord=vec(0,0,0)); 
+    up[1] = add_basis_site(type=0, orbitals=num_orb, coord=vec(0,b,b)); 
+    dn[0] = add_basis_site(type=1, orbitals=num_orb, coord=vec(b,0,b)); 
+    dn[1] = add_basis_site(type=1, orbitals=num_orb, coord=vec(b,b,0)); 
+    dn[2] = add_basis_site(type=1, orbitals=num_orb, coord=vec(0,0,a)); 
+    up[2] = add_basis_site(type=0, orbitals=num_orb, coord=vec(b,b,a)); 
+    dn[3] = add_basis_site(type=1, orbitals=num_orb, coord=vec(0,b,a+b)); 
+    up[3] = add_basis_site(type=0, orbitals=num_orb, coord=vec(b,0,a+b)); 
+
+    // add bonds
+    /*
+    add_bond(type=0, src=up[0], src_offset=pos(0,0,0), tgt=dn[0], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=up[0], src_offset=pos(0,0,0), tgt=up[1], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=up[0], src_offset=pos(0,0,0), tgt=dn[1], tgt_offset=pos(0,0,0));
+
+    add_bond(type=0, src=dn[0], src_offset=pos(0,0,0), tgt=up[1], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=dn[0], src_offset=pos(0,0,0), tgt=up[1], tgt_offset=pos(0,0,0));
+
+    add_bond(type=0, src=spin_up[0], src_offset=pos(0,0,0), tgt=spin_up[1], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_up[1], src_offset=pos(0,0,0), tgt=spin_dn[1], tgt_offset=pos(0,0,0));
+
+    add_bond(type=0, src=spin_up[1], src_offset=pos(0,0,0), tgt=spin_up[2], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_up[1], src_offset=pos(0,0,0), tgt=spin_dn[2], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_dn[1], src_offset=pos(0,0,0), tgt=spin_up[2], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_up[1], src_offset=pos(0,0,0), tgt=spin_dn[2], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_up[2], src_offset=pos(0,0,0), tgt=spin_dn[2], tgt_offset=pos(0,0,0));
+
+    add_bond(type=0, src=spin_up[2], src_offset=pos(0,0,0), tgt=spin_dn[3], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_up[2], src_offset=pos(0,0,0), tgt=spin_up[3], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_dn[2], src_offset=pos(0,0,0), tgt=spin_dn[3], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_dn[2], src_offset=pos(0,0,0), tgt=spin_up[3], tgt_offset=pos(0,0,0));
+    add_bond(type=0, src=spin_dn[3], src_offset=pos(0,0,0), tgt=spin_up[3], tgt_offset=pos(0,0,0));
+
+    // add bonds (inter-cell)
+    add_bond(type=0, src=spin_up[0], src_offset=pos(0,0,0), tgt=spin_dn[0], tgt_offset=pos(1,0,0));
+    add_bond(type=0, src=spin_up[0], src_offset=pos(0,0,0), tgt=spin_dn[0], tgt_offset=pos(0,1,0));
+    add_bond(type=0, src=spin_up[0], src_offset=pos(0,0,0), tgt=spin_dn[0], tgt_offset=pos(1,1,0));
+    add_bond(type=0, src=spin_up[3], src_offset=pos(0,0,0), tgt=spin_dn[0], tgt_offset=pos(0,0,1));
+    add_bond(type=0, src=spin_up[3], src_offset=pos(0,0,0), tgt=spin_dn[0], tgt_offset=pos(0,1,1));
+    add_bond(type=0, src=spin_dn[3], src_offset=pos(0,0,0), tgt=spin_dn[0], tgt_offset=pos(1,0,1));
+    */
+  }
+
 
   else if (lname == "SIMPLE_CUBIC") {
     // type
