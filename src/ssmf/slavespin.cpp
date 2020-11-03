@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-10-30 14:04:38
+* @Last Modified time: 2020-11-02 14:45:36
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -40,6 +40,7 @@ SlaveSpin::SlaveSpin(const input::Parameters& inputs, const model::Hamiltonian& 
   else {
     throw std::range_error("*error: SlaveSpin: invalid 'theory' name"); 
   }
+  set_fixed_gauge_ = inputs.set_value("set_fixed_gauge",true);
   // whether solve only for single site
   solve_single_site_ = inputs.set_value("solve_single_site", false);
   conv_tol_ = inputs.set_value("boson_conv_tol", 1.0E-8);
@@ -172,6 +173,7 @@ void SlaveSpin::update(const model::Hamiltonian& model)
     elem = cmplArray1D::Ones(site_dim_);
   }
   gauge_factors_set_ = false;
+  noninteracting_params_set_ = false;
 
   switch (modelparams_.id()) {
     case HUBBARD:
@@ -225,7 +227,10 @@ void SlaveSpin::solve(MF_Params& mf_params)
   if (!gauge_factors_set_) {
     //std::cout << "----HACK in setting gauge_factors----\n";
     if (SO_coupling_) {
-      set_noninteracting_params(mf_params);
+      if (!noninteracting_params_set_) {
+        set_noninteracting_params(mf_params);
+      }
+      noninteracting_params_set_ = true;
     }
     else {
       for (int site=0; site<num_sites_; ++site) {
@@ -246,11 +251,18 @@ void SlaveSpin::solve(MF_Params& mf_params)
       }
       // lm_parameters for non-interacting case 
       // (depends upon renormalized_bond_couplings & gauge factors)
-      set_lm_params_noint(mf_params);
-      //std::cout << "setting gauge factors\n";
+      if (!noninteracting_params_set_) {
+        set_lm_params_noint(mf_params);
+      }
+      noninteracting_params_set_ = true;
     }
-    //gauge_factors_set_ = true;
-    std::cout << ">> SlaveSpin::solve: gauge factors updated\n";
+    if (set_fixed_gauge_) {
+      gauge_factors_set_ = true;
+    }
+    else {
+      gauge_factors_set_ = false;
+      std::cout << ">> SlaveSpin::solve: gauge factors updated\n";
+    }
   }
 
   // set SOC matrix // depends upon  gauge factors

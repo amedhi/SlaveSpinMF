@@ -292,13 +292,13 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     realArray1D n_avg = mf_params.site(i).spinon_density()/num_kpoints_;
     mf_params.site(i).spinon_density() = n_avg;
     // print
-    /*
+    //*
     std::cout<<"site-"<<i<<":"<<"\n";
     for (int m=0; m<mf_params.site(i).dim(); ++m) {
       std::cout << "<n_up>["<<m<<"] = " << mf_params.site(i).spinon_density()[m] << "\n";
     }
     std::cout << "\n";
-    */
+    //*/
   }
   //getchar();
   // onsite energy

@@ -213,6 +213,7 @@ private:
   theory_t theory_{theory_t::Z2};
   bool solve_single_site_{false};
   bool gauge_factors_set_{false};
+  bool noninteracting_params_set_{false};
   bool gauge_factors_solved_{false};
   bool set_fixed_gauge_{true};
   bool SO_coupling_{false};
