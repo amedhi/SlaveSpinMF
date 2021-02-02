@@ -243,6 +243,27 @@ int Lattice::define_lattice(const input::Parameters& parms)
     */
   }
 
+  else if (lname == "NICKELATE_2L") {
+    lid = lattice_id::NICKELATE_2L;
+    // basis vectors
+    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+    // sites
+    add_basis_site(type=0, coord=vec(0,0,0));
+    add_basis_site(type=1, coord=vec(0,0,1));
+
+    // Ni-Ni bonds
+    add_bond(type=0,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
+    add_bond(type=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,-1,0));
+    // R-R bonds
+    add_bond(type=3,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+    add_bond(type=5,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,1,0));
+    add_bond(type=5,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,-1,0));
+    // Ni-R bonds
+    add_bond(type=6,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+  }
 
   else if (lname == "SIMPLE_CUBIC") {
     // type

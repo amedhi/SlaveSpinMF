@@ -28,7 +28,8 @@ const unsigned MAX_BOND_TYPES = 40;
 /*---------------lattice types-----------------*/
 enum class lattice_id {
   UNDEFINED, SQUARE, SQUARE_2BAND, CHAIN, HONEYCOMB, SIMPLECUBIC, FCC, FCC_TYPE3,
-  KAGOME, PYROCHLORE_V1, PYROCHLORE_3D, SQUARE_NBAND, CUBIC_NBAND, SQUARE_IRIDATE, TBG
+  KAGOME, PYROCHLORE_V1, PYROCHLORE_3D, SQUARE_NBAND, CUBIC_NBAND, SQUARE_IRIDATE, 
+  TBG, NICKELATE_2L
 };
 
 /*---------------Lattice site class-----------------*/

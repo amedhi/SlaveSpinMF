@@ -415,13 +415,41 @@ std::pair<Vector3i, int> Lattice::boundary_wrap(const Vector3i& cell_idx) const
   Vector3i new_idx(cell_idx);
   int phase = 1;
   for (unsigned dim=dim1; dim<=dim3; ++dim) {
+    int size = static_cast<int>(extent[dim].size); 
+    if (new_idx[dim]>=size) {
+      if (extent[dim].bc == boundary_type::periodic) {
+        while (new_idx[dim]>=size) {
+          new_idx[dim] -= size;
+          if (extent[dim].periodicity==boundary_type::antiperiodic) 
+            phase=-phase;
+        }
+      }
+      else new_idx[dim] = -1;
+    }
+    else if (new_idx[dim]<0) {
+      if (extent[dim].bc == boundary_type::periodic) {
+        while (new_idx[dim]<0) {
+          new_idx[dim] += size;
+          if (extent[dim].periodicity==boundary_type::antiperiodic) 
+            phase=-phase;
+        }
+      }
+      else new_idx[dim] = -1;
+    }
+  }
+  return std::pair<Vector3i, int>(new_idx, phase);
+
+  /*
+  Vector3i new_idx(cell_idx);
+  int phase = 1;
+  for (unsigned dim=dim1; dim<=dim3; ++dim) {
     if (new_idx[dim]<0 || new_idx[dim]>=static_cast<int>(extent[dim].size)) {
       if (extent[dim].bc == boundary_type::periodic) {
         new_idx[dim] = new_idx[dim] % extent[dim].size;
         if (new_idx[dim]<0) new_idx[dim] += static_cast<int>(extent[dim].size);
-        /* Determine phase: 
-           Phase is negative, if the edge gets wrapped across
-           antiperiodic' boundary odd number of times */
+        // Determine phase: 
+        //   Phase is negative, if the edge gets wrapped across
+        //   antiperiodic' boundary odd number of times 
         if (extent[dim].periodicity == boundary_type::antiperiodic) {
           int n = std::abs(cell_idx[dim] / static_cast<int>(extent[dim].size));
           //int n = abs(cell_idx[dim] / extent[dim].size);
@@ -433,6 +461,7 @@ std::pair<Vector3i, int> Lattice::boundary_wrap(const Vector3i& cell_idx) const
     }
   }
   return std::pair<Vector3i, int>(new_idx, phase);
+  */
 }
 
 int Lattice::mapped_site_id(const unsigned& local_id, const Vector3i& bravindex) const

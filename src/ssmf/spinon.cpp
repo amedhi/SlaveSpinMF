@@ -172,6 +172,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
   for (int i=0; i<mf_params.num_sites(); ++i) {
     mf_params.site(i).spinon_density().setZero();
     mf_params.site(i).spinon_flip_ampl().setZero();
+    //mf_params.site(i).spinon_fluct().setZero();
   }
   for (int i=0; i<mf_params.bonds().size(); ++i) {
     mf_params.bond(i).spinon_ke(0).setZero();
@@ -209,6 +210,31 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
       //std::cout << n_avg.transpose(); getchar();
       mf_params.site(j).spinon_density() += symm_wt*n_avg;
     }
+
+    // orbital fluctuation
+    //Eigen::VectorXcd eigvec_wt(nbands);
+    /*
+    for (int j=0; j<mf_params.num_sites(); ++j) {
+      int site_dim = mf_params.site(j).dim();
+      realArray1D n_avg(site_dim); 
+      for (int m=0; m<site_dim; ++m) {
+        auto ii = mf_params.site(j).state_indices()[m];
+        for (int n=0; n<site_dim; ++n) {
+          auto jj = mf_params.site(j).state_indices()[n];
+          double norm = 0.0;
+          for (int band=nmin; band<=nmax; ++band) {
+            norm += std::norm(es_k_up_.eigenvectors().row(ii)[band])
+                   * std::norm(es_k_up_.eigenvectors().row(jj)[band])
+                   * kshells_up_[i].smear_wt(band);
+          }
+          n_fluct(m,n) = norm;
+        }
+      }
+      //std::cout << n_avg.transpose(); getchar();
+      mf_params.site(j).spinon_fluct() += symm_wt*n_fluct;
+    }
+    */
+
 
     // spin-flip term 
     if (SO_coupling_) {
@@ -300,6 +326,22 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     std::cout << "\n";
     //*/
   }
+
+  /*
+    for (int i=0; i<mf_params.num_sites(); ++i) {
+      cmplArray2D fluct = mf_params.site(i).spinon_fluct()/num_kpoints_;
+      mf_params.site(i).spinon_fluct() = fluct;
+    }
+    for (int m=0; m<mf_params.site(i).dim(); ++m) {
+      for (int n=0; n<mf_params.site(i).dim(); ++n) {
+        mf_params.site(i).spinon_fluct()(m,n) -= 
+          mf_params.site(i).spinon_density()[m]*
+          mf_params.site(i).spinon_density()[n];
+      }
+    }
+  */
+
+
   //getchar();
   // onsite energy
   double onsite_energy = 0.0;
