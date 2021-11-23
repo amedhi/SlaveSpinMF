@@ -182,6 +182,7 @@ void Hamiltonian::update_terms(void)
 {
   // update the model term couping constants
   for (auto it=site_terms_.begin(); it!=site_terms_.end(); ++it) {
+    //std::cout << "updating site term = " << it->name() << "\n";
     it->eval_coupling_constant(constants_, parms_); 
   }
   for (auto it=bond_terms_.begin(); it!=bond_terms_.end(); ++it) {

@@ -123,6 +123,7 @@ public:
   bool SO_coupling(void) const { return SO_coupling_; }
   const int& num_sites(void) const { return num_basis_sites_; }
   const int& num_bonds(void) const { return num_bonds_; }
+  void update(const model::Hamiltonian& model);
   void init_params(void);
   const MF_Site& site(const int& i) const { return sites_[i]; }
   MF_Site& site(const int& i) { return sites_[i]; }

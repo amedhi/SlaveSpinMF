@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-03-12 12:20:33
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-05-13 15:30:26
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2021-11-23 16:05:12
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "mf_params.h"
@@ -48,6 +48,7 @@ void MF_Site::set_soc_matrix(const cmplArray2D& soc_mat)
   soc_matrix_ = soc_mat;
   spinon_renormed_soc_ = soc_matrix_;
   boson_renormed_soc_ = soc_matrix_;
+  //std::cout << "soc_matrix=" << soc_matrix_ << "\n"; getchar();
 }
 
 void MF_Site::set_spinon_renormalization(void)
@@ -186,6 +187,31 @@ MF_Params::MF_Params(const input::Parameters& inputs, const lattice::LatticeGrap
   pe_per_site_ = 0.0;
 }
 
+void MF_Params::update(const model::Hamiltonian& model)
+{
+  //std::cout << "MF_Params::update\n"; getchar();
+  // coupling constants for the Hamiltonian bond term
+  for (auto bterm=model.bondterms().begin(); bterm!=model.bondterms().end(); ++bterm) {
+    if (bterm->qn_operator().is_quadratic() && bterm->qn_operator().spin_up()) {
+      for (auto& bond : bonds_) {
+        bond.add_term_cc(bterm->coupling(bond.type()));   
+      } 
+    }
+  }
+  //std::cout << "num_bondterms = " << num_bondterms_ << "\n";
+  // SOC matrix
+  for (auto sterm=model.siteterms().begin(); sterm!=model.siteterms().end(); ++sterm) {
+    if (sterm->qn_operator().id()==model::op_id::spin_flip) {
+      for (auto& site : sites_) {
+        //std::cout << "MF_Params::update::soc_matrix=" << sterm->coupling(0)<<"\n"; getchar();
+        site.set_soc_matrix(sterm->coupling(site.type()));   
+      } 
+    }
+  }
+  ke_per_site_ = 0.0;
+  pe_per_site_ = 0.0;
+}
+
 void MF_Params::init_params(void)
 {
   for (auto& site : sites_) {
@@ -205,7 +231,6 @@ void MF_Params::init_params(void)
     bond.set_boson_renormalization();
   }
 }
-
 
 
 } // end namespace ssmf

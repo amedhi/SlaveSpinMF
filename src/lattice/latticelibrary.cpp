@@ -148,6 +148,19 @@ int Lattice::define_lattice(const input::Parameters& parms)
     add_bond(type=0, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
   }
 
+  else if (lname == "SQUARE_T2G") {
+    lid = lattice_id::SQUARE_T2G;
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    // basis vectors
+    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+    // add sites
+    add_basis_site(type=0, orbitals=6, coord=vec(0,0,0));
+    add_bond(type=0, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+    add_bond(type=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
+    add_bond(type=2, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,1,0));
+    add_bond(type=3, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(-1,1,0));
+  }
+
   else if (lname == "CUBIC_NBAND") {
     int num_bands = parms.set_value("num_bands", 1);
     int num_orb = 2*num_bands;

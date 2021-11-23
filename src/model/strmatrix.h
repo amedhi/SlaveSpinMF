@@ -23,6 +23,8 @@ public:
   ~strMatrix() {}
   void clear(void);
   void resize(const int& rows, const int& cols);
+  void setZero(void);
+  void setZero(const int& rows, const int& cols);
   void getfromtxt(const std::string& file);
   const int& rows(void) const { return rows_; }
   const int& cols(void) const { return cols_; }

@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2021-01-27 16:15:44
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2021-11-22 15:10:57
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -682,7 +682,6 @@ void SlaveSpin::set_renormalized_soc(MF_Params& mf_params)
     if (solve_single_site_) {
       clusters_[0].solve_hamiltonian();
       clusters_[0].get_avg_OplusOminus(gauge_factors_,flip_ampl);
-      //std::cout << flip_ampl << "\n"; getchar();
       for (int i=0; i<clusters_.size(); ++i) {
         mf_params.site(i).boson_flip_ampl() = flip_ampl;
         mf_params.site(i).set_boson_renormalization();

@@ -14,7 +14,8 @@
 
 namespace ssmf {
 
-Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model, const lattice::LatticeGraph& graph, const MF_Params& mf_params)
+Spinon::Spinon(const input::Parameters& inputs, const model::Hamiltonian& model, 
+  const lattice::LatticeGraph& graph, const MF_Params& mf_params)
 : model::Hamiltonian(model)
 , blochbasis_(graph)
 {
@@ -116,10 +117,15 @@ void Spinon::set_info_string(void)
 
 void Spinon::update(const input::Parameters& inputs)
 {
-  //std::cout << "START>>>>>>>>>>\n";
-  //std::cout << "<<<<<<<<<<<<END\n";
+  //std::cout << "\n\n>>>>>>>Spinon::update>>>>>>>>>>\n\n";
   Model::update_parameters(inputs);
-  update_terms();
+  Model::update_terms();
+  /*for (auto sterm=siteterms().begin(); sterm!=siteterms().end(); ++sterm) {
+    if (sterm->qn_operator().id()==model::op_id::spin_flip) {
+      std::cout << "SOC_MATRIX=" << sterm->coupling(0)<<"\n"; getchar();
+    }
+  }*/
+  update_unitcell_terms();
   for (int i=0; i<modelp_names_.size(); ++i) {
     modelp_vals_[i] = get_parameter_value(modelp_names_[i]);
   }
@@ -289,6 +295,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
           }
 
           ke_matrix(m,n) = exp_kdotr * chi_sum;
+          //std::cout << "chi = " << chi_sum << "\n"; getchar();
           //std::complex<double> chi_sum(0.0);
           //for (unsigned band=nmin; band<=nmax; ++band) {
           //  chi_sum += exp_kdotr * std::conj(es_k_up_.eigenvectors().row(ii)[band]) * 
@@ -471,6 +478,7 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
     /* Has T.P (Time Reversal * Inversion) symmetry. 
        So we have e_k(up) = e_k(dn).
     */
+
   if (true) {
     std::vector<std::pair<unsigned,unsigned>> qn_list; // list of (k,n)
     std::vector<double> ek;
@@ -480,7 +488,7 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
       es_k_up_.compute(quadratic_spinup_block(), Eigen::EigenvaluesOnly);
       ek.insert(ek.end(),es_k_up_.eigenvalues().data(),
         es_k_up_.eigenvalues().data()+kblock_dim_);
-      //std::cout << kvec.transpose() << " " << es_k_up_.eigenvalues() << "\n"; getchar();
+        //std::cout << kvec.transpose() << " " << es_k_up_.eigenvalues() << "\n"; getchar();
       for (unsigned n=0; n<kblock_dim_; ++n) {
         qn_list.push_back({k, n});
       }
@@ -583,16 +591,18 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     /* Has T.P (Time Reversal * Inversion) symmetry. 
        So we have e_k(up) = e_k(dn).
     */
+  //std::cout << "construct_groundstate_v2\n"; getchar();
   if (true) {
     qn_list_.clear();
     ek_list_.clear();
     for (int k=0; k<num_symm_kpoints_; ++k) {
       Vector3d kvec = blochbasis_.kvector(k);
       construct_kspace_block(mf_params, kvec);
+      //if (k==0) std::cout << quadratic_spinup_block() << "\n";
       es_k_up_.compute(quadratic_spinup_block(), Eigen::EigenvaluesOnly);
       //std::cout << quadratic_spinup_block() << "\n"; getchar();
-      //std::cout << es_k_up_.eigenvalues().transpose() << "\n";
-      //fs<<k<<" "<<kvec.transpose()<<" "<<es_k_up_.eigenvalues().transpose()<<"\n";
+      //std::cout << es_k_up_.eigenvalues().transpose() << "\n"; getchar();
+      //std::cout<<k<<" "<<kvec.transpose()<<" "<<es_k_up_.eigenvalues().transpose()<<"\n";
       ek_list_.insert(ek_list_.end(),es_k_up_.eigenvalues().data(),
         es_k_up_.eigenvalues().data()+kblock_dim_);
       //std::cout << kvec.transpose() << "\n" << es_k_up_.eigenvalues() << "\n"; getchar();
@@ -707,10 +717,12 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     std::cout << "metallic, e_F, bandgap = "<<metallic_<<"  "<<fermi_energy_
       <<"  "<<energy_gap_<<"\n";
     std::cout << "Bandwidth = " << bandwidth_ << "\n";
+    std::cout << "e_F-e0 = " << fermi_energy_-ek_list_[idx_[0]] << "\n";
     */
 
     // check
-    /*double particle_sum = 0.0;
+    /*
+    double particle_sum = 0.0;
     double W_INV = 1.0/smear_width_;
     for (int i=0; i<ek_list_.size(); ++i) {
       double x = (ek_list_[idx_[i]]-fermi_energy_)*W_INV;
@@ -739,6 +751,7 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
         double smear_wt = MethfesselPaxton_func(smear_func_order_,x);
         if (std::abs(smear_wt)<1.0E-12) continue;
         std::tie(k,n) = qn_list_[idx_[i]];
+        //std::cout << "(k,n) =" <<k<<","<<n<<": "<<smear_wt<<"\n"; 
         if (shell_nmax[k] < n) shell_nmax[k] = n;
         wt_matrix(k,n) = smear_wt;
         gs_energy += ek_list_[idx_[i]]*smear_wt;
@@ -777,8 +790,8 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     }
     // total energy per site
     gs_energy /= num_sites_;
-    //std::cout << "Ground state energy (per site) = " << gs_energy << "\n";
     /* 
+    std::cout << "Ground state energy (per site) = " << gs_energy << "\n";
     for (int k=0; k<kshells_up_.size(); ++k) {
       std::cout << kshells_up_[k].k << " " << kshells_up_[k].nmin << "  "
           << kshells_up_[k].nmax << "\n";
@@ -984,10 +997,17 @@ void Spinon::set_particle_num(const input::Parameters& inputs)
   */
 }
 
-void Spinon::update_terms(void)
+/*void Spinon::update_terms(void)
 {
+  for (auto it=site_terms().begin(); it!=site_terms().end(); ++it) {
+    it->eval_coupling_constant(Model::constants(), Model::parameters()); 
+  }
+  for (auto it=bond_terms().begin(); it!=bond_terms().end(); ++it) {
+    it->eval_coupling_constant(Model::constants(), Model::parameters()); 
+  }
   update_unitcell_terms();
 }
+*/
 
 void Spinon::update_site_parameter(const std::string& pname, const double& pvalue)
 {
@@ -1033,7 +1053,7 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
 {
   work.setZero(); 
   // bond terms
-  for (auto& term : ubond_terms_) {
+  for (const auto& term : ubond_terms_) {
     if (term.qn_operator().is_quadratic() && term.qn_operator().spin_up()) {
       for (int i=0; i<term.num_out_bonds(); ++i) {
         Vector3d delta = term.bond_vector(i);
@@ -1049,9 +1069,13 @@ void Spinon::construct_kspace_block(const MF_Params& mf_params, const Vector3d& 
   for (const auto& term : usite_terms_) {
     if (term.qn_operator().spin_up()) {
       quadratic_block_up_ += term.coeff_matrix();
-      //std::cout << term.coeff_matrix() << "\n"; getchar();
+      /*if (term.qn_operator().name()=="spin_flip") {
+        std::cout << term.qn_operator().name() << "\n";
+        std::cout << term.coeff_matrix() << "\n"; //getchar();
+      }*/
     }
   }
+
   if (!no_spinon_lambda_) {
     for (int i=0; i<mf_params.num_sites(); ++i) {
       int site_dim = mf_params.site(i).dim();
@@ -1102,7 +1126,7 @@ void UnitcellTerm::update_siteterm_cc(const MF_Params& mf_params)
     int cols = mf_params.site(i).dim();
     auto renorm_soc = mf_params.site(i).boson_renormed_soc();
     //renorm_bond_couplings_[i] = mf_params.bond(i).spinon_renormed_cc(0);
-    //std::cout << renorm_cc << "\n" << "\n";
+    //std::cout << renorm_soc << "\n\n"; getchar(); 
     for (int m=0; m<rows; ++m) {
       auto ii = mf_params.site(i).state_indices()[m];
       for (int n=0; n<cols; ++n) {
@@ -1120,8 +1144,11 @@ void Spinon::update_unitcell_terms(void)
 {
   for (unsigned i=0; i<ubond_terms_.size(); ++i) 
     ubond_terms_[i].eval_coupling_constant(Model::parameters(),Model::constants());
-  for (unsigned i=0; i<usite_terms_.size(); ++i) 
+  for (unsigned i=0; i<usite_terms_.size(); ++i) {
     usite_terms_[i].eval_coupling_constant(Model::parameters(),Model::constants());
+    //std::cout << "update_unitcell_terms\n";
+    //std::cout << usite_terms_[i].coeff_matrix() << "\n"; getchar();
+  }
 }
 
 /* Write a bond term like,
@@ -1339,6 +1366,7 @@ void UnitcellTerm::eval_coupling_constant(const model::ModelParams& pvals, const
         }
       }
     }
+    //std::cout << coeff_matrices_[0] << "\n"; getchar();
   }
   catch (std::exception& e) 
   { 

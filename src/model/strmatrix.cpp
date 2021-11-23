@@ -3,8 +3,8 @@
 * All rights reserved.
 * Author: Amal Medhi
 * @Date:   2018-04-08 17:11:15
-* @Last Modified by:   Amal Medhi, amedhi@macbook
-* @Last Modified time: 2018-04-09 12:54:12
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2021-06-03 23:18:11
 *----------------------------------------------------------------------------*/
 #include "./strmatrix.h"
 #include <fstream>
@@ -50,6 +50,21 @@ void strMatrix::resize(const int& rows, const int& cols)
   for (auto& rvec : matrix_) rvec.resize(cols);
   rows_ = rows;
   cols_ = cols;
+}
+
+void strMatrix::setZero(void)
+{
+  for (int i=0; i<rows_; ++i) {
+    for (int j=0; j<cols_; ++j) {
+      matrix_[i][j] = "0";
+    }
+  }
+}
+
+void strMatrix::setZero(const int& rows, const int& cols)
+{
+  resize(rows,cols);
+  setZero();
 }
 
 void strMatrix::getfromtxt(const std::string& file)

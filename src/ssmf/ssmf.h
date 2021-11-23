@@ -63,6 +63,10 @@ private:
   //std::vector<double> fx_vec_;
   //root::gsl_solver solver_;
 
+  ComplexMatrix Mrotate_;
+  ComplexMatrix Minverse_;
+
+
   // work arrays
   cmpl_bondparms_t boson_ke_;
   cmpl_bondparms_t spinon_ke_;

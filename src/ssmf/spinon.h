@@ -68,7 +68,7 @@ public:
   const std::vector<double>& pvals(void) const { return modelp_vals_; }
   void solve(const lattice::LatticeGraph& graph, MF_Params& mf_params);
   void update(const input::Parameters& inputs);
-  void update_terms(void) override;
+  //void update_unitcell_terms(void);
   void update_site_parameter(const std::string& pname, const double& pvalue);
   void construct_kspace_block(const MF_Params& mf_params, const Vector3d& kvec);
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }

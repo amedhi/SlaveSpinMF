@@ -73,6 +73,57 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_bondterm(name="hopping", cc, op::upspin_hop());
     }
 
+    else if (lattice.id()==lattice::lattice_id::SQUARE_T2G) {
+      set_spinorbit_coupling(true);
+      set_TP_symmetry(true);
+      add_parameter(name="e0", defval=1.0, inputs);
+      add_parameter(name="t",  defval=1.0, inputs);
+      add_parameter(name="t1", defval=1.0, inputs);
+      add_parameter(name="t2", defval=1.0, inputs);
+      add_parameter(name="t3", defval=1.0, inputs);
+      add_parameter(name="t4", defval=1.0, inputs);
+      add_parameter(name="lambda", defval=0.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+
+      // site term
+      cc.create(1);
+      expr_vec.resize(6);
+      expr_vec[0] = "e0"; 
+      expr_vec[1] = "e0"; 
+      expr_vec[2] = "e0"; 
+      expr_vec[3] = "e0"; 
+      expr_vec[4] = "0";
+      expr_vec[5] = "0";
+      cc.add_type(0, expr_vec);
+      add_siteterm(name="onsite", cc, op::ni_up());
+
+      // SOC term in product basis (not diagonal)
+      path = "/Users/amedhi/Projects/PhDs/ArunMaurya/Hubbard_T2G/T2G_Square_Hoppings/";
+      cc.create(1);
+      expr_mat.resize(6,6);
+      expr_mat.getfromtxt(path+"soc_matrix.txt");
+      cc.add_type(0,expr_mat);
+      add_siteterm(name="spin_flip", cc, op::spin_flip());
+
+      // bond operators
+      path = "/Users/amedhi/Projects/PhDs/ArunMaurya/Hubbard_T2G/T2G_Square_Hoppings/";
+      cc.create(4);
+      expr_mat.resize(6,6);
+      expr_mat.getfromtxt(path+"hopping_type0.txt");
+      cc.add_type(0, expr_mat);
+      expr_mat.getfromtxt(path+"hopping_type1.txt");
+      cc.add_type(1, expr_mat);
+      expr_mat.getfromtxt(path+"hopping_type2.txt");
+      cc.add_type(2, expr_mat);
+      expr_mat.getfromtxt(path+"hopping_type3.txt");
+      cc.add_type(3, expr_mat);
+      add_bondterm(name="hopping", cc, op::upspin_hop());
+
+      // Huubard U
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+
     else if (lattice.id()==lattice::lattice_id::CHAIN) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
@@ -396,6 +447,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
   else if (model_name == "HUBBARD_SQIRIDATE") {
     mid = model_id::HUBBARD_SQIRIDATE;
+
     if (lattice.id()==lattice::lattice_id::SQUARE_IRIDATE) {
       set_spinorbit_coupling(true);
       set_TP_symmetry(true);
@@ -460,6 +512,58 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         add_siteterm(name="ExtField", cc, op::ni_up());
       }
     }
+
+    else if (lattice.id()==lattice::lattice_id::SQUARE_T2G) {
+      set_spinorbit_coupling(true);
+      set_TP_symmetry(true);
+      add_parameter(name="e0", defval=1.0, inputs);
+      add_parameter(name="t",  defval=1.0, inputs);
+      add_parameter(name="t1", defval=1.0, inputs);
+      add_parameter(name="t2", defval=1.0, inputs);
+      add_parameter(name="t3", defval=1.0, inputs);
+      add_parameter(name="t4", defval=1.0, inputs);
+      add_parameter(name="lambda", defval=0.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+
+      // site term
+      cc.create(1);
+      expr_vec.resize(6);
+      expr_vec[0] = "e0"; 
+      expr_vec[1] = "e0"; 
+      expr_vec[2] = "e0"; 
+      expr_vec[3] = "e0"; 
+      expr_vec[4] = "0";
+      expr_vec[5] = "0";
+      cc.add_type(0, expr_vec);
+      add_siteterm(name="onsite", cc, op::ni_up());
+
+      // SOC term in product basis (not diagonal)
+      path = "/Users/amedhi/Projects/PhDs/ArunMaurya/Hubbard_T2G/T2G_Square_Hoppings/";
+      cc.create(1);
+      expr_mat.resize(6,6);
+      expr_mat.getfromtxt(path+"soc_matrix.txt");
+      cc.add_type(0,expr_mat);
+      add_siteterm(name="spin_flip", cc, op::spin_flip());
+
+      // bond operators
+      path = "/Users/amedhi/Projects/PhDs/ArunMaurya/Hubbard_T2G/T2G_Square_Hoppings/";
+      cc.create(4);
+      expr_mat.resize(6,6);
+      expr_mat.getfromtxt(path+"hopping_type0.txt");
+      cc.add_type(0, expr_mat);
+      expr_mat.getfromtxt(path+"hopping_type1.txt");
+      cc.add_type(1, expr_mat);
+      expr_mat.getfromtxt(path+"hopping_type2.txt");
+      cc.add_type(2, expr_mat);
+      expr_mat.getfromtxt(path+"hopping_type3.txt");
+      cc.add_type(3, expr_mat);
+      add_bondterm(name="hopping", cc, op::upspin_hop());
+
+      // Huubard U
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+
     else {
       throw std::range_error("*error: modellibrary: model not defined for the lattice"); 
     }

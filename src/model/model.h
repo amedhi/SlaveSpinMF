@@ -91,12 +91,12 @@ public:
   const bondterm_iterator& bondterms_end(void) const { return bt_end_; }
   const siteterm_iterator& disorder_term_begin(void) const { return dterm_begin_; }
   const siteterm_iterator& disorder_term_end(void) const { return dterm_end_; }
-  std::pair<siteterm_iterator, siteterm_iterator> site_terms(void) const 
-    { return std::make_pair(site_terms_.cbegin(), site_terms_.cend()); }
-  std::pair<bondterm_iterator, bondterm_iterator> bond_terms(void) const 
-    { return std::make_pair(bond_terms_.cbegin(), bond_terms_.cend()); }
-  std::pair<siteterm_iterator, siteterm_iterator> disorder_terms(void) const 
-    { return std::make_pair(disorder_terms_.cbegin(), disorder_terms_.cend()); }
+  //std::pair<siteterm_iterator, siteterm_iterator> site_terms(void) const 
+  //  { return std::make_pair(site_terms_.cbegin(), site_terms_.cend()); }
+  //std::pair<bondterm_iterator, bondterm_iterator> bond_terms(void) const 
+  //  { return std::make_pair(bond_terms_.cbegin(), bond_terms_.cend()); }
+  //std::pair<siteterm_iterator, siteterm_iterator> disorder_terms(void) const 
+  //  { return std::make_pair(disorder_terms_.cbegin(), disorder_terms_.cend()); }
   unsigned num_siteterms(void) const { return site_terms_.size(); }
   unsigned num_bondterms(void) const { return bond_terms_.size(); }
   unsigned num_disorder_terms(void) const { return disorder_terms_.size(); }
@@ -112,17 +112,23 @@ public:
 
   //const SiteTerm& siteterm(const unsigned& i) const { return siteterms_[i]; };
   //const BondTerm& bondterm(const unsigned& i) const { return bondterms_[i]; };
+  const std::vector<HamiltonianTerm>& siteterms(void) const { return site_terms_; }
+  const std::vector<HamiltonianTerm>& bondterms(void) const { return bond_terms_; }
+
 private:
   model_id mid {model_id::UNDEFINED};
   //model_id2 id2_{model_id2::UNDEFINED};
   std::string model_name;
+
   //BasisDescriptor basis_;
   std::map<unsigned, unsigned> sitetypes_map_;
   std::map<unsigned, unsigned> bondtypes_map_;
   std::map<unsigned, unsigned> type_dim_map_;
   //BondTerm::BondSiteMap bond_sites_map_;  
+
   std::vector<HamiltonianTerm> bond_terms_;
   std::vector<HamiltonianTerm> site_terms_;
+
 
   bool double_occupancy_{true};
   bool have_siteterm_{false};

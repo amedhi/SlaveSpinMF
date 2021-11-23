@@ -61,6 +61,23 @@ SSMF::SSMF(const input::Parameters& inputs)
   //site_avg_.init("site_avg", heading);
   //bond_avg_.init("bond_avg", heading);
   spinon_model_.init_files(prefix, info_str_.str());
+
+
+  //--------------TEMP---------------------
+  // rotation matrix
+  Mrotate_.resize(6,6);
+  Minverse_.resize(6,6);
+  Mrotate_.setZero();
+  double sqrt3 = std::sqrt(3.0);
+  double sqrt2 = std::sqrt(2.0);
+  double sqrt6 = std::sqrt(6.0);
+  Mrotate_(0,1)=1.0/sqrt3; Mrotate_(0,3)=ii()/sqrt3;  Mrotate_(0,4)=1.0/sqrt3;
+  Mrotate_(1,0)=1.0/sqrt3; Mrotate_(1,2)=-ii()/sqrt3; Mrotate_(1,5)=-1.0/sqrt3;
+  Mrotate_(2,0)=-1.0/sqrt2; Mrotate_(2,2)=-ii()/sqrt2; 
+  Mrotate_(3,1)=-1.0/sqrt6; Mrotate_(3,3)=-ii()/sqrt6; Mrotate_(3,4)=2.0/sqrt6;
+  Mrotate_(4,0)=1.0/sqrt6; Mrotate_(4,2)=-ii()/sqrt6; Mrotate_(4,5)=2.0/sqrt6;
+  Mrotate_(5,1)=1.0/sqrt2; Mrotate_(5,3)=-ii()/sqrt2; 
+  Minverse_ = Mrotate_.inverse();
 }
 
 
@@ -68,6 +85,7 @@ int SSMF::run(const input::Parameters& inputs)
 {
   spinon_model_.update(inputs);
   boson_model_.update(spinon_model_);
+  mf_params_.update(spinon_model_);
 
   //mf_params_.
   boson_ke_.resize(mf_params_.num_bonds());
@@ -182,6 +200,23 @@ int SSMF::selconsistent_solve(void)
 
   spinon_model_.print_output(mf_params_);
   print_output();
+
+  // --------------------TEMP------------------------
+  /*
+  ComplexMatrix Zmat(6,6);
+  for (int m=0; m<6; ++m) {
+    for (int n=0; n<6; ++n) {
+      Zmat(m,n) = 0.0;
+      for (int k=0; k<6; ++k) {
+        double z = mf_params_.site(0).qp_weights()(k);
+        Zmat(m,n) += z * Minverse_(k,m) * std::conj(Minverse_(k,n));
+      }
+      if (m==n)
+      std::cout<<"Z["<<m<<","<<n<<"] = "<<Zmat(m,n) << "\n";
+    }
+  }
+  */
+
 
   return 0;
 }
