@@ -198,6 +198,12 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     int nmin = kshells_up_[i].nmin;
     int nmax = kshells_up_[i].nmax;
     int nbands = nmax-nmin+1;
+    /*
+    std::cout << "(k, nmin, nmax) = "<<k<<" "<<nmin<<" "<<nmax<<"\n";
+    std::cout << "wt = "<< kshells_up_[i].smear_wt.transpose() <<"\n\n";
+    std::cout << es_k_up_.eigenvectors()<<"\n";
+    getchar();
+    */
     amplitude_vec1.resize(nbands);
     amplitude_vec2.resize(nbands);
     //Eigen::VectorXcd eigvec_wt(nbands);
@@ -638,9 +644,12 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     //smear_width_ = 1.0*bandwidth_/num_unitcells_;
     smear_width_ = smearing_*bandwidth_;
     smear_func_order_ = 4;
-    //std::cout << "BW = " << bandwidth_ << "\n";
-    //std::cout << "W = " << smear_width_ << "\n";
-    //getchar();
+    /*
+    std::cout << "BW = " << bandwidth_ << "\n";
+    std::cout << "W = " << smear_width_ << "\n";
+    std::cout << "Gap tol =" << 0.01*smearing_*bandwidth_ << "\n";
+    getchar();
+    */
 
     // for root finding
     double factor = 2.0;
