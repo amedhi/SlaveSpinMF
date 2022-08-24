@@ -117,6 +117,8 @@ void Spinon::set_info_string(void)
 
 void Spinon::update(const input::Parameters& inputs)
 {
+  iteration_zero_ = true;
+  groundstate_determined_ = false;
   //std::cout << "\n\n>>>>>>>Spinon::update>>>>>>>>>>\n\n";
   Model::update_parameters(inputs);
   Model::update_terms();
@@ -135,6 +137,7 @@ void Spinon::init_files(const std::string& prefix, const std::string& heading)
 {
   // observables
   file_bands_.init(prefix, "bands", heading);
+  file_dispersion_.init(prefix, "dispersion", heading);
   heading_printed_ = false;
 }
 
@@ -178,7 +181,7 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
   for (int i=0; i<mf_params.num_sites(); ++i) {
     mf_params.site(i).spinon_density().setZero();
     mf_params.site(i).spinon_flip_ampl().setZero();
-    //mf_params.site(i).spinon_fluct().setZero();
+    mf_params.site(i).spinon_fluct().setZero();
   }
   for (int i=0; i<mf_params.bonds().size(); ++i) {
     mf_params.bond(i).spinon_ke(0).setZero();
@@ -216,36 +219,34 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
         for (int band=nmin; band<=nmax; ++band) {
           norm += std::norm(es_k_up_.eigenvectors().row(ii)[band])
                   * kshells_up_[i].smear_wt(band);
+          //std::cout << es_k_up_.eigenvectors().row(ii) << "\n"; 
         }
         n_avg(m) = norm;
       }
       //std::cout << n_avg.transpose(); getchar();
       mf_params.site(j).spinon_density() += symm_wt*n_avg;
+
+      // orbital fluctuation = <n_i*n_j> - <n_i><n_j>
+      /*
+      cmplArray2D fluct = cmplArray2D::Zero(site_dim, site_dim);
+      for (int ma=0; ma<site_dim; ++ma) {
+        auto a = mf_params.site(j).state_indices()[ma];
+        for (int mb=0; mb<site_dim; ++mb) {
+          auto b = mf_params.site(j).state_indices()[mb];
+          for (int band=nmin; band<=nmax; ++band) {
+            fluct(a,b) += std::conj(es_k_up_.eigenvectors().row(a)[band]) 
+                  *std::conj(es_k_up_.eigenvectors().row(b)[band])
+                  * kshells_up_[i].smear_wt(band);
+          }
+        }
+        std::cout << es_k_up_.eigenvectors().row(a) << "\n"; 
+      } 
+      std::cout << "fluct\n";
+      std::cout << fluct << "\n"; getchar();
+      mf_params.site(j).spinon_fluct() += symm_wt*fluct;
+      */
     }
 
-    // orbital fluctuation
-    //Eigen::VectorXcd eigvec_wt(nbands);
-    /*
-    for (int j=0; j<mf_params.num_sites(); ++j) {
-      int site_dim = mf_params.site(j).dim();
-      realArray1D n_avg(site_dim); 
-      for (int m=0; m<site_dim; ++m) {
-        auto ii = mf_params.site(j).state_indices()[m];
-        for (int n=0; n<site_dim; ++n) {
-          auto jj = mf_params.site(j).state_indices()[n];
-          double norm = 0.0;
-          for (int band=nmin; band<=nmax; ++band) {
-            norm += std::norm(es_k_up_.eigenvectors().row(ii)[band])
-                   * std::norm(es_k_up_.eigenvectors().row(jj)[band])
-                   * kshells_up_[i].smear_wt(band);
-          }
-          n_fluct(m,n) = norm;
-        }
-      }
-      //std::cout << n_avg.transpose(); getchar();
-      mf_params.site(j).spinon_fluct() += symm_wt*n_fluct;
-    }
-    */
 
 
     // spin-flip term 
@@ -299,7 +300,6 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
             chi_sum += std::conj(amplitude_vec1(band)) * amplitude_vec2(band)
                       * kshells_up_[i].smear_wt(band);
           }
-
           ke_matrix(m,n) = exp_kdotr * chi_sum;
           //std::cout << "chi = " << chi_sum << "\n"; getchar();
           //std::complex<double> chi_sum(0.0);
@@ -339,6 +339,23 @@ void Spinon::compute_averages(const lattice::LatticeGraph& graph, MF_Params& mf_
     std::cout << "\n";
     //*/
   }
+
+  // orbital fluctuation
+  /*
+  for (int i=0; i<mf_params.num_sites(); ++i) {
+    cmplArray2D fluct = mf_params.site(i).spinon_fluct().conjugate()
+                        * mf_params.site(i).spinon_fluct();
+    mf_params.site(i).spinon_fluct() = -fluct/(num_kpoints_*num_kpoints_);
+    for (int m=0; m<mf_params.site(i).dim(); ++m) {
+      for (int n=0; n<mf_params.site(i).dim(); ++n) {
+        std::cout << "<fluct>["<<m<<","<<n<<"] = " << std::real(mf_params.site(i).spinon_fluct()(m,n)) << "\n";
+      }
+    }
+    std::cout << "\n";
+  }
+  */
+
+
 
   /*
     for (int i=0; i<mf_params.num_sites(); ++i) {
@@ -544,6 +561,7 @@ void Spinon::construct_groundstate(const MF_Params& mf_params)
           " particles in " << 2*num_degen_states << " states." << "\n";
       }
     }
+
     /* 
       Filled k-shells. A k-shell is a group of energy levels having same 
       value of quantum number k.
@@ -908,6 +926,60 @@ void Spinon::construct_groundstate_v2(const MF_Params& mf_params)
     */
     throw std::range_error("Spinon::construct_groundstate: case not implemented\n");
   }
+}
+
+void Spinon::print_dispersion(const lattice::Lattice& lattice, const MF_Params& mf_params)
+{
+  file_dispersion_.open();
+  file_dispersion_.fs()<<std::left;
+  file_dispersion_.fs()<<std::scientific<<std::uppercase<<std::setprecision(6);
+  if (true) { 
+    for (int i=0; i<pnames().size(); ++i) {
+      file_dispersion_.fs()<<std::left<<"# ";
+      file_dispersion_.fs()<<std::left<<std::setw(8)<<pnames()[i]<< "= ";
+      file_dispersion_.fs()<<std::left<<std::setw(15)<<pvals()[i]<<"\n";
+    }
+    file_dispersion_.fs()<<"#"<< std::string(72, '-') << "\n";
+    file_dispersion_.fs()<<std::left<<"# ";
+    file_dispersion_.fs()<<std::left<<std::setw(7)<< "n";
+    file_dispersion_.fs()<<std::left<<std::setw(15)<< "kx";
+    file_dispersion_.fs()<<std::left<<std::setw(15)<< "ky";
+    for (int i=0; i<kblock_dim_; ++i) {
+      file_dispersion_.fs()<<std::left<<std::setw(5)<<"band-"<<std::setw(10)<<i;
+    }
+    file_dispersion_.fs()<<"\n";
+    file_dispersion_.fs()<<"#"<< std::string(72, '-') << "\n";
+  }
+
+  // renormalized bond couplings
+  int term_id=0;
+  for (auto& term : ubond_terms_) {
+    if (term.qn_operator().is_quadratic() && term.qn_operator().spin_up()) {
+      term.update_bondterm_cc(term_id++, mf_params);
+    }
+  }
+  // renormalized soc couplings
+  for (auto& term : usite_terms_) {
+    if (term.qn_operator().id()==model::op_id::spin_flip) {
+      term.update_siteterm_cc(mf_params);
+    }
+  }
+
+  file_dispersion_.fs()<<std::right;
+  for (int k=0; k<num_kpoints_; ++k) {
+    Vector3d kvec = blochbasis_.kvector(k);
+    construct_kspace_block(mf_params, kvec);
+    es_k_up_.compute(quadratic_spinup_block(), Eigen::EigenvaluesOnly);
+    if (k && (k%lattice.size1()==0)) file_dispersion_.fs() << "\n";
+    file_dispersion_.fs() << std::setw(6) << k;
+    file_dispersion_.fs() << std::setw(15) << kvec[0];
+    file_dispersion_.fs() << std::setw(15) << kvec[1];
+    for (int i=0; i<kblock_dim_; ++i) {
+      file_dispersion_.fs() << std::setw(15) << es_k_up_.eigenvalues()(i);
+    }
+    file_dispersion_.fs()<<"\n";
+  }
+  file_dispersion_.close();
 }
 
 double Spinon::particle_constraint_eqn(const double& mu)

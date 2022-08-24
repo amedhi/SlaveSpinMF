@@ -76,6 +76,7 @@ public:
   double energy(const MF_Params& mf_params) { return total_energy_; }
   const int& varparam2(void) const { return varparam2_; }
   void print_output(const MF_Params& mf_params);
+  void print_dispersion(const lattice::Lattice& lattice, const MF_Params& mf_params);
 private:
   using Model = model::Hamiltonian;
   std::vector<UnitcellTerm> usite_terms_;
@@ -140,6 +141,7 @@ private:
 
   // output data
   file::DataFile file_bands_;
+  file::DataFile file_dispersion_;
   bool heading_printed_{false};
 
   std::string info_str_;

@@ -199,6 +199,7 @@ int SSMF::selconsistent_solve(void)
   std::cout << "TE = " << E << "\n";
 
   spinon_model_.print_output(mf_params_);
+  spinon_model_.print_dispersion(graph_.lattice(), mf_params_);
   print_output();
 
   // --------------------TEMP------------------------

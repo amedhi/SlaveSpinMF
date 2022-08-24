@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-03-12 12:20:33
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2021-11-23 16:05:12
+* @Last Modified time: 2022-07-13 12:55:57
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "mf_params.h"
@@ -36,6 +36,7 @@ MF_Site::MF_Site(const int& type, const int& dim, const idx_list& state_indices)
   boson_density_.resize(dim_);
   lm_params_.resize(dim_); lm_params_.setZero();
   qp_weights_.resize(dim_); qp_weights_.setOnes();
+  spinon_fluct_.resize(dim_,dim_);
   soc_matrix_.resize(dim_,dim_); soc_matrix_.setZero();
   spinon_flip_ampl_.resize(dim_,dim_); spinon_flip_ampl_.setZero();
   boson_flip_ampl_.resize(dim_,dim_); boson_flip_ampl_.setZero();

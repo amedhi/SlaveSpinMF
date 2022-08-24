@@ -514,6 +514,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     }
 
     else if (lattice.id()==lattice::lattice_id::SQUARE_T2G) {
+      //set_spinorbit_coupling(false);
       set_spinorbit_coupling(true);
       set_TP_symmetry(true);
       add_parameter(name="e0", defval=1.0, inputs);
@@ -529,6 +530,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       // site term
       cc.create(1);
       expr_vec.resize(6);
+      
       expr_vec[0] = "e0"; 
       expr_vec[1] = "e0"; 
       expr_vec[2] = "e0"; 

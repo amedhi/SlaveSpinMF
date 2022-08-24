@@ -45,6 +45,8 @@ public:
   const realArray1D& lm_params(void) const { return lm_params_; }
   realArray1D& qp_weights(void) { return qp_weights_; }
   const realArray1D& qp_weights(void) const { return qp_weights_; }
+  cmplArray2D& spinon_fluct(void) { return spinon_fluct_; }
+  const cmplArray2D& spinon_fluct(void) const { return spinon_fluct_; }
   const cmplArray2D& spinon_flip_ampl(void) const { return spinon_flip_ampl_; }
   cmplArray2D& spinon_flip_ampl(void) { return spinon_flip_ampl_; }
   const cmplArray2D& boson_flip_ampl(void) const { return boson_flip_ampl_; }
@@ -67,6 +69,7 @@ private:
   realArray1D lm_params_;
   realArray1D lm_params_noint_;
   realArray1D qp_weights_;
+  cmplArray2D spinon_fluct_;
   cmplArray2D soc_matrix_; 
   cmplArray2D spinon_flip_ampl_; 
   cmplArray2D boson_flip_ampl_; 

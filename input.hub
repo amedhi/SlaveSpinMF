@@ -8,7 +8,7 @@
 job = "SRMF"  #"Diagonalization" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
-prefix = "results"
+prefix = "hub"
 
 #---------------------------------------------
 # Slave-rotor parameters
@@ -18,7 +18,9 @@ solve_single_site = "NO" # "YES"
 no_spinon_lambda = "YES"
 ssmf_conv_tol = 1.0E-12
 boson_conv_tol = 1.0E-12
-boson_max_iter = 5000
+boson_max_iter = 500
+smearing = 1.0E-3
+use_previous_iter = "YES"
 
 #---------------------------------------------
 # Lattice:
@@ -34,16 +36,16 @@ bc2 = "periodic"
 #---------------------------------------------
 model = "HUBBARD"
 t = 1.0
-U = 2.0
+U = 0.0, 1.0, 16
 
-hole_doping = 0.0 # 0.18 
+hole_doping = 0.0 
 ext_field = 0.0
 
 #---------------------------------------------
 # List of observable to calculate:
 #---------------------------------------------
-chern_number = "NO"
-ebands_full = "YES"
+#chern_number = "NO"
+#ebands_full = "YES"
 #ebands_symm = "YES"
 #band_gap = "YES"
 

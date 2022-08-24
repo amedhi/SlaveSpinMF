@@ -2,7 +2,7 @@
 * Author: Amal Medhi
 * @Date:   2018-04-19 11:24:03
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2021-11-22 15:10:57
+* @Last Modified time: 2022-07-19 11:42:02
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "slavespin.h"
@@ -540,7 +540,7 @@ void SlaveSpin::set_noninteracting_params(const MF_Params& mf_params)
         gauge_factors_[site][alpha] = x_vec_[alpha];
         lm_params_noint_[site][alpha] = x_vec_[site_dim_+alpha];
       }
-      //std::cout<<"c["<<site<<"] = "<< gauge_factors_[site].transpose()<<"\n";
+      //std::cout<<"g["<<site<<"] = "<< gauge_factors_[site].transpose()<<"\n";
       //std::cout<<"lambda_0["<<site<<"] = "<< lm_params_noint_[site].transpose()<<"\n";
       //getchar();
     }
